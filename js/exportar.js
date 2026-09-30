@@ -1,6 +1,7 @@
 // Descarga en Excel de todo lo que muestra el dashboard (respeta los filtros activos).
 
 const r2 = n => Math.round((+n || 0) * 100) / 100;
+const FIRMA = 'Luis Acosta · Esp. de Ingeniería Agrícola';
 
 function textoFiltros(){
   const nombres = {zona:'Zona',hac:'Hacienda',cult:'Cultivo',est:'Estado',ppto:'Presupuesto',dias:'Días lucro'};
@@ -9,8 +10,9 @@ function textoFiltros(){
   return activos.length ? activos.join(' · ') : 'Sin filtros (todos los lotes)';
 }
 
+// Cada hoja termina con la firma de quien elabora el informe
 function hoja(XLSX, filas, anchos){
-  const ws = XLSX.utils.aoa_to_sheet(filas);
+  const ws = XLSX.utils.aoa_to_sheet([...filas, [], [`Elaborado por: ${FIRMA}`]]);
   ws['!cols'] = anchos.map(w => ({ wch: w }));
   return ws;
 }
@@ -33,6 +35,7 @@ function exportarExcel(){
     // RESUMEN
     XLSX.utils.book_append_sheet(wb, hoja(XLSX, [
       ['Comité APS · Riopaila Agrícola'],
+      [`Elaborado por: ${FIRMA}`],
       [`Datos al ${fecha} · ${semana}`],
       [`Filtros: ${textoFiltros()}`],
       [],
@@ -110,6 +113,7 @@ function exportarExcel(){
       ['TOTAL', Math.round(sum(c, x => x.real)), c.find(x => x.ppto)?.ppto ? Math.round(c.find(x => x.ppto).ppto) : '', Math.round(sum(c, x => x.total))],
     ], [14, 13, 13, 16]), 'COSTOS');
 
+    wb.Props = { Title: `Comité APS · ${semana}`, Subject: 'Renovación y siembra · Riopaila Agrícola', Author: FIRMA, Company: 'Riopaila Agrícola S.A.', CreatedDate: new Date() };
     XLSX.writeFile(wb, `Comite-APS-${slugSemana()}${data.length !== DB.lotes.length ? '-filtrado' : ''}.xlsx`);
     toast('✓ Excel descargado');
   }).catch(e => toast('⚠ ' + e.message));
