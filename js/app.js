@@ -541,3 +541,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)revisarVer
 new MutationObserver(()=>{if(recargaPendiente&&q('modal-overlay').style.display!=='flex')recargarSiSePuede(recargaPendiente);})
   .observe(q('modal-overlay'),{attributes:true,attributeFilter:['style']});
 revisarVersion();
+
+// La barra de filtros queda pegada justo debajo del encabezado (su alto cambia con la firma y el ancho)
+function ajustarBarra(){document.querySelector('.fbar').style.top=document.querySelector('.hdr').offsetHeight+'px';}
+window.addEventListener('resize',ajustarBarra);
+ajustarBarra();
