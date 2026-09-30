@@ -1,7 +1,7 @@
 // Datos publicados del Comité APS. Archivo generado por la app ("Publicar para todos");
 // cambiar meta.corte hace que los navegadores descarten lo guardado y tomen estos datos.
 const SEED = {
-  meta: {"fecha":"30 Sep 2026","semana":"Semana 40","corte":"2026-09-30T16:18:06.272Z","pptoTotal":555.45},
+  meta: {"fecha":"30 Sep 2026","semana":"Semana 40","corte":"2026-09-30T16:23:00.176Z","pptoTotal":555.45},
   lotes: [
     {"s":"3110-050","h":"NORMANDIA","z":2,"a":8.33,"c":"CAÑA","d":273,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
     {"s":"3501-050","h":"RIOPAILA","z":1,"a":8.62,"c":"CAÑA","d":309,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
@@ -52,7 +52,7 @@ const SEED = {
     {"s":"3426-020","h":"MEDIA LUNA","z":2,"a":10.26,"c":"CAÑA","d":315,"e":"SEMBRADA","p":"NO","v":"CC 01-1940"}
   ],
   ruta: [
-    {"h":"NORMANDIA","s":"3110-050","a":8.33,"d":273,"variedad":"CC 13-2035","semillero":"3113-080","bandereo":11,"cont":"ANDRUSV"},
+    {"h":"NORMANDIA","s":"3110-050","a":8.33,"d":273,"variedad":"CC 13-2035","semillero":"3113-080","bandereo":12,"cont":"ANDRUSV"},
     {"h":"RIOPAILA","s":"3501-052","a":2.92,"d":311,"variedad":null,"semillero":null,"bandereo":null,"cont":null},
     {"h":"RIOPAILA","s":"3501-050","a":8.62,"d":309,"variedad":null,"semillero":null,"bandereo":null,"cont":null}
   ],
