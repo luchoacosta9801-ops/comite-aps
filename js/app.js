@@ -39,16 +39,16 @@ function renderMeta(){
   const {fecha,semana}=DB.meta;
   q('chip-fecha').textContent=fecha;
   q('chip-sem').textContent=semana;
-  q('slbl').textContent=`Indicadores generales · ${fecha} · ${semana}`;
+  q('slbl').textContent=`Indicadores generales · ${fechaLarga(fecha)} · ${semana}`;
   document.querySelectorAll('.sem-tag').forEach(t=>t.textContent=semana.replace(/semana/i,'SEM.'));
-  q('footer').textContent=`Comité APS · Riopaila Agrícola · Datos al ${fecha} · ${semana} · Fuentes: PANEL CONTROL · COMITE APS · RUTA DE SIEMBRA · RUTA SEMANA PASADA · PPTO 2026`;
+  q('footer').textContent=`Comité APS · Riopaila Agrícola · Datos al ${fecha} · ${semana} · Fuentes: PANEL CONTROL · COMITE APS · RESUMEN · PPTO 2026`;
   updateSaveDot();
 }
 
 function renderHacSelect(){
   const sel=q('sel-hac'),cur=F.hac;
   sel.innerHTML='<option value="all">Todas las haciendas</option>'+
-    hacsActuales().map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('');
+    hacsActuales().map(h=>`<option value="${esc(h)}">${esc(HAC_LABEL[h]||h)}</option>`).join('');
   sel.value=hacsActuales().includes(cur)?cur:'all';
   F.hac=sel.value;
   sel.className='fsel'+(sel.value!=='all'?' on':'');
@@ -91,8 +91,8 @@ function render(){
 
   // Donut: solo sembradas
   const circ=2*Math.PI*44,cp=semb>0?canaS/semb:0;
-  q('d-cana').setAttribute('stroke-dasharray',`${cp*circ} ${circ}`);
-  q('d-arroz').setAttribute('stroke-dasharray',`0 ${cp*circ} ${(1-cp)*circ} ${circ}`);
+  q('d-cana').setAttribute('stroke-dasharray',`${cp*circ} ${(1-cp)*circ}`);
+  q('d-arroz').setAttribute('stroke-dasharray',`${(1-cp)*circ} ${cp*circ}`);q('d-arroz').setAttribute('stroke-dashoffset',String(69-cp*circ));
   q('d-pct').textContent=semb>0?(cp*100).toFixed(1)+'%':'—';
   q('leg-c').textContent=`${f2(canaS)} ha · ${sembL.filter(l=>l.c==='CAÑA').length} lotes sembrados`;
   q('leg-a').textContent=`${f2(arrozS)} ha · ${sembL.filter(l=>l.c==='ARROZ').length} lotes sembrados`;
@@ -173,11 +173,12 @@ function porLabor(arr){
 function renderLabores(){
   const arr=procesoFiltrado(),tot=sum(arr,r=>r.area);
   const m=porLabor(arr);
-  q('lab-n').textContent=`${arr.length} suertes en proceso`;
+  q('lab-n').textContent=`${arr.length} lotes pendientes`;
   q('lab-ha').textContent=f2(tot)+' ha';
   q('acc-tag').textContent=`${arr.length} suertes · ${f2(tot)} ha`;
-  const rows=Object.entries(m).map(([n,it])=>[n,sum(it,r=>r.area),it.length]).sort((a,b)=>b[1]-a[1]);
-  q('lab-list').innerHTML=rows.length?rows.map(([n,a,l])=>`<div class="li"><div class="ln">${esc(n)}</div><div class="lb"><div class="bt"><div class="bf" style="width:${tot?a/tot*100:0}%;background:${LABOR_COLORS[n]||'var(--green)'}"></div></div></div><div class="lv">${f2(a)} ha</div><div class="ll">${l}L</div></div>`).join(''):'<div class="nores">Sin suertes en proceso</div>';
+  const orden=l=>{const i=ORDEN_LAB.indexOf(l);return i<0?99:i;};
+  const rows=Object.entries(m).map(([n,it])=>[n,sum(it,r=>r.area),it.length]).sort((a,b)=>orden(a[0])-orden(b[0]));
+  q('lab-list').innerHTML=rows.length?rows.map(([n,a,l])=>`<div class="li"><div class="ln">${esc(n)}</div><div class="lb"><div class="bt"><div class="bf" style="width:${tot?a/tot*100:0}%;background:var(--green)"></div></div></div><div class="lv">${f2(a)} ha</div><div class="ll">${l}L</div></div>`).join(''):'<div class="nores">Sin suertes en proceso</div>';
 }
 
 function renderVariedades(data,tot){
@@ -285,7 +286,6 @@ q('acc-labores').addEventListener('click',e=>{
   if(!e.target.closest('#acc-btn'))return;
   const open=q('acc-body').classList.toggle('open');
   q('acc-arrow').classList.toggle('open',open);q('acc-btn').classList.toggle('open',open);
-  q('acc-hint').textContent=open?'Clic para contraer':'Clic para expandir';
   if(open)buildLaborPanels();
 });
 

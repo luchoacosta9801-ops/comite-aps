@@ -7,7 +7,15 @@ overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
 q('modal-close').addEventListener('click',closeModal);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.style.display==='flex')closeModal();});
 q('btn-gestionar').addEventListener('click',()=>openModal('home'));
-q('btn-import').addEventListener('click',()=>openModal('import'));
+q('btn-refresh').addEventListener('click',()=>{
+  const btn=q('btn-refresh');
+  btn.classList.add('spinning');btn.innerHTML='<span class="r-icon">🔄</span> Refrescando...';btn.disabled=true;
+  setTimeout(()=>{
+    loadDB();renderAll();
+    btn.classList.remove('spinning');btn.innerHTML='🔄 Refrescar';btn.disabled=false;
+    toast('✓ Dashboard actualizado');
+  },400);
+});
 
 function setHeader(icon,title,sub){q('modal-icon').textContent=icon;q('modal-title').textContent=title;q('modal-sub').textContent=sub;}
 function opts(list,sel){return list.map(v=>`<option value="${esc(v)}" ${v===sel?'selected':''}>${esc(v)}</option>`).join('');}

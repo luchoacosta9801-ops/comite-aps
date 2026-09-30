@@ -220,10 +220,6 @@ tr:not(.tot):hover td{background:#f0f7ff}
 /* ── App: añadidos ── */
 .panel-wide{grid-column:1/-1}
 .mg-wrap{overflow-x:auto}
-.mg{min-width:760px}
-.save-dot{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);white-space:nowrap}
-.save-dot::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green)}
-.save-dot.dirty::before{background:var(--amber)}
 .imp-sheet{border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--card2)}
 .imp-sheet.ok{border-color:rgba(0,135,90,.35)}
 .imp-sheet.bad{border-color:rgba(192,57,43,.35)}

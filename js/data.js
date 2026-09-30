@@ -96,4 +96,19 @@ const LABOR_COLORS = {
 const MESES = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
 const VCLRS = ['#00875a','#0077aa','#b45309','#6d28d9','#c2410c','#64748b','#0369a1'];
 
+// Nombres de hacienda tal como se muestran en el filtro
+const HAC_LABEL = {
+  "PERALONSO":"Peralonso","VENECIA":"Venecia","NORMANDIA":"Normandia","RIOPAILA":"Riopaila",
+  "SAN NICOLAS":"S. Nicolás","LA LUISA":"La Luisa","VALPARAISO":"Valparaíso","MEDIA LUNA":"Media Luna",
+  "LA PAILA":"La Paila","PAILA ARRIBA":"Paila Arriba","LAGUNAS":"Lagunas"
+};
+// Orden de las labores en el panel "Avance labores"
+const ORDEN_LAB = ["DESCEPADA","PULIDA","SURCADA","SUBSUELO","TOPOGRAFIA","RASTRA","NIVELACION"];
+const MESES_LARGOS = {ENE:"Enero",FEB:"Febrero",MAR:"Marzo",ABR:"Abril",MAY:"Mayo",JUN:"Junio",
+  JUL:"Julio",AGO:"Agosto",SEP:"Septiembre",OCT:"Octubre",NOV:"Noviembre",DIC:"Diciembre"};
+
 function zonaDe(hac){ return Z1_HACS.has(hac) ? 1 : 2; }
+// "7 Sep 2026" → "7 Septiembre 2026" (otros formatos se dejan igual)
+function fechaLarga(f){
+  return String(f).replace(/\b([A-Za-zÁÉÍÓÚáéíóú]{3})\b/, m => MESES_LARGOS[m.toUpperCase()] || m);
+}

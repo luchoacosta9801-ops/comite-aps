@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Comité APS · Riopaila Agrícola</title>
+<title>Comité APS · Dashboard Ejecutivo</title>
 <meta name="theme-color" content="#0077aa">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
@@ -26,7 +26,6 @@
     <span class="hchip chip-date" id="chip-fecha" title="Clic para editar" style="cursor:pointer"></span>
     <span class="hchip chip-sem" id="chip-sem" title="Clic para editar" style="cursor:pointer"></span>
     <span id="results-pill"></span>
-    <span class="save-dot" id="save-dot" title="Los cambios se guardan automáticamente en este navegador">Guardado</span>
   </div>
 </header>
 
@@ -61,12 +60,12 @@
     </select>
   </div>
   <div class="fsep"></div>
-  <div class="flbl">Ppto</div>
+  <div class="flbl">Presupuesto</div>
   <div class="fg">
     <select id="sel-ppto" class="fsel">
       <option value="all">Todos</option>
-      <option value="SI">En ppto</option>
-      <option value="NO">Fuera ppto</option>
+      <option value="SI">En presupuesto</option>
+      <option value="NO">Fuera presupuesto</option>
     </select>
   </div>
   <div class="fsep"></div>
@@ -80,12 +79,12 @@
     </select>
   </div>
   <button class="freset" id="btn-reset">✕ Limpiar</button>
-  <button class="fbtn-refresh" id="btn-import">📥 Importar Excel</button>
   <button class="fbtn-edit" id="btn-gestionar">✏️ Gestionar datos</button>
+  <button class="fbtn-refresh" id="btn-refresh">🔄 Refrescar</button>
 </div>
 
 <div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;backdrop-filter:blur(3px);align-items:center;justify-content:center">
-  <div id="modal" style="background:#fff;border-radius:16px;width:720px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.2);overflow:hidden">
+  <div id="modal" style="background:#fff;border-radius:16px;width:680px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.2);overflow:hidden">
     <div style="padding:16px 22px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--card2);flex-shrink:0">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:18px" id="modal-icon">✏️</span>
@@ -122,13 +121,13 @@
       <div class="pb0" style="overflow-x:auto"><table><thead><tr><th>Zona</th><th>Caña</th><th>Arroz</th><th>Sembrado</th><th>Pendiente</th><th>Total</th><th>% Av.</th></tr></thead><tbody id="zona-tbody"></tbody></table></div>
     </div>
     <div class="panel">
-      <div class="ph"><div class="pht">Por cultivo</div><div class="ptag">SEMBRADO</div></div>
+      <div class="ph"><div class="pht">Por cultivo</div><div class="ptag">ÁREA</div></div>
       <div class="pb">
         <div class="dw">
           <svg viewBox="0 0 130 130" width="110" height="110" style="flex-shrink:0">
             <circle r="44" cx="65" cy="65" fill="none" stroke="#e2eaf3" stroke-width="17"/>
-            <circle id="d-cana"  r="44" cx="65" cy="65" fill="none" stroke="var(--green)" stroke-width="17" stroke-dasharray="0 276" transform="rotate(-90 65 65)" style="transition:stroke-dasharray .4s"/>
-            <circle id="d-arroz" r="44" cx="65" cy="65" fill="none" stroke="var(--cyan)"  stroke-width="17" stroke-dasharray="0 276" transform="rotate(-90 65 65)" style="transition:stroke-dasharray .4s"/>
+            <circle id="d-cana"  r="44" cx="65" cy="65" fill="none" stroke="var(--green)" stroke-width="17" stroke-dasharray="0 276" stroke-dashoffset="69" transform="rotate(-90 65 65)" style="transition:stroke-dasharray .4s"/>
+            <circle id="d-arroz" r="44" cx="65" cy="65" fill="none" stroke="var(--cyan)"  stroke-width="17" stroke-dasharray="0 276" stroke-dashoffset="69" transform="rotate(-90 65 65)" style="transition:stroke-dasharray .4s"/>
             <text id="d-pct" x="65" y="62" text-anchor="middle" fill="var(--text)" font-size="12" font-weight="800" font-family="JetBrains Mono"></text>
             <text x="65" y="76" text-anchor="middle" fill="var(--muted)" font-size="8" font-family="Inter">caña</text>
           </svg>
@@ -214,8 +213,7 @@
     </div>
   </div>
 
-  <div class="panel">
-    <div class="ph"><div class="pht">Presupuesto mensual de siembra 2026 (ha)</div><div class="ptag">PPTO 2026</div></div>
+  <div class="g2">
     <div class="pb">
       <div class="mg-wrap"><div class="mg" id="mg"></div></div>
       <div style="margin-top:9px;font-size:9px;color:var(--muted)" id="mg-foot"></div>

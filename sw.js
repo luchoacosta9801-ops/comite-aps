@@ -1,5 +1,5 @@
 // Cache para que la app abra sin internet una vez instalada.
-const CACHE = 'comite-aps-v1';
+const CACHE = 'comite-aps-v2';
 const ARCHIVOS = ['./','index.html','css/styles.css','js/data.js','js/store.js','js/importer.js','js/app.js','js/gestion.js','icon.svg','manifest.webmanifest'];
 
 self.addEventListener('install', e => {
