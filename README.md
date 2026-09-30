@@ -1,40 +1,46 @@
 # 🚜 Comité APS · Riopaila Agrícola
 
-Aplicación web del Comité APS: renovación y siembra de caña y arroz por zona, hacienda y suerte.
-No necesita instalación ni servidor de base de datos: los datos se guardan en el navegador.
+Dashboard del Comité APS: renovación y siembra de caña y arroz por zona, hacienda y suerte.
 
-## Cómo abrirla
+- **Página para todos (solo lectura):** https://luchoacosta9801-ops.github.io/comite-aps/
+  Se puede filtrar, buscar, plegar cuadros y **descargar en Excel**. No se puede editar.
+- **Edición (solo en el PC del administrador):** clic derecho en `servidor.ps1` → *Ejecutar con PowerShell*.
+  Abre `http://localhost:8080` con **✏️ Gestionar datos** y **🚀 Publicar para todos**.
 
-- **Rápido:** doble clic en `index.html`.
-- **Como aplicación instalable / sin internet:** clic derecho en `servidor.ps1` → *Ejecutar con PowerShell*.
-  Se abre `http://localhost:8080`; en Chrome o Edge usa el ícono *Instalar* de la barra de direcciones.
-- **En línea:** https://luchoacosta9801-ops.github.io/comite-aps/ — para publicar cambios: clic derecho en `publicar.ps1` → *Ejecutar con PowerShell* (o `powershell -ExecutionPolicy Bypass -File publicar.ps1 "Datos semana 41"`). Las pestañas abiertas se actualizan solas en pocos minutos.
+## Actualización semanal
 
-## Uso semanal
+1. Abre la app con `servidor.ps1`.
+2. **✏️ Gestionar datos → 📥 Importar Excel semanal** y arrastra el libro del comité
+   (ej. `30092026 - Comite APS.xlsm`). La fecha y la semana salen del nombre del archivo; las
+   labores de la semana que termina pasan a ser la "semana anterior" del comparativo.
+3. Revisa el dashboard y pulsa **🚀 Publicar para todos**. En 1–2 minutos todos ven la versión
+   nueva; las pestañas que estén abiertas se actualizan solas.
 
-1. **✏️ Gestionar datos → 📥 Importar Excel semanal**: arrastra el libro del comité. Se leen las hojas
-   `COMITE APS` (encabezado en la fila 5), `RUTA DE SIEMBRA` y `RUTA SEMANA PASADA`.
-   Las columnas se reconocen por nombre (Suerte, Hacienda, Zona, Área, Cultivo, Días lucro,
-   Estado, Ppto, Variedad, Labor, Contratista, Observación…). Antes de aplicar se muestra
-   qué se encontró en cada hoja.
-2. Actualiza fecha y semana (en la importación, o con clic en los chips del encabezado).
-3. **✏️ Gestionar datos** para ajustes a mano: suertes, ruta, suertes en proceso, presupuesto y costos.
-4. **💾 Respaldo**: descarga el Excel o un respaldo `.json` (para pasar los datos a otro computador).
+Mientras no publiques, los cambios solo se ven en tu PC (el botón *Gestionar datos* muestra ●).
 
-> Los datos viven en el navegador donde se editan. Si cambias de computador o de navegador,
-> usa *Descargar respaldo* → *Restaurar respaldo*.
+## Qué lee del Excel
+
+| Hoja | Uso |
+|---|---|
+| COMITE APS (encabezado en fila 5) | Lotes. Suerte = `sect-sue`; sembrada si *Área Siemb* tiene hectáreas (pendiente = "X") |
+| RUTA DE SIEMBRA | Ruta vigente |
+| RUTA SEMANA PASADA | Suertes en proceso, una sola labor por suerte (columna LABOR) |
+| RESUMEN | Presupuesto total (columna PPTO en la fila TOTAL) |
+| PANEL CONTROL | Costos de preparación |
 
 ## Estructura
 
 | Archivo | Qué hace |
 |---|---|
-| `index.html` | Estructura del dashboard |
-| `css/styles.css` | Estilos |
-| `js/data.js` | Datos publicados (último corte del comité) y catálogos (haciendas, labores, variedades) |
-| `js/store.js` | Guardado local, respaldo JSON y exportación a Excel |
+| `index.html`, `css/styles.css` | Página y estilos |
+| `js/datos.js` | **Datos publicados** (lo genera *Publicar para todos*) |
+| `js/data.js` | Catálogos: haciendas, labores, variedades, colores |
+| `js/store.js` | Modo edición, guardado local, respaldo y publicación |
 | `js/importer.js` | Lectura del Excel semanal |
-| `js/app.js` | Cálculos, gráficos, filtros y buscador |
-| `js/gestion.js` | Ventana *Gestionar datos* |
-| `sw.js`, `manifest.webmanifest`, `icon.svg` | App instalable y uso sin internet |
-| `servidor.ps1` | Servidor local en PowerShell |
-| `Comité APS · Dashboard Ejecutivo.html` | Versión original de un solo archivo (referencia) |
+| `js/app.js` | Cálculos, gráficos, comparativo, filtros, cuadros plegables, actualización automática |
+| `js/exportar.js` | Descarga en Excel |
+| `js/gestion.js` | Ventana *Gestionar datos* y *Publicar* |
+| `servidor.ps1` | Servidor local con la edición y la publicación |
+| `publicar.ps1` | Sube la versión y publica en GitHub Pages (lo usa el servidor) |
+| `sw.js`, `manifest.webmanifest`, `icon.svg`, `version.json` | App instalable, sin internet y actualización automática |
+| `_privado/` | Copias de los Excel del comité (no se suben a GitHub) |

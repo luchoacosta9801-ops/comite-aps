@@ -1,7 +1,10 @@
 // Ventana "Gestionar datos": todas las ediciones se guardan al instante.
 const overlay=q('modal-overlay'),modalBody=q('modal-body'),modalFooter=q('modal-footer');
 
-function openModal(view){overlay.style.display='flex';document.body.style.overflow='hidden';showView(view);}
+function openModal(view){
+  if(!MODO_EDICION)return;   // la vista publicada es de solo lectura
+  overlay.style.display='flex';document.body.style.overflow='hidden';showView(view);
+}
 function closeModal(){overlay.style.display='none';document.body.style.overflow='';}
 overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
 q('modal-close').addEventListener('click',closeModal);
@@ -23,7 +26,7 @@ const volver=`<button class="mbtn mbtn-ghost" onclick="showView('home')">← Vol
 
 function showView(v){
   ({home:renderHome,add:renderAddLote,edit:renderEditLotes,ruta:renderEditRuta,proceso:renderEditProceso,
-    params:renderParams,import:renderImport,backup:renderBackup})[v]();
+    params:renderParams,import:renderImport,backup:renderBackup,publicar:renderPublicar})[v]();
 }
 
 // Aplica un cambio, guarda y redibuja
@@ -31,16 +34,18 @@ function cambio(fn,{rehacer}={}){fn();save();renderAll();if(rehacer)rehacer();}
 
 // ── Menú ──
 function renderHome(){
-  setHeader('✏️','Gestionar datos','Los cambios se guardan automáticamente en este navegador');
+  const pend=hayCambiosSinPublicar();
+  setHeader('✏️','Gestionar datos',pend?'Hay cambios sin publicar: solo se ven en este PC hasta que los publiques':'Todo está publicado');
   const card=(v,i,t,d)=>`<div class="menu-card" onclick="showView('${v}')"><div class="menu-icon">${i}</div><div class="menu-title">${t}</div><div class="menu-desc">${d}</div></div>`;
   modalBody.innerHTML=`<div class="menu-grid">
+    ${card('publicar','🚀','Publicar para todos',pend?'<b style="color:var(--amber)">Hay cambios sin publicar.</b> Súbelos a la página que ven todos':'No hay cambios pendientes; la página publicada está al día')}
     ${card('import','📥','Importar Excel semanal','Carga el libro del comité (COMITE APS, RUTA DE SIEMBRA, RUTA SEMANA PASADA) y actualiza todo')}
     ${card('add','➕','Agregar suerte','Añade una suerte nueva al comité APS')}
     ${card('edit','📋','Editar suertes',`Modifica o elimina las ${DB.lotes.length} suertes del comité`)}
     ${card('ruta','🗺️','Ruta de siembra','Reordena, agrega o quita suertes de la ruta vigente')}
     ${card('proceso','🚜','Suertes en proceso','Labor, contratista y observación de cada suerte en proceso')}
     ${card('params','⚙️','Presupuesto y costos','Ppto total, ppto mensual por zona y costos de preparación')}
-    ${card('backup','💾','Respaldo y exportar','Descarga Excel o respaldo, restaura o vuelve a los datos iniciales')}
+    ${card('backup','💾','Respaldo y exportar','Descarga Excel o respaldo, restaura o descarta los cambios sin publicar')}
   </div>`;
   modalFooter.innerHTML='';
 }
@@ -294,7 +299,7 @@ function confirmarImport(){
 
 // ── Respaldo ──
 function renderBackup(){
-  const t=DB.meta.actualizado?new Date(DB.meta.actualizado).toLocaleString('es-CO'):'nunca (datos iniciales)';
+  const t=DB.meta.actualizado?new Date(DB.meta.actualizado).toLocaleString('es-CO'):'sin cambios locales';
   setHeader('💾','Respaldo y exportar',`Último guardado: ${t}`);
   const card=(i,tt,d,act)=>`<div class="menu-card" onclick="${act}"><div class="menu-icon">${i}</div><div class="menu-title">${tt}</div><div class="menu-desc">${d}</div></div>`;
   modalBody.innerHTML=`<div class="menu-grid">
@@ -315,6 +320,49 @@ function renderBackup(){
   modalFooter.innerHTML=volver;
 }
 function restablecer(){
-  if(!confirm('¿Borrar todos los cambios y volver a los datos iniciales? Descarga un respaldo antes si lo necesitas.'))return;
-  resetDB();renderAll();closeModal();toast('Datos restablecidos');
+  if(!confirm('¿Borrar todos los cambios y volver a los datos publicados? Descarga un respaldo antes si lo necesitas.'))return;
+  resetDB();renderAll();closeModal();toast('Se descartaron los cambios sin publicar');
+}
+
+// ── Publicar para todos (servidor.ps1 escribe js/datos.js y ejecuta publicar.ps1) ──
+function resumenCambios(){
+  const s=d=>({lotes:d.lotes.length,semb:sum(d.lotes.filter(l=>l.e==='SEMBRADA'),l=>l.a),proc:d.proceso.length,ruta:d.ruta.length,fecha:d.meta.fecha,semana:d.meta.semana});
+  const a=s(SEED),b=s(DB);
+  const fila=(t,x,y)=>`<tr><td>${t}</td><td>${x}</td><td style="${x!==y?'color:var(--amber);font-weight:700':''}">${y}</td></tr>`;
+  return`<table class="etbl"><thead><tr><th>Dato</th><th>Publicado hoy</th><th>Con tus cambios</th></tr></thead><tbody>
+    ${fila('Fecha / semana',esc(a.fecha+' · '+a.semana),esc(b.fecha+' · '+b.semana))}
+    ${fila('Lotes',a.lotes,b.lotes)}${fila('Sembradas (ha)',f2(a.semb),f2(b.semb))}
+    ${fila('Suertes en proceso',a.proc,b.proc)}${fila('Suertes en ruta',a.ruta,b.ruta)}</tbody></table>`;
+}
+function renderPublicar(){
+  const pend=hayCambiosSinPublicar();
+  setHeader('🚀','Publicar para todos','Sube tus cambios a la página de GitHub Pages que ven todos');
+  if(!SERVIDOR){
+    modalBody.innerHTML=`<div class="note" style="margin-top:0">Para publicar, abre la app con <b>servidor.ps1</b> (clic derecho → Ejecutar con PowerShell) en lugar de abrir el archivo directamente. Tus cambios se conservan.</div>`;
+    modalFooter.innerHTML=volver;return;
+  }
+  if(!pend){
+    modalBody.innerHTML=`<div class="note" style="margin-top:0">✓ No hay cambios pendientes: la página publicada ya muestra estos datos.</div>`;
+    modalFooter.innerHTML=volver;return;
+  }
+  modalBody.innerHTML=`${resumenCambios()}
+    <div class="mrow" style="margin-top:14px"><div><label class="mlabel">Descripción del cambio</label>
+      <input class="minput" id="pub-msg" value="Datos ${esc(DB.meta.fecha)} (${esc(DB.meta.semana)})"></div></div>
+    <div class="note">Se guarda en <b>js/datos.js</b>, se sube a GitHub y en 1–2 minutos todos ven la versión nueva (las pestañas abiertas se actualizan solas).</div>
+    <div id="pub-res"></div>`;
+  modalFooter.innerHTML=`${volver}<button class="mbtn mbtn-primary" id="pub-btn" onclick="confirmarPublicar()">🚀 Publicar ahora</button>`;
+}
+function confirmarPublicar(){
+  const btn=q('pub-btn'),res=q('pub-res');
+  btn.disabled=true;btn.textContent='Publicando…';
+  res.innerHTML='<div class="note">Guardando y subiendo a GitHub… (unos segundos)</div>';
+  publicarDatos(q('pub-msg').value.trim()||'Actualizar datos').then(()=>{
+    res.innerHTML='<div class="note" style="border-color:rgba(0,135,90,.3);background:rgba(0,135,90,.06)">✓ Publicado. GitHub Pages lo muestra a todos en 1–2 minutos.</div>';
+    btn.textContent='✓ Publicado';
+    toast('✓ Publicado para todos');
+    setTimeout(()=>location.reload(),1800);
+  }).catch(e=>{
+    res.innerHTML=`<div class="err" style="white-space:pre-wrap">No se pudo publicar: ${esc(e.message)}</div>`;
+    btn.disabled=false;btn.textContent='🚀 Reintentar';
+  });
 }

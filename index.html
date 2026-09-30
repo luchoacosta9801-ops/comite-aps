@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Comité APS · Dashboard Ejecutivo</title>
 <meta name="theme-color" content="#0077aa">
-<meta name="app-version" content="5">
+<meta name="app-version" content="6">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="css/styles.css?v=5">
+<link rel="stylesheet" href="css/styles.css?v=6">
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -80,7 +80,8 @@
     </select>
   </div>
   <button class="freset" id="btn-reset">✕ Limpiar</button>
-  <button class="fbtn-edit" id="btn-gestionar">✏️ Gestionar datos</button>
+  <button class="fbtn-excel" id="btn-excel">📊 Descargar Excel</button>
+  <button class="fbtn-edit" id="btn-gestionar" hidden>✏️ Gestionar datos</button>
   <button class="fbtn-refresh" id="btn-refresh">🔄 Refrescar</button>
 </div>
 
@@ -103,7 +104,7 @@
 
 <main class="main">
   <section>
-    <div class="slbl" id="slbl"></div>
+    <div class="sec-hdr"><div class="slbl" id="slbl"></div><button class="plegar-todo" id="btn-plegar-todo">⊟ Contraer todo</button></div>
     <div class="kgrid">
       <div class="kpi" style="--ka:var(--cyan);--kc:var(--cyan)"><div class="klbl">Lotes</div><div class="kval" id="k-lotes"></div><div class="ksub">predios activos</div></div>
       <div class="kpi" style="--ka:var(--cyan);--kc:var(--cyan)"><div class="klbl">Área APS (ha)</div><div class="kval" id="k-area"></div><div class="ksub">hectáreas</div></div>
@@ -158,6 +159,14 @@
       </div>
     </div>
     <div class="acc-body" id="acc-body">
+      <div class="comp" id="comp-labores">
+        <div class="comp-tit">Comparativo de labores · semana anterior vs semana actual</div>
+        <div class="comp-grid">
+          <div class="comp-pie"><div class="comp-sem" id="comp-sem-0"></div><svg id="pie-ant" viewBox="0 0 160 160" width="140" height="140"></svg></div>
+          <div class="comp-pie"><div class="comp-sem" id="comp-sem-1"></div><svg id="pie-act" viewBox="0 0 160 160" width="140" height="140"></svg></div>
+          <div class="comp-tabla"><table><thead id="comp-thead"></thead><tbody id="comp-tbody"></tbody></table><div class="comp-nota" id="comp-nota"></div></div>
+        </div>
+      </div>
       <div style="display:flex;gap:0;border-bottom:1px solid var(--bdr)">
         <div style="padding:16px 20px;border-right:1px solid var(--bdr);display:flex;flex-direction:column;align-items:center;gap:14px;flex-shrink:0">
           <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)">Distribución por labor</div>
@@ -214,7 +223,8 @@
     </div>
   </div>
 
-  <div class="g2">
+  <div class="panel">
+    <div class="ph"><div class="pht">Presupuesto mensual de siembra 2026 (ha)</div><div class="ptag">PPTO 2026</div></div>
     <div class="pb">
       <div class="mg-wrap"><div class="mg" id="mg"></div></div>
       <div style="margin-top:9px;font-size:9px;color:var(--muted)" id="mg-foot"></div>
@@ -254,11 +264,13 @@
   <div style="text-align:center;padding:12px 0;font-size:9px;color:var(--muted);border-top:1px solid var(--bdr)" id="footer"></div>
 </main>
 
-<script src="js/data.js?v=5"></script>
-<script src="js/store.js?v=5"></script>
-<script src="js/importer.js?v=5"></script>
-<script src="js/app.js?v=5"></script>
-<script src="js/gestion.js?v=5"></script>
+<script src="js/datos.js?v=6"></script>
+<script src="js/data.js?v=6"></script>
+<script src="js/store.js?v=6"></script>
+<script src="js/importer.js?v=6"></script>
+<script src="js/app.js?v=6"></script>
+<script src="js/exportar.js?v=6"></script>
+<script src="js/gestion.js?v=6"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

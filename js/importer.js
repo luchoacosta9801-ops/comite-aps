@@ -196,6 +196,16 @@ function leerCostos(XLSX, wb){
   return costos.length ? costos : null;
 }
 
+// "30092026 - Comite APS.xlsm" / "8092026 - Comite APS.xlsm" → fecha de corte.
+// Es más confiable que la fecha de RESUMEN, que es una fórmula de "hoy".
+function fechaDeNombre(nombre){
+  const m = String(nombre).match(/^(\d{1,2})(\d{2})(\d{4})\b/);
+  if (!m) return null;
+  const d = new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));
+  if (d.getUTCMonth() !== +m[2] - 1) return null;
+  return { fecha: `${d.getUTCDate()} ${MES_CORTO[d.getUTCMonth()]} ${d.getUTCFullYear()}`, semana: 'Semana ' + semanaISO(d) };
+}
+
 let IMPORT_PENDIENTE = null;
 
 function leerLibro(file){
@@ -207,7 +217,7 @@ function leerLibro(file){
       lotes: leerHoja(XLSX, wb, 'lotes'),
       ruta: leerHoja(XLSX, wb, 'ruta'),
       proceso: leerHoja(XLSX, wb, 'proceso'),
-      resumen: leerResumen(XLSX, wb),
+      resumen: Object.assign(leerResumen(XLSX, wb), fechaDeNombre(file.name) || {}),
       costos: leerCostos(XLSX, wb),
     };
   }));
@@ -215,6 +225,10 @@ function leerLibro(file){
 
 function aplicarImport(opts){
   const imp = IMPORT_PENDIENTE; if (!imp) return;
+  // Semana nueva: las labores actuales pasan a ser la "semana anterior" del comparativo
+  if (opts.proceso && imp.proceso.filas.length && opts.semana && opts.semana !== DB.meta.semana) {
+    DB.procesoAnterior = { fecha: DB.meta.fecha, semana: DB.meta.semana, items: DB.proceso };
+  }
   ['lotes','ruta','proceso'].forEach(t => {
     if (opts[t] && imp[t].filas.length) DB[t] = imp[t].filas;
   });

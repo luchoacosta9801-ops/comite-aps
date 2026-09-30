@@ -39,7 +39,7 @@ function renderMeta(){
   const {fecha,semana}=DB.meta;
   q('chip-fecha').textContent=fecha;
   q('chip-sem').textContent=semana;
-  q('slbl').textContent=`Indicadores generales · ${fechaLarga(fecha)} · ${semana}`;
+  q('slbl').innerHTML=`Indicadores generales · ${esc(fechaLarga(fecha))} · ${esc(semana)}<span class="slbl-arrow">▼</span>`;
   document.querySelectorAll('.sem-tag').forEach(t=>t.textContent=semana.replace(/semana/i,'SEM.'));
   q('footer').textContent=`Comité APS · Riopaila Agrícola · Datos al ${fecha} · ${semana} · Fuentes: PANEL CONTROL · COMITE APS · RESUMEN · PPTO 2026`;
   updateSaveDot();
@@ -244,14 +244,32 @@ function buildLaborPanels(){
     </div>`;
   }).join(''):'<div class="nores">Sin suertes en proceso para los filtros seleccionados.</div>';
   drawLaborPie(m);
+  renderComparativo();
+}
+
+// Porciones por labor, en un orden fijo para que las tortas se puedan comparar
+function porcionesLabor(m){
+  const orden=l=>{const i=ORDEN_LAB.indexOf(l);return i<0?99:i;};
+  return Object.entries(m).map(([lab,it])=>({lab,area:sum(it,x=>x.area),n:it.length,clr:LABOR_COLORS[lab]||'#999'}))
+    .sort((a,b)=>orden(a.lab)-orden(b.lab));
 }
 
 function drawLaborPie(m){
-  const svg=q('pie-labor'),legend=q('pie-legend');
+  const entries=porcionesLabor(m);
+  const slices=dibujarTorta(q('pie-labor'),entries);
+  q('pie-legend').innerHTML=slices.map(s=>`<div style="display:flex;align-items:center;gap:7px;cursor:pointer" data-lab="${esc(s.lab)}">
+      <div style="width:10px;height:10px;border-radius:2px;background:${s.clr};flex-shrink:0"></div>
+      <div style="flex:1;font-size:9.5px;font-weight:600;color:var(--text)">${esc(s.lab)}</div>
+      <div style="font-size:9.5px;font-family:var(--mono);color:var(--dim)">${f2(s.area)} ha</div>
+      <div style="font-size:9px;color:var(--muted);width:32px;text-align:right">${(s.pct*100).toFixed(1)}%</div>
+    </div>`).join('');
+}
+
+// Dibuja una torta de anillo en el <svg> y devuelve las porciones con su %
+function dibujarTorta(svg,entries){
   const cx=80,cy=80,r=62,ri=32;
-  const entries=Object.entries(m).map(([lab,it])=>({lab,area:sum(it,x=>x.area),clr:LABOR_COLORS[lab]||'#999'}));
   const total=sum(entries,e=>e.area);
-  if(!total){svg.innerHTML='';legend.innerHTML='';return;}
+  if(!total){svg.innerHTML=`<circle cx="${cx}" cy="${cy}" r="${(r+ri)/2}" fill="none" stroke="#e2eaf3" stroke-width="${r-ri}"/><text x="${cx}" y="${cy+3}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="Inter">Sin labores</text>`;return[];}
   let a0=-Math.PI/2;
   const slices=entries.map(e=>{const ang=e.area/total*2*Math.PI,s={...e,a0,a1:a0+ang,pct:e.area/total};a0+=ang;return s;});
   const P=(ang,rad)=>[cx+rad*Math.cos(ang),cy+rad*Math.sin(ang)];
@@ -268,12 +286,45 @@ function drawLaborPie(m){
   }).join('')+
   `<text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="10" font-weight="800" fill="var(--text)" font-family="JetBrains Mono">${total.toFixed(1)}</text>
    <text x="${cx}" y="${cy+8}" text-anchor="middle" font-size="8" fill="var(--muted)" font-family="Inter">ha total</text>`;
-  legend.innerHTML=slices.map(s=>`<div style="display:flex;align-items:center;gap:7px;cursor:pointer" data-lab="${esc(s.lab)}">
-      <div style="width:10px;height:10px;border-radius:2px;background:${s.clr};flex-shrink:0"></div>
-      <div style="flex:1;font-size:9.5px;font-weight:600;color:var(--text)">${esc(s.lab)}</div>
-      <div style="font-size:9.5px;font-family:var(--mono);color:var(--dim)">${f2(s.area)} ha</div>
-      <div style="font-size:9px;color:var(--muted);width:32px;text-align:right">${(s.pct*100).toFixed(1)}%</div>
-    </div>`).join('');
+  return slices;
+}
+
+// ── Comparativo semana anterior vs actual (mismos filtros de zona/hacienda) ──
+function comparativoLabores(){
+  const ant=DB.procesoAnterior;
+  if(!ant||!Array.isArray(ant.items))return null;
+  const m0=porLabor(ant.items.filter(r=>!fueraDeFiltro(r.hac,r.z))),m1=porLabor(procesoFiltrado());
+  const p0=porcionesLabor(m0),p1=porcionesLabor(m1);
+  const labs=[...new Set([...p0,...p1].map(p=>p.lab))].sort((a,b)=>{const o=l=>{const i=ORDEN_LAB.indexOf(l);return i<0?99:i;};return o(a)-o(b);});
+  const filas=labs.map(lab=>{const a=p0.find(p=>p.lab===lab),b=p1.find(p=>p.lab===lab);
+    return{lab,a0:a?a.area:0,n0:a?a.n:0,a1:b?b.area:0,n1:b?b.n:0};});
+  // Suertes que salieron del proceso (ya no están esta semana) y las que entraron
+  const s0=new Set(ant.items.map(r=>r.sue)),s1=new Set(DB.proceso.map(r=>r.sue));
+  return{antes:{semana:ant.semana,fecha:ant.fecha},ahora:{semana:DB.meta.semana,fecha:DB.meta.fecha},
+    p0,p1,filas,tot0:sum(p0,p=>p.area),tot1:sum(p1,p=>p.area),
+    salieron:ant.items.filter(r=>!s1.has(r.sue)&&!fueraDeFiltro(r.hac,r.z)),
+    entraron:DB.proceso.filter(r=>!s0.has(r.sue)&&!fueraDeFiltro(r.hac,r.z))};
+}
+
+function renderComparativo(){
+  const c=comparativoLabores();
+  q('comp-labores').hidden=!c;
+  if(!c)return;
+  const semCorta=s=>esc(String(s).replace(/semana/i,'Sem.'));
+  q('comp-sem-0').innerHTML=`Semana anterior · ${semCorta(c.antes.semana)}<small>${esc(c.antes.fecha)}</small>`;
+  q('comp-sem-1').innerHTML=`Semana actual · ${semCorta(c.ahora.semana)}<small>${esc(c.ahora.fecha)}</small>`;
+  dibujarTorta(q('pie-ant'),c.p0);dibujarTorta(q('pie-act'),c.p1);
+  const d=(x)=>{const v=+x.toFixed(2);return v===0?'<span style="color:var(--muted)">0.00</span>':`<span class="${v>0?'delta-up':'delta-down'}">${v>0?'+':''}${f2(v)}</span>`;};
+  q('comp-thead').innerHTML=`<tr><th>Labor</th><th>${semCorta(c.antes.semana)} (ha)</th><th>${semCorta(c.ahora.semana)} (ha)</th><th>Diferencia</th><th>Suertes</th></tr>`;
+  q('comp-tbody').innerHTML=c.filas.map(f=>`<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${LABOR_COLORS[f.lab]||'#999'};margin-right:6px"></span>${esc(f.lab)}</td>
+      <td>${f2(f.a0)}</td><td>${f2(f.a1)}</td><td>${d(f.a1-f.a0)}</td><td>${f.n0} → ${f.n1}</td></tr>`).join('')+
+    `<tr class="tot"><td>TOTAL</td><td>${f2(c.tot0)}</td><td>${f2(c.tot1)}</td><td>${d(c.tot1-c.tot0)}</td><td>${sum(c.filas,f=>f.n0)} → ${sum(c.filas,f=>f.n1)}</td></tr>`;
+  const lista=a=>a.map(r=>`<b>${esc(r.sue)}</b> ${esc(r.hac)} (${esc(r.labor)}, ${f2(r.area)} ha)`).join(', ');
+  q('comp-nota').innerHTML=[
+    c.salieron.length?`✅ Salieron del proceso: ${lista(c.salieron)}`:'',
+    c.entraron.length?`➕ Entraron al proceso: ${lista(c.entraron)}`:'',
+  ].filter(Boolean).join('<br>')||'Mismas suertes en proceso que la semana anterior.';
 }
 
 function switchTab(lab){
@@ -286,6 +337,7 @@ q('acc-labores').addEventListener('click',e=>{
   if(!e.target.closest('#acc-btn'))return;
   const open=q('acc-body').classList.toggle('open');
   q('acc-arrow').classList.toggle('open',open);q('acc-btn').classList.toggle('open',open);
+  q('acc-hint').textContent=open?'Clic para contraer':'Clic para expandir';
   if(open)buildLaborPanels();
 });
 
@@ -324,8 +376,53 @@ function editableChip(id,campo){
     input.addEventListener('keydown',e=>{if(e.key==='Enter')fin(true);if(e.key==='Escape')fin(false);});
   });
 }
-editableChip('chip-fecha','fecha');
-editableChip('chip-sem','semana');
+if(MODO_EDICION){
+  editableChip('chip-fecha','fecha');
+  editableChip('chip-sem','semana');
+}else{
+  // Vista publicada: solo lectura
+  ['chip-fecha','chip-sem'].forEach(id=>{q(id).style.cursor='default';q(id).removeAttribute('title');});
+}
+
+q('btn-excel').addEventListener('click',()=>exportarExcel());   // definida en exportar.js
+
+// ── Cuadros plegables (el estado se recuerda en cada navegador) ──
+const PLEG_KEY='comite-aps:plegados';
+let plegados={};
+try{plegados=JSON.parse(localStorage.getItem(PLEG_KEY))||{};}catch(e){}
+function guardarPlegados(){try{localStorage.setItem(PLEG_KEY,JSON.stringify(plegados));}catch(e){}}
+function paneles(){return[...document.querySelectorAll('.main .panel')];}
+function clavePanel(p){return p.querySelector('.pht').textContent.trim();}
+function plegarPanel(p,cerrar){
+  p.classList.toggle('cerrado',cerrar);
+  const b=p.querySelector('.pleg');if(b)b.title=cerrar?'Mostrar':'Ocultar';
+  plegados[clavePanel(p)]=cerrar;
+}
+function plegarKpis(cerrar){q('slbl').closest('section').classList.toggle('kpis-cerrado',cerrar);plegados.__kpis=cerrar;}
+function accAbierto(){return q('acc-body').classList.contains('open');}
+function abrirAcc(abrir){if(accAbierto()!==abrir)q('acc-btn').click();}
+function actualizarBotonTodo(){
+  const algunoAbierto=paneles().some(p=>!p.classList.contains('cerrado'))||!plegados.__kpis;
+  q('btn-plegar-todo').textContent=algunoAbierto?'⊟ Contraer todo':'⊞ Expandir todo';
+}
+function initPlegables(){
+  paneles().forEach(p=>{
+    const ph=p.querySelector('.ph');
+    const b=document.createElement('button');b.className='pleg';b.type='button';b.textContent='▼';b.setAttribute('aria-label','Mostrar u ocultar');
+    ph.appendChild(b);
+    ph.addEventListener('click',()=>{plegarPanel(p,!p.classList.contains('cerrado'));guardarPlegados();actualizarBotonTodo();});
+    if(plegados[clavePanel(p)])plegarPanel(p,true);
+  });
+  q('slbl').addEventListener('click',()=>{plegarKpis(!plegados.__kpis);guardarPlegados();actualizarBotonTodo();});
+  if(plegados.__kpis)plegarKpis(true);
+  q('btn-plegar-todo').addEventListener('click',()=>{
+    const cerrar=q('btn-plegar-todo').textContent.includes('Contraer');
+    paneles().forEach(p=>plegarPanel(p,cerrar));plegarKpis(cerrar);
+    if(cerrar)abrirAcc(false);
+    guardarPlegados();actualizarBotonTodo();
+  });
+  actualizarBotonTodo();
+}
 
 // ── Buscador ──
 const busInput=q('buscador'),busResults=q('search-results');
@@ -361,6 +458,8 @@ busResults.addEventListener('click',e=>{
   F.hac=hac;q('sel-hac').value=hac;q('sel-hac').className='fsel on';
   busInput.value=sue;busResults.classList.remove('show');
   render();
+  const pl=q('lotes-tbody').closest('.panel');
+  if(pl.classList.contains('cerrado')){plegarPanel(pl,false);guardarPlegados();actualizarBotonTodo();}
   const row=[...q('lotes-tbody').querySelectorAll('tr')].find(r=>r.dataset.sue===sue);
   if(row){row.scrollIntoView({behavior:'smooth',block:'center'});row.style.background='#fff3cd';setTimeout(()=>row.style.background='',1800);}
   toast(`Suerte ${sue} · ${hac}`);
@@ -368,11 +467,37 @@ busResults.addEventListener('click',e=>{
 document.addEventListener('click',e=>{if(!busInput.contains(e.target)&&!busResults.contains(e.target))busResults.classList.remove('show');});
 busInput.addEventListener('keydown',e=>{if(e.key==='Escape'){busResults.classList.remove('show');busInput.blur();}});
 
+// ── Modo edición (solo en este PC) ──
+// "Gestionar datos" solo existe aquí; "Publicar" aparece cuando hay cambios sin publicar
+// y la app corre con servidor.ps1 (es quien escribe js/datos.js y sube a GitHub).
+let SERVIDOR=false;
+function renderEstadoEdicion(){
+  if(!MODO_EDICION)return;
+  const pend=hayCambiosSinPublicar();
+  q('btn-gestionar').textContent='✏️ Gestionar datos'+(pend?' ●':'');
+  q('btn-gestionar').title=pend?'Hay cambios sin publicar':'';
+  const pub=q('btn-publicar');if(pub)pub.hidden=!(SERVIDOR&&pend);
+}
+if(MODO_EDICION){
+  q('btn-gestionar').hidden=false;
+  servidorDisponible().then(ok=>{
+    SERVIDOR=ok;
+    if(ok){
+      const b=document.createElement('button');
+      b.className='fbtn-publicar';b.id='btn-publicar';b.hidden=true;b.textContent='🚀 Publicar para todos';
+      b.addEventListener('click',()=>openModal('publicar'));
+      q('btn-gestionar').after(b);
+    }
+    renderEstadoEdicion();
+  });
+}
+
 // Redibuja todo tras cualquier cambio de datos
-function renderAll(){renderMeta();renderHacSelect();renderPPTO();renderCostos();render();}
+function renderAll(){renderMeta();renderHacSelect();renderPPTO();renderCostos();render();renderEstadoEdicion();}
 
 loadDB();
 renderAll();
+initPlegables();
 
 // ── Actualización automática ──
 // Si se publicó una versión más nueva (version.json), recarga la página sola.

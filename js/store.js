@@ -1,10 +1,14 @@
-// Estado de la app guardado en localStorage. Todo cambio pasa por save().
+// Estado de la app. En modo edición (solo en este PC, vía servidor.ps1 o archivo local)
+// los cambios se guardan en localStorage hasta publicarlos; en GitHub Pages todos ven
+// exactamente los datos publicados (js/datos.js), sin edición.
 const STORE_KEY = 'comite-aps:v1';
+const MODO_EDICION = location.protocol === 'file:' || ['localhost','127.0.0.1'].includes(location.hostname);
 let DB;
 
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 
 function loadDB(){
+  if (!MODO_EDICION) { DB = clone(SEED); return; }
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
@@ -18,10 +22,58 @@ function loadDB(){
 }
 
 function save(){
+  if (!MODO_EDICION) return;
   DB.meta.actualizado = new Date().toISOString();
   try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); }
   catch (e) { toast('⚠ No se pudo guardar en este navegador'); }
   updateSaveDot();
+}
+
+// ── Publicación (solo desde este PC con servidor.ps1) ──
+// Datos comparables, sin las marcas de tiempo
+function contenidoDatos(d){ const c = clone(d); delete c.meta.actualizado; delete c.meta.corte; return JSON.stringify(c); }
+function hayCambiosSinPublicar(){ return contenidoDatos(DB) !== contenidoDatos(SEED); }
+
+// Texto de js/datos.js: un registro por línea para que los cambios se lean fácil en git
+function datosJS(d){
+  const J = JSON.stringify;
+  const lista = (a, sangria = '  ') => '[\n' + a.map(o => sangria + '  ' + J(o)).join(',\n') + '\n' + sangria + ']';
+  const meta = Object.assign({}, d.meta); delete meta.actualizado;
+  const ant = d.procesoAnterior;
+  return `// Datos publicados del Comité APS. Archivo generado por la app ("Publicar para todos");
+// cambiar meta.corte hace que los navegadores descarten lo guardado y tomen estos datos.
+const SEED = {
+  meta: ${J(meta)},
+  lotes: ${lista(d.lotes)},
+  ruta: ${lista(d.ruta)},
+  proceso: ${lista(d.proceso)},
+  // RUTA SEMANA PASADA del comité anterior, para la torta comparativa
+  procesoAnterior: ${ant ? `{ fecha: ${J(ant.fecha)}, semana: ${J(ant.semana)}, items: ${lista(ant.items, '    ')} }` : 'null'},
+  pptoMensual: { z1: ${J(d.pptoMensual.z1)}, z2: ${J(d.pptoMensual.z2)} },
+  costos: ${lista(d.costos)},
+};
+`;
+}
+
+// Envía los datos al servidor local, que escribe js/datos.js y ejecuta publicar.ps1
+function publicarDatos(mensaje, publicar = true){
+  const d = clone(DB);
+  d.meta.corte = new Date().toISOString();   // corte nuevo: todos los navegadores lo toman
+  return fetch('api/publicar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Comite': '1' },
+    body: JSON.stringify({ contenido: datosJS(d), mensaje, publicar }),
+  }).then(r => r.json().catch(() => ({ ok:false, error:'Respuesta no válida del servidor' })))
+    .then(res => {
+      if (!res.ok) throw new Error(res.error || res.salida || 'No se pudo publicar');
+      DB.meta.corte = d.meta.corte;
+      save();
+      return res;
+    });
+}
+function servidorDisponible(){
+  if (!location.protocol.startsWith('http')) return Promise.resolve(false);
+  return fetch('api/estado', { cache:'no-store' }).then(r => r.ok ? r.json() : null).then(j => !!(j && j.edicion)).catch(() => false);
 }
 
 function resetDB(){
@@ -79,25 +131,3 @@ function cargarXLSX(){
   return xlsxPromise;
 }
 
-function exportarExcel(){
-  cargarXLSX().then(XLSX => {
-    const wb = XLSX.utils.book_new();
-    const lotes = DB.lotes.map(l => ({
-      'SUERTE':l.s,'HACIENDA':l.h,'ZONA':l.z,'AREA APS':l.a,'CULTIVO':l.c,
-      'DIAS LUCRO':l.d,'ESTADO':l.e,'PPTO 2026':l.p,'VARIEDAD':l.v
-    }));
-    const ruta = DB.ruta.map((r,i) => ({
-      'ORDEN':i+1,'HACIENDA':r.h,'SUERTE':r.s,'AREA':r.a,'DIAS LUCRO':r.d,
-      'VARIEDAD':r.variedad||'','SEMILLERO':r.semillero||'','BANDEREO':r.bandereo||'','CONTRATISTA':r.cont||''
-    }));
-    const proc = DB.proceso.map(r => ({
-      'HACIENDA':r.hac,'ZONA':r.z,'SUERTE':r.sue,'AREA':r.area,'DIAS LUCRO':r.dias,
-      'CONTRATISTA':r.cont||'','LABOR':r.labor,'OBSERVACION':r.obs||'','VARIEDAD':r.variedad||''
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lotes), 'COMITE APS');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ruta), 'RUTA DE SIEMBRA');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(proc), 'RUTA SEMANA PASADA');
-    XLSX.writeFile(wb, `comite-aps-${slugSemana()}.xlsx`);
-    toast('✓ Excel descargado');
-  }).catch(e => toast('⚠ ' + e.message));
-}

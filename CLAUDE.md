@@ -14,5 +14,8 @@
 - `Comité APS · Dashboard Ejecutivo.html` es la versión original; no editarla
 - Publicar SIEMPRE con `publicar.ps1 "mensaje"`: sube la versión (?v=N en index.html y sw.js, meta app-version, version.json), commit y push a main y gh-pages
 - Las pestañas abiertas consultan version.json cada 5 min y al volver a la pestaña; si cambió, recargan solas
-- Datos nuevos: leer el .xlsm con el importador, pasar el resultado a SEED en js/data.js y cambiar meta.corte (así los navegadores descartan lo guardado)
 - El Excel del comité va en `_privado/` (ignorado por git); nunca subirlo
+- Edición solo en localhost/file (MODO_EDICION en store.js); en GitHub Pages es solo lectura y siempre muestra SEED
+- Datos publicados en js/datos.js (generado por "Publicar para todos" vía POST /api/publicar de servidor.ps1, protegido con cabecera X-Comite y Origin)
+- Datos nuevos: importar el .xlsm en la app (localhost) y "Publicar"; fecha/semana salen del nombre del archivo (la fecha de RESUMEN es =HOY())
+- procesoAnterior = RUTA SEMANA PASADA del comité anterior (torta comparativa); se rota sola al importar una semana nueva
