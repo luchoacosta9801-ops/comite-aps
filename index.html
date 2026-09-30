@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Comité APS · Dashboard Ejecutivo</title>
 <meta name="theme-color" content="#0077aa">
-<meta name="app-version" content="17">
+<meta name="app-version" content="18">
 <link rel="icon" href="img/icono-192.png" type="image/png">
 <link rel="apple-touch-icon" href="img/icono-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="css/styles.css?v=17">
+<link rel="stylesheet" href="css/styles.css?v=18">
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -168,7 +168,9 @@
           <div class="comp-tabla"><table><thead id="comp-thead"></thead><tbody id="comp-tbody"></tbody></table><div class="comp-nota" id="comp-nota"></div></div>
         </div>
       </div>
-      <div style="display:flex;gap:0;border-bottom:1px solid var(--bdr)">
+      <div class="sem-actual">
+        <div class="comp-tit sem-actual-tit">Semana actual · detalle por labor</div>
+        <div class="sem-actual-cuerpo">
         <div style="padding:16px 20px;border-right:1px solid var(--bdr);display:flex;flex-direction:column;align-items:center;gap:14px;flex-shrink:0">
           <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)">Distribución por labor</div>
           <svg id="pie-labor" viewBox="0 0 160 160" width="148" height="148"></svg>
@@ -177,6 +179,7 @@
         <div style="flex:1;min-width:0;display:flex;flex-direction:column">
           <div class="ltabs" id="labor-tabs"></div>
           <div id="labor-panels" style="flex:1"></div>
+        </div>
         </div>
       </div>
     </div>
@@ -265,13 +268,13 @@
   <div style="text-align:center;padding:12px 0;font-size:9px;color:var(--muted);border-top:1px solid var(--bdr)" id="footer"></div>
 </main>
 
-<script src="js/datos.js?v=17"></script>
-<script src="js/data.js?v=17"></script>
-<script src="js/store.js?v=17"></script>
-<script src="js/importer.js?v=17"></script>
-<script src="js/app.js?v=17"></script>
-<script src="js/exportar.js?v=17"></script>
-<script src="js/gestion.js?v=17"></script>
+<script src="js/datos.js?v=18"></script>
+<script src="js/data.js?v=18"></script>
+<script src="js/store.js?v=18"></script>
+<script src="js/importer.js?v=18"></script>
+<script src="js/app.js?v=18"></script>
+<script src="js/exportar.js?v=18"></script>
+<script src="js/gestion.js?v=18"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -290,3 +290,25 @@ tr:not(.tot):hover td{background:#f0f7ff}
 /* Logo Riopaila en el encabezado */
 .hdr-logo{height:52px;width:auto;flex-shrink:0;display:block}
 @media(max-width:960px){.hdr-logo{height:42px}}
+/* ── Suertes en proceso: dos tarjetas separadas y tablas más compactas ── */
+.acc-body.open{padding:16px;background:var(--bg)}
+.comp{border:1px solid var(--bdr);border-radius:12px;background:#fff;margin-bottom:18px;box-shadow:var(--shadow)}
+.sem-actual{border:1px solid var(--bdr);border-radius:12px;background:#fff;overflow:hidden;box-shadow:var(--shadow)}
+.sem-actual-tit{padding:12px 18px 0;margin-bottom:0}
+.sem-actual-cuerpo{display:flex;gap:0}
+.sem-actual .ltabs{background:#fff;margin-top:6px}
+/* Tabla del comparativo */
+.comp-tabla table{max-width:760px}
+.comp-tabla th{font-size:8.5px;padding:5px 8px}
+.comp-tabla td{font-size:10px;padding:5px 8px}
+.comp-grid{gap:22px}
+/* Detalle por labor */
+.lpanel{padding:12px 14px}
+.lsummary{gap:8px;margin-bottom:10px}
+.lscard{padding:7px 11px;min-width:95px}
+.lscard-val{font-size:15px}
+.ltbl-wrap{max-width:1100px}
+.ltbl-wrap th{font-size:8.5px;padding:5px 7px}
+.ltbl-wrap td{font-size:10px;padding:4px 7px}
+.ltbl-wrap .celda-edit{font-size:9.5px;padding:2px 6px;min-width:110px}
+@media(max-width:960px){.sem-actual-cuerpo{flex-direction:column}.acc-body.open{padding:10px}}
