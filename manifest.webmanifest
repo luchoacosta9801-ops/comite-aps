@@ -1,0 +1,11 @@
+{
+  "name": "Comité APS · Riopaila Agrícola",
+  "short_name": "Comité APS",
+  "description": "Dashboard de renovación y siembra del Comité APS",
+  "lang": "es",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f0f4f8",
+  "theme_color": "#0077aa",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

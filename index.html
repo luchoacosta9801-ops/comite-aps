@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comité APS · Riopaila Agrícola</title>
+<meta name="theme-color" content="#0077aa">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<header class="hdr">
+  <div class="hdr-left">
+    <div class="hdr-icon">🚜</div>
+    <div><div class="hdr-title">Comité APS · Dashboard</div><div class="hdr-sub">Renovación y siembra · Riopaila Agrícola</div></div>
+  </div>
+  <div class="hdr-right">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="buscador" class="search-input" placeholder="Buscar suerte, hacienda..." autocomplete="off">
+      <div class="search-results" id="search-results"></div>
+    </div>
+    <span class="hchip chip-date" id="chip-fecha" title="Clic para editar" style="cursor:pointer"></span>
+    <span class="hchip chip-sem" id="chip-sem" title="Clic para editar" style="cursor:pointer"></span>
+    <span id="results-pill"></span>
+    <span class="save-dot" id="save-dot" title="Los cambios se guardan automáticamente en este navegador">Guardado</span>
+  </div>
+</header>
+
+<div class="fbar">
+  <div class="flbl">Zona</div>
+  <div class="fg">
+    <select id="sel-zona" class="fsel">
+      <option value="all">Todas</option>
+      <option value="1">Zona 1</option>
+      <option value="2">Zona 2</option>
+    </select>
+  </div>
+  <div class="fsep"></div>
+  <div class="flbl">Hacienda</div>
+  <div class="fg"><select id="sel-hac" class="fsel"></select></div>
+  <div class="fsep"></div>
+  <div class="flbl">Cultivo</div>
+  <div class="fg">
+    <select id="sel-cult" class="fsel">
+      <option value="all">Todos</option>
+      <option value="CAÑA">Caña</option>
+      <option value="ARROZ">Arroz</option>
+    </select>
+  </div>
+  <div class="fsep"></div>
+  <div class="flbl">Estado</div>
+  <div class="fg">
+    <select id="sel-est" class="fsel">
+      <option value="all">Todos</option>
+      <option value="SEMBRADA">Sembrada</option>
+      <option value="PENDIENTE">Pendiente</option>
+    </select>
+  </div>
+  <div class="fsep"></div>
+  <div class="flbl">Ppto</div>
+  <div class="fg">
+    <select id="sel-ppto" class="fsel">
+      <option value="all">Todos</option>
+      <option value="SI">En ppto</option>
+      <option value="NO">Fuera ppto</option>
+    </select>
+  </div>
+  <div class="fsep"></div>
+  <div class="flbl">Días lucro</div>
+  <div class="fg">
+    <select id="sel-dias" class="fsel">
+      <option value="all">Todos</option>
+      <option value="critico">Crítico &lt;100</option>
+      <option value="alerta">Alerta 100–200</option>
+      <option value="normal">Normal &gt;200</option>
+    </select>
+  </div>
+  <button class="freset" id="btn-reset">✕ Limpiar</button>
+  <button class="fbtn-refresh" id="btn-import">📥 Importar Excel</button>
+  <button class="fbtn-edit" id="btn-gestionar">✏️ Gestionar datos</button>
+</div>
+
+<div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;backdrop-filter:blur(3px);align-items:center;justify-content:center">
+  <div id="modal" style="background:#fff;border-radius:16px;width:720px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.2);overflow:hidden">
+    <div style="padding:16px 22px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--card2);flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px" id="modal-icon">✏️</span>
+        <div>
+          <div style="font-size:13px;font-weight:800;color:var(--text)" id="modal-title">Gestionar datos</div>
+          <div style="font-size:10px;color:var(--muted)" id="modal-sub"></div>
+        </div>
+      </div>
+      <button id="modal-close" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--muted);padding:4px 8px;border-radius:6px" aria-label="Cerrar">✕</button>
+    </div>
+    <div id="modal-body" style="overflow-y:auto;flex:1;padding:20px 22px"></div>
+    <div id="modal-footer" style="padding:14px 22px;border-top:1px solid var(--bdr);background:var(--card2);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;flex-wrap:wrap"></div>
+  </div>
+</div>
+
+<main class="main">
+  <section>
+    <div class="slbl" id="slbl"></div>
+    <div class="kgrid">
+      <div class="kpi" style="--ka:var(--cyan);--kc:var(--cyan)"><div class="klbl">Lotes</div><div class="kval" id="k-lotes"></div><div class="ksub">predios activos</div></div>
+      <div class="kpi" style="--ka:var(--cyan);--kc:var(--cyan)"><div class="klbl">Área APS (ha)</div><div class="kval" id="k-area"></div><div class="ksub">hectáreas</div></div>
+      <div class="kpi" style="--ka:var(--green);--kc:var(--green)"><div class="klbl">Sembradas (ha)</div><div class="kval" id="k-semb"></div><div class="ksub" id="k-semb-s"></div><div class="kbar"><div class="kbarf" id="k-semb-b"></div></div></div>
+      <div class="kpi" style="--ka:var(--amber);--kc:var(--amber)"><div class="klbl">Pendientes (ha)</div><div class="kval" id="k-pend"></div><div class="ksub" id="k-pend-s"></div></div>
+      <div class="kpi" style="--ka:var(--amber);--kc:var(--amber)"><div class="klbl">% vs Presupuesto</div><div class="kval" id="k-av"></div><div class="ksub" id="k-av-s"></div><div class="kbar"><div class="kbarf" id="k-av-b"></div></div></div>
+      <div class="kpi" style="--ka:var(--cyan);--kc:var(--cyan)"><div class="klbl">Días lucro prom.</div><div class="kval" id="k-dias"></div><div class="ksub">promedio filtrado</div></div>
+      <div class="kpi" style="--ka:var(--green);--kc:var(--green)"><div class="klbl">Caña / Arroz</div><div class="kval" id="k-cult" style="font-size:15px"></div><div class="ksub">ha sembradas</div></div>
+      <div class="kpi" style="--ka:var(--amber);--kc:var(--amber)"><div class="klbl">En / Fuera ppto</div><div class="kval" id="k-ppto" style="font-size:15px"></div><div class="ksub">ha (SI / NO)</div></div>
+    </div>
+  </section>
+
+  <div class="g3">
+    <div class="panel">
+      <div class="ph"><div class="pht">Resumen por zona</div><div class="ptag">RESUMEN</div></div>
+      <div class="pb0" style="overflow-x:auto"><table><thead><tr><th>Zona</th><th>Caña</th><th>Arroz</th><th>Sembrado</th><th>Pendiente</th><th>Total</th><th>% Av.</th></tr></thead><tbody id="zona-tbody"></tbody></table></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><div class="pht">Por cultivo</div><div class="ptag">SEMBRADO</div></div>
+      <div class="pb">
+        <div class="dw">
+          <svg viewBox="0 0 130 130" width="110" height="110" style="flex-shrink:0">
+            <circle r="44" cx="65" cy="65" fill="none" stroke="#e2eaf3" stroke-width="17"/>
+            <circle id="d-cana"  r="44" cx="65" cy="65" fill="none" stroke="var(--green)" stroke-width="17" stroke-dasharray="0 276" transform="rotate(-90 65 65)" style="transition:stroke-dasharray .4s"/>
+            <circle id="d-arroz" r="44" cx="65" cy="65" fill="none" stroke="var(--cyan)"  stroke-width="17" stroke-dasharray="0 276" transform="rotate(-90 65 65)" style="transition:stroke-dasharray .4s"/>
+            <text id="d-pct" x="65" y="62" text-anchor="middle" fill="var(--text)" font-size="12" font-weight="800" font-family="JetBrains Mono"></text>
+            <text x="65" y="76" text-anchor="middle" fill="var(--muted)" font-size="8" font-family="Inter">caña</text>
+          </svg>
+          <div class="leg">
+            <div class="lgi"><div class="ldot" style="background:var(--green)"></div><div><div style="font-weight:600;font-size:11px">Caña</div><div style="font-size:9px;color:var(--muted)" id="leg-c"></div></div></div>
+            <div class="lgi"><div class="ldot" style="background:var(--cyan)"></div><div><div style="font-weight:600;font-size:11px">Arroz</div><div style="font-size:9px;color:var(--muted)" id="leg-a"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><div class="pht">Avance por zona</div><div class="ptag">%</div></div>
+      <div class="pb" id="zona-cards"></div>
+    </div>
+  </div>
+
+  <div class="acc" id="acc-labores">
+    <div class="acc-hdr" id="acc-btn">
+      <div class="acc-htitle" style="flex-wrap:wrap">
+        🚜 Suertes en proceso · Labores semana pasada
+        <span class="ptag">RUTA SEM. PASADA</span>
+        <span class="ptag" id="acc-tag" style="background:rgba(180,83,9,.1);color:var(--amber)"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:10px;color:var(--muted)" id="acc-hint">Clic para expandir</span>
+        <span class="acc-arrow" id="acc-arrow">▼</span>
+      </div>
+    </div>
+    <div class="acc-body" id="acc-body">
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--bdr)">
+        <div style="padding:16px 20px;border-right:1px solid var(--bdr);display:flex;flex-direction:column;align-items:center;gap:14px;flex-shrink:0">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)">Distribución por labor</div>
+          <svg id="pie-labor" viewBox="0 0 160 160" width="148" height="148"></svg>
+          <div id="pie-legend" style="display:flex;flex-direction:column;gap:5px;width:100%"></div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div class="ltabs" id="labor-tabs"></div>
+          <div id="labor-panels" style="flex:1"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="panel">
+      <div class="ph"><div class="pht">Avance por hacienda</div><div class="ptag">PANEL CONTROL</div></div>
+      <div class="pb" id="hac-list"></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><div class="pht">Detalle lotes · Comité APS</div><div class="ptag" id="lotes-tag"></div></div>
+      <div class="pb0" style="max-height:390px;overflow:auto">
+        <table><thead><tr><th>Suerte</th><th style="text-align:left">Hacienda</th><th>Z</th><th>Área</th><th>Cultivo</th><th>Días</th><th>Estado</th><th>Ppto</th></tr></thead>
+        <tbody id="lotes-tbody"></tbody></table>
+        <div class="nores" id="nores" hidden>Sin lotes para los filtros seleccionados.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="panel">
+      <div class="ph"><div class="pht">Ruta de siembra vigente</div><div class="ptag sem-tag"></div></div>
+      <div class="pb">
+        <div style="margin-bottom:13px;padding:9px 11px;background:rgba(180,83,9,.06);border:1px solid rgba(180,83,9,.2);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:9.5px;color:var(--dim)">Área total semana (pendiente)</div>
+          <div style="font-family:var(--mono);font-size:16px;font-weight:800;color:var(--amber)" id="ruta-tot"></div>
+        </div>
+        <div id="ruta-list"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><div class="pht">Avance labores</div><div class="ptag sem-tag"></div></div>
+      <div class="pb">
+        <div style="text-align:center;padding:9px;background:rgba(0,119,170,.05);border:1px solid rgba(0,119,170,.15);border-radius:8px;margin-bottom:13px">
+          <div style="font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px" id="lab-n"></div>
+          <div style="font-family:var(--mono);font-size:19px;font-weight:800;color:var(--cyan)" id="lab-ha"></div>
+        </div>
+        <div id="lab-list"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><div class="pht">Variedades de siembra</div><div class="ptag">ÁREA</div></div>
+      <div class="pb" id="var-list"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><div class="pht">Presupuesto mensual de siembra 2026 (ha)</div><div class="ptag">PPTO 2026</div></div>
+    <div class="pb">
+      <div class="mg-wrap"><div class="mg" id="mg"></div></div>
+      <div style="margin-top:9px;font-size:9px;color:var(--muted)" id="mg-foot"></div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="panel">
+      <div class="ph"><div class="pht">Costos de preparación</div><div class="ptag">PANEL CONTROL</div></div>
+      <div class="pb" id="costos"></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><div class="pht">En presupuesto vs fuera</div><div class="ptag">PPTO 2026</div></div>
+      <div class="pb">
+        <div style="display:flex;gap:12px;margin-bottom:16px">
+          <div style="flex:1;background:rgba(0,135,90,.06);border:1px solid rgba(0,135,90,.22);border-radius:9px;padding:12px;text-align:center">
+            <div style="font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">En presupuesto</div>
+            <div style="font-family:var(--mono);font-size:22px;font-weight:900;color:var(--green)" id="psi-ha"></div>
+            <div style="font-size:9px;color:var(--dim)" id="psi-l"></div>
+          </div>
+          <div style="flex:1;background:rgba(192,57,43,.06);border:1px solid rgba(192,57,43,.22);border-radius:9px;padding:12px;text-align:center">
+            <div style="font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Fuera presupuesto</div>
+            <div style="font-family:var(--mono);font-size:22px;font-weight:900;color:var(--red)" id="pno-ha"></div>
+            <div style="font-size:9px;color:var(--dim)" id="pno-l"></div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:9px">Distribución días de lucro</div>
+        <div style="display:flex;flex-direction:column;gap:7px" id="dias-dist"></div>
+        <div style="margin-top:11px;padding:7px 11px;background:var(--card2);border-radius:7px;border:1px solid var(--bdr);display:flex;justify-content:space-between">
+          <span style="font-size:9.5px;color:var(--muted)">Promedio días lucro</span>
+          <span style="font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--text)" id="dias-avg"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:12px 0;font-size:9px;color:var(--muted);border-top:1px solid var(--bdr)" id="footer"></div>
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/importer.js"></script>
+<script src="js/app.js"></script>
+<script src="js/gestion.js"></script>
+<script>
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
