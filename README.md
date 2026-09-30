@@ -12,7 +12,7 @@ No necesita instalación ni servidor de base de datos: los datos se guardan en e
 
 ## Uso semanal
 
-1. **📥 Importar Excel**: arrastra el libro del comité. Se leen las hojas
+1. **✏️ Gestionar datos → 📥 Importar Excel semanal**: arrastra el libro del comité. Se leen las hojas
    `COMITE APS` (encabezado en la fila 5), `RUTA DE SIEMBRA` y `RUTA SEMANA PASADA`.
    Las columnas se reconocen por nombre (Suerte, Hacienda, Zona, Área, Cultivo, Días lucro,
    Estado, Ppto, Variedad, Labor, Contratista, Observación…). Antes de aplicar se muestra
