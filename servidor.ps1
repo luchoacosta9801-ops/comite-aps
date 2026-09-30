@@ -1,4 +1,4 @@
-# Servidor local mínimo para abrir la app en http://localhost:8080
+﻿# Servidor local mínimo para abrir la app en http://localhost:8080
 # (necesario para instalarla como aplicación y usarla sin internet).
 # Uso: clic derecho > "Ejecutar con PowerShell", o:  powershell -ExecutionPolicy Bypass -File servidor.ps1
 param([int]$Puerto = 8080)

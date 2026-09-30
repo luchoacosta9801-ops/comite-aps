@@ -373,3 +373,28 @@ function renderAll(){renderMeta();renderHacSelect();renderPPTO();renderCostos();
 
 loadDB();
 renderAll();
+
+// ── Actualización automática ──
+// Si se publicó una versión más nueva (version.json), recarga la página sola.
+// Revisa cada 5 min y al volver a la pestaña; si hay una ventana de edición abierta, espera.
+const APP_VERSION=document.querySelector('meta[name="app-version"]')?.content;
+let recargaPendiente=null;
+function recargarSiSePuede(nueva){
+  if(q('modal-overlay').style.display==='flex'){recargaPendiente=nueva;return;}
+  // Un solo intento por versión, para no entrar en bucle si algo sirve la página vieja
+  try{if(sessionStorage.getItem('comite-aps:recarga')===nueva)return;sessionStorage.setItem('comite-aps:recarga',nueva);}catch(e){}
+  toast('Actualizando a la última versión…');
+  // URL distinta por versión: ninguna caché puede devolver la página anterior
+  setTimeout(()=>location.replace(location.pathname+'?v='+encodeURIComponent(nueva)+location.hash),800);
+}
+function revisarVersion(){
+  if(!APP_VERSION||!location.protocol.startsWith('http'))return;
+  fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(v=>{
+    if(v&&v.version&&String(v.version)!==APP_VERSION)recargarSiSePuede(String(v.version));
+  }).catch(()=>{});
+}
+setInterval(revisarVersion,5*60*1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)revisarVersion();});
+new MutationObserver(()=>{if(recargaPendiente&&q('modal-overlay').style.display!=='flex')recargarSiSePuede(recargaPendiente);})
+  .observe(q('modal-overlay'),{attributes:true,attributeFilter:['style']});
+revisarVersion();

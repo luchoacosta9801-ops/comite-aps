@@ -12,5 +12,7 @@
 - Importación Excel en `js/importer.js` (SheetJS desde cdnjs, carga diferida); columnas por nombre normalizado
 - Servidor local: `servidor.ps1` (no hay Python ni Node en esta máquina)
 - `Comité APS · Dashboard Ejecutivo.html` es la versión original; no editarla
-- Al cambiar CSS/JS, subir el `?v=N` en `index.html` y en `sw.js` (Pages cachea ~10 min y mezcla versiones)
-- Publicar: `git push origin main main:gh-pages` (Pages sirve la rama gh-pages)
+- Publicar SIEMPRE con `publicar.ps1 "mensaje"`: sube la versión (?v=N en index.html y sw.js, meta app-version, version.json), commit y push a main y gh-pages
+- Las pestañas abiertas consultan version.json cada 5 min y al volver a la pestaña; si cambió, recargan solas
+- Datos nuevos: leer el .xlsm con el importador, pasar el resultado a SEED en js/data.js y cambiar meta.corte (así los navegadores descartan lo guardado)
+- El Excel del comité va en `_privado/` (ignorado por git); nunca subirlo

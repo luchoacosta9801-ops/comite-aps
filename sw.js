@@ -1,6 +1,6 @@
 // Cache para que la app abra sin internet una vez instalada.
-const CACHE = 'comite-aps-v3';
-const ARCHIVOS = ['./','index.html','css/styles.css?v=3','js/data.js?v=3','js/store.js?v=3','js/importer.js?v=3','js/app.js?v=3','js/gestion.js?v=3','icon.svg','manifest.webmanifest'];
+const CACHE = 'comite-aps-v4';
+const ARCHIVOS = ['./','index.html','css/styles.css?v=4','js/data.js?v=4','js/store.js?v=4','js/importer.js?v=4','js/app.js?v=4','js/gestion.js?v=4','icon.svg','manifest.webmanifest'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
@@ -8,16 +8,19 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
-// Red primero (siempre la versión más nueva), caché si no hay conexión
+// Red primero sin usar la caché HTTP del navegador (GitHub Pages la deja ~10 min),
+// así siempre llega lo último publicado; la caché propia solo sirve sin conexión.
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const propio = new URL(e.request.url).origin === location.origin;
+  const red = propio ? fetch(e.request.url, { cache: 'no-cache' }) : fetch(e.request);
   e.respondWith(
-    fetch(e.request).then(r => {
-      if (r.ok && new URL(e.request.url).origin === location.origin) {
+    red.then(r => {
+      if (r.ok && propio) {
         const copia = r.clone();
         caches.open(CACHE).then(c => c.put(e.request, copia));
       }
       return r;
-    }).catch(() => caches.match(e.request))
+    }).catch(() => caches.match(e.request, { ignoreSearch: e.request.mode === 'navigate' }))
   );
 });

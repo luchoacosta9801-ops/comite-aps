@@ -8,7 +8,7 @@ No necesita instalación ni servidor de base de datos: los datos se guardan en e
 - **Rápido:** doble clic en `index.html`.
 - **Como aplicación instalable / sin internet:** clic derecho en `servidor.ps1` → *Ejecutar con PowerShell*.
   Se abre `http://localhost:8080`; en Chrome o Edge usa el ícono *Instalar* de la barra de direcciones.
-- **En línea:** https://luchoacosta9801-ops.github.io/comite-aps/ (se publica desde la rama `gh-pages`: `git push origin main main:gh-pages`)
+- **En línea:** https://luchoacosta9801-ops.github.io/comite-aps/ — para publicar cambios: clic derecho en `publicar.ps1` → *Ejecutar con PowerShell* (o `powershell -ExecutionPolicy Bypass -File publicar.ps1 "Datos semana 41"`). Las pestañas abiertas se actualizan solas en pocos minutos.
 
 ## Uso semanal
 
