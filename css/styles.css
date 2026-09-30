@@ -362,3 +362,6 @@ tr:not(.tot):hover td{background:#f0f7ff}
 .nota-act b{color:var(--dim);font-weight:700}
 .hdr-right{flex-wrap:wrap;justify-content:flex-end;row-gap:4px}
 @media(max-width:760px){.nota-act{text-align:left}}
+/* Firma en el pie de página */
+.footer-firma{margin-top:4px;font-size:10px;color:var(--dim)}
+.footer-firma b{color:var(--cyan)}
