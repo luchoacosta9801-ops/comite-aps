@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Comité APS · Dashboard Ejecutivo</title>
 <meta name="theme-color" content="#0077aa">
-<meta name="app-version" content="18">
+<meta name="app-version" content="19">
 <link rel="icon" href="img/icono-192.png" type="image/png">
 <link rel="apple-touch-icon" href="img/icono-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="css/styles.css?v=18">
+<link rel="stylesheet" href="css/styles.css?v=19">
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -191,7 +191,7 @@
       <div class="pb" id="hac-list"></div>
     </div>
     <div class="panel">
-      <div class="ph"><div class="pht">Detalle lotes · Comité APS</div><div class="ptag" id="lotes-tag"></div></div>
+      <div class="ph"><div class="pht">Detalle lotes · Comité APS</div><div class="seg" id="lotes-est"><button type="button" data-e="all" class="on">Todas</button><button type="button" data-e="SEMBRADA">Sembradas</button><button type="button" data-e="PENDIENTE">Pendientes</button></div><div class="ptag" id="lotes-tag"></div></div>
       <div class="pb0" style="max-height:390px;overflow:auto">
         <table><thead><tr><th>Suerte</th><th style="text-align:left">Hacienda</th><th>Z</th><th>Área</th><th>Cultivo</th><th>Días</th><th>Estado</th><th>Ppto</th></tr></thead>
         <tbody id="lotes-tbody"></tbody></table>
@@ -268,13 +268,13 @@
   <div style="text-align:center;padding:12px 0;font-size:9px;color:var(--muted);border-top:1px solid var(--bdr)" id="footer"></div>
 </main>
 
-<script src="js/datos.js?v=18"></script>
-<script src="js/data.js?v=18"></script>
-<script src="js/store.js?v=18"></script>
-<script src="js/importer.js?v=18"></script>
-<script src="js/app.js?v=18"></script>
-<script src="js/exportar.js?v=18"></script>
-<script src="js/gestion.js?v=18"></script>
+<script src="js/datos.js?v=19"></script>
+<script src="js/data.js?v=19"></script>
+<script src="js/store.js?v=19"></script>
+<script src="js/importer.js?v=19"></script>
+<script src="js/app.js?v=19"></script>
+<script src="js/exportar.js?v=19"></script>
+<script src="js/gestion.js?v=19"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

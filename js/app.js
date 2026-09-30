@@ -118,13 +118,19 @@ function render(){
   hHTML+=`<div class="hac" style="border-top:2px solid rgba(0,119,170,.2);margin-top:3px"><div class="hn" style="color:var(--cyan);font-weight:800">TOTAL</div><div class="hb"><div class="bt"><div class="bf" style="width:${av*100}%;background:${aC}"></div></div></div><div class="hr"><div class="hha" style="color:var(--cyan)">${f2(tot)} ha</div><div class="hp">${avChip(av)}</div></div></div>`;
   q('hac-list').innerHTML=hHTML;
 
-  // Tabla lotes
-  q('nores').hidden=data.length>0;
-  q('lotes-tbody').innerHTML=data.map(l=>{
+  // Tabla lotes (con su propio filtro Todas / Sembradas / Pendientes)
+  const lotesTabla=estadoTabla==='all'?data:data.filter(l=>l.e===estadoTabla);
+  document.querySelectorAll('#lotes-est button').forEach(b=>{
+    const n=b.dataset.e==='all'?data.length:data.filter(l=>l.e===b.dataset.e).length;
+    b.textContent=`${{all:'Todas',SEMBRADA:'Sembradas',PENDIENTE:'Pendientes'}[b.dataset.e]} (${n})`;
+    b.classList.toggle('on',b.dataset.e===estadoTabla);
+  });
+  q('nores').hidden=lotesTabla.length>0;
+  q('lotes-tbody').innerHTML=lotesTabla.map(l=>{
     const zC=l.z===1?'var(--green)':'var(--amber)',cC=l.c==='CAÑA'?'var(--green)':'var(--cyan)';
     return`<tr data-sue="${esc(l.s)}"><td style="font-family:var(--mono);font-size:10px;color:var(--cyan)">${esc(l.s)}</td><td style="text-align:left;color:var(--dim)">${esc(l.h)}</td><td style="color:${zC};font-weight:700">${l.z}</td><td>${f2(l.a)}</td><td style="color:${cC}">${l.c}</td><td style="color:${dc(l.d)};font-weight:600;font-family:var(--mono)">${l.d}</td><td><span class="chip ${l.e==='SEMBRADA'?'cg':'ca'}" style="font-size:8.5px">${l.e}</span></td><td><span class="chip ${l.p==='SI'?'cg':'cr'}" style="font-size:8.5px">${l.p}</span></td></tr>`;
   }).join('');
-  q('lotes-tag').textContent=`${data.length} lotes`;
+  q('lotes-tag').textContent=`${lotesTabla.length} lotes`;
 
   renderRuta();
   renderLabores();
@@ -138,6 +144,13 @@ function render(){
 
   if(q('acc-body').classList.contains('open'))buildLaborPanels();
 }
+
+let estadoTabla='all';
+q('lotes-est').addEventListener('click',e=>{
+  e.stopPropagation();   // no plegar el cuadro al elegir
+  const b=e.target.closest('button');if(!b)return;
+  estadoTabla=b.dataset.e;render();
+});
 
 function renderRuta(){
   let rHTML='',rTot=0;
@@ -369,7 +382,7 @@ Object.entries(SELS).forEach(([key,id])=>{
   });
 });
 q('btn-reset').addEventListener('click',()=>{
-  Object.keys(F).forEach(k=>F[k]='all');
+  Object.keys(F).forEach(k=>F[k]='all');estadoTabla='all';
   Object.values(SELS).forEach(id=>{q(id).value='all';q(id).className='fsel';});
   busInput.value='';busResults.classList.remove('show');
   render();toast('Filtros limpiados ✓');
@@ -473,6 +486,7 @@ busResults.addEventListener('click',e=>{
   const {sue,hac}=it.dataset;
   F.hac=hac;q('sel-hac').value=hac;q('sel-hac').className='fsel on';
   busInput.value=sue;busResults.classList.remove('show');
+  estadoTabla='all';
   render();
   const pl=q('lotes-tbody').closest('.panel');
   if(pl.classList.contains('cerrado')){plegarPanel(pl,false);guardarPlegados();actualizarBotonTodo();}
