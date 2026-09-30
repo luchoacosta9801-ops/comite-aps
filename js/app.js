@@ -228,8 +228,10 @@ function buildLaborPanels(){
         <td>${f2(r.area)}</td>
         <td style="font-family:var(--mono);color:${r.dias<200?'var(--amber)':'var(--dim)'}">${r.dias}</td>
         <td style="color:var(--dim);font-size:10px;text-align:left">${esc(r.cont)}</td>
-        <td style="text-align:left">${r.obs?`<span style="font-size:9px;color:var(--amber)">${esc(r.obs)}</span>`:'<span style="color:var(--muted);font-size:9px">—</span>'}</td>
-        <td style="text-align:left">${r.variedad?`<span style="font-size:9px;color:var(--violet)">${esc(r.variedad)}</span>`:'<span style="color:var(--muted);font-size:9px">—</span>'}</td>
+        <td style="text-align:left">${MODO_EDICION?celdaEditable(r,'obs','Escribir observación…','var(--amber)')
+          :r.obs?`<span style="font-size:9px;color:var(--amber)">${esc(r.obs)}</span>`:'<span style="color:var(--muted);font-size:9px">—</span>'}</td>
+        <td style="text-align:left">${MODO_EDICION?celdaEditable(r,'variedad','Escribir variedad…','var(--violet)')
+          :r.variedad?`<span style="font-size:9px;color:var(--violet)">${esc(r.variedad)}</span>`:'<span style="color:var(--muted);font-size:9px">—</span>'}</td>
       </tr>`).join('');
     return`<div class="lpanel ${lab===laborActiva?'active':''}" data-lab="${esc(lab)}">
       <div class="lsummary">
@@ -326,6 +328,20 @@ function renderComparativo(){
     c.entraron.length?`➕ Entraron al proceso: ${lista(c.entraron)}`:'',
   ].filter(Boolean).join('<br>')||'Mismas suertes en proceso que la semana anterior.';
 }
+
+// En modo editor, Observación y Variedad se escriben directo en la tabla de labores
+function celdaEditable(r,campo,ph,color){
+  return`<input class="celda-edit" data-i="${DB.proceso.indexOf(r)}" data-campo="${campo}" value="${esc(r[campo]||'')}" placeholder="${ph}" style="color:${color}">`;
+}
+q('labor-panels').addEventListener('change',e=>{
+  const inp=e.target.closest('.celda-edit');if(!inp)return;
+  const r=DB.proceso[+inp.dataset.i];if(!r)return;
+  const v=inp.value.trim().toUpperCase();
+  r[inp.dataset.campo]=v||null;inp.value=v;
+  save();renderEstadoEdicion();
+  toast(`✓ ${inp.dataset.campo==='obs'?'Observación':'Variedad'} de ${r.sue} guardada`);
+});
+q('labor-panels').addEventListener('keydown',e=>{if(e.target.closest('.celda-edit')&&e.key==='Enter')e.target.blur();});
 
 function switchTab(lab){
   laborActiva=lab;
