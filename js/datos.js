@@ -1,7 +1,7 @@
 // Datos publicados del Comité APS. Archivo generado por la app ("Publicar para todos");
 // cambiar meta.corte hace que los navegadores descarten lo guardado y tomen estos datos.
 const SEED = {
-  meta: {"fecha":"30 Sep 2026","semana":"Semana 40","corte":"2026-09-30T16:41:43.251Z","pptoTotal":555.45},
+  meta: {"fecha":"30 Sep 2026","semana":"Semana 40","corte":"2026-09-30T18:54:58.668Z","pptoTotal":555.45},
   lotes: [
     {"s":"3110-050","h":"NORMANDIA","z":2,"a":8.33,"c":"CAÑA","d":273,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
     {"s":"3501-050","h":"RIOPAILA","z":1,"a":8.62,"c":"CAÑA","d":309,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
@@ -53,8 +53,8 @@ const SEED = {
   ],
   ruta: [
     {"h":"NORMANDIA","s":"3110-050","a":8.33,"d":273,"variedad":"CC 13-2035","semillero":"3113-080","bandereo":12,"cont":"ANDRUSV"},
-    {"h":"RIOPAILA","s":"3501-052","a":2.92,"d":311,"variedad":null,"semillero":null,"bandereo":null,"cont":null},
-    {"h":"RIOPAILA","s":"3501-050","a":8.62,"d":309,"variedad":null,"semillero":null,"bandereo":null,"cont":null}
+    {"h":"RIOPAILA","s":"3501-052","a":2.92,"d":311,"variedad":"CC 01-1940","semillero":"3118-060","bandereo":12,"cont":"ANDRUSV"},
+    {"h":"RIOPAILA","s":"3501-050","a":8.62,"d":309,"variedad":"CC 85-92","semillero":"3111-080","bandereo":12,"cont":"ANDRUSV"}
   ],
   proceso: [
     {"hac":"PERALONSO","z":2,"sue":"3111-200","area":12.44,"dias":381,"cont":"RIOCAST","labor":"DESCEPADA","obs":"1 PASE REALIZADO","variedad":null},
@@ -62,7 +62,7 @@ const SEED = {
     {"hac":"PERALONSO","z":2,"sue":"3111-131","area":15.03,"dias":271,"cont":"RIOCAST","labor":"DESCEPADA","obs":"SIN INICIAR","variedad":null},
     {"hac":"RIOPAILA","z":1,"sue":"3501-050","area":8.62,"dias":309,"cont":"BIENES","labor":"SURCADA","obs":null,"variedad":null},
     {"hac":"RIOPAILA","z":1,"sue":"3501-052","area":2.92,"dias":311,"cont":"BIENES","labor":"SURCADA","obs":null,"variedad":null},
-    {"hac":"NORMANDIA","z":2,"sue":"3110-050","area":8.33,"dias":273,"cont":"RIOCAST","labor":"SURCADA","obs":null,"variedad":null}
+    {"hac":"NORMANDIA","z":2,"sue":"3110-050","area":8.33,"dias":273,"cont":"RIOCAST","labor":"SURCADA","obs":"PENDIENTE POR LABOR EN INFRAESTRUCTURA","variedad":null}
   ],
   // RUTA SEMANA PASADA del comité anterior, para la torta comparativa
   procesoAnterior: { fecha: "23 Sep 2026", semana: "Semana 39", items: [
