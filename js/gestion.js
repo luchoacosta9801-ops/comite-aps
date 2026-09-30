@@ -12,10 +12,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.style.displ
 q('btn-gestionar').addEventListener('click',()=>openModal('home'));
 q('btn-refresh').addEventListener('click',()=>{
   const btn=q('btn-refresh');
-  btn.classList.add('spinning');btn.innerHTML='<span class="r-icon">🔄</span> Refrescando...';btn.disabled=true;
+  btn.classList.add('spinning');btn.innerHTML='<span class="r-icon">🔄</span>';btn.disabled=true;
   setTimeout(()=>{
     loadDB();renderAll();
-    btn.classList.remove('spinning');btn.innerHTML='🔄 Refrescar';btn.disabled=false;
+    btn.classList.remove('spinning');btn.innerHTML='🔄';btn.disabled=false;
     toast('✓ Dashboard actualizado');
   },400);
 });

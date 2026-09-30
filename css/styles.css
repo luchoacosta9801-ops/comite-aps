@@ -322,3 +322,38 @@ tr:not(.tot):hover td{background:#f0f7ff}
 .seg button.on[data-e="SEMBRADA"]{background:rgba(0,135,90,.1);color:var(--green)}
 .seg button.on[data-e="PENDIENTE"]{background:rgba(180,83,9,.1);color:var(--amber)}
 @media(max-width:600px){.ph{flex-wrap:wrap}.ph .seg{order:3;margin-left:0}}
+/* ── Barra de filtros compacta ── */
+.fbar{gap:8px;padding:8px 32px;flex-wrap:nowrap;align-items:center}
+.ffiltros{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
+.fchip{display:inline-flex;align-items:center;height:28px;border:1px solid var(--bdr);border-radius:20px;background:var(--card2);padding-left:10px;cursor:pointer;transition:all .15s}
+.fchip:hover{border-color:var(--bdr2)}
+.fchip span{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);white-space:nowrap}
+.fchip .fsel{border:none;background-color:transparent;height:26px;padding:0 24px 0 6px;font-size:10.5px;background-position:right 9px center}
+.fchip .fsel:hover{color:var(--text)}
+.fchip .fsel.on{background-color:transparent;color:var(--cyan)}
+.fchip:has(.fsel.on){border-color:rgba(0,119,170,.45);background:rgba(0,119,170,.08)}
+.fchip:has(.fsel.on) span{color:var(--cyan)}
+.facciones{display:flex;gap:6px;align-items:center;margin-left:auto;flex-shrink:0}
+.facciones button{height:28px;padding:0 12px;margin:0;white-space:nowrap}
+.facciones .fbtn-refresh{padding:0 10px}
+.fbtn-filtros{display:none;height:30px;padding:0 13px;border-radius:20px;border:1px solid var(--bdr);background:var(--card2);color:var(--dim);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--sans);align-items:center;gap:2px}
+.fbtn-filtros.on{border-color:rgba(0,119,170,.45);background:rgba(0,119,170,.08);color:var(--cyan)}
+/* Pantallas medianas: los filtros bajan a una fila propia, sin desordenarse */
+@media(max-width:1250px){
+  .fbar{flex-wrap:wrap}
+}
+/* Celular: filtros plegados tras "⚙️ Filtros", en dos columnas */
+@media(max-width:760px){
+  .fbar{padding:8px 12px;gap:8px}
+  .fbtn-filtros{display:inline-flex;order:1}
+  .facciones{order:2;width:auto;margin-left:auto;justify-content:flex-end}
+  .ffiltros{order:3;display:none;width:100%;grid-template-columns:1fr 1fr;gap:6px}
+  .ffiltros.abierto{display:grid}
+  .fchip{width:100%;min-width:0;justify-content:space-between}
+  .fchip .fsel{flex:1;min-width:0;text-align:right}
+  .hdr-right{width:100%;justify-content:flex-start}
+  .search-wrap{flex:1 1 100%}
+  .search-input,.search-input:focus{width:100%}
+}
+@media(max-width:380px){.facciones button{padding:0 9px}.ffiltros{grid-template-columns:1fr}}
+@media(max-width:760px){.txt-largo{display:none}.facciones button{padding:0 10px}}

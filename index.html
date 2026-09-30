@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Comité APS · Dashboard Ejecutivo</title>
 <meta name="theme-color" content="#0077aa">
-<meta name="app-version" content="20">
+<meta name="app-version" content="21">
 <link rel="icon" href="img/icono-192.png" type="image/png">
 <link rel="apple-touch-icon" href="img/icono-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="css/styles.css?v=20">
+<link rel="stylesheet" href="css/styles.css?v=21">
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -32,58 +32,47 @@
 </header>
 
 <div class="fbar">
-  <div class="flbl">Zona</div>
-  <div class="fg">
-    <select id="sel-zona" class="fsel">
-      <option value="all">Todas</option>
-      <option value="1">Zona 1</option>
-      <option value="2">Zona 2</option>
-    </select>
+  <button class="fbtn-filtros" id="btn-filtros" type="button" aria-expanded="false">⚙️ Filtros<span id="filtros-n"></span></button>
+  <div class="ffiltros" id="ffiltros">
+    <label class="fchip"><span>Zona</span>
+      <select id="sel-zona" class="fsel">
+        <option value="all">Todas</option>
+        <option value="1">Zona 1</option>
+        <option value="2">Zona 2</option>
+      </select></label>
+    <label class="fchip"><span>Hacienda</span><select id="sel-hac" class="fsel"></select></label>
+    <label class="fchip"><span>Cultivo</span>
+      <select id="sel-cult" class="fsel">
+        <option value="all">Todos</option>
+        <option value="CAÑA">Caña</option>
+        <option value="ARROZ">Arroz</option>
+      </select></label>
+    <label class="fchip"><span>Estado</span>
+      <select id="sel-est" class="fsel">
+        <option value="all">Todos</option>
+        <option value="SEMBRADA">Sembrada</option>
+        <option value="PENDIENTE">Pendiente</option>
+      </select></label>
+    <label class="fchip"><span>Ppto</span>
+      <select id="sel-ppto" class="fsel">
+        <option value="all">Todos</option>
+        <option value="SI">En presupuesto</option>
+        <option value="NO">Fuera presupuesto</option>
+      </select></label>
+    <label class="fchip"><span>Días lucro</span>
+      <select id="sel-dias" class="fsel">
+        <option value="all">Todos</option>
+        <option value="critico">Crítico &lt;100</option>
+        <option value="alerta">Alerta 100–200</option>
+        <option value="normal">Normal &gt;200</option>
+      </select></label>
   </div>
-  <div class="fsep"></div>
-  <div class="flbl">Hacienda</div>
-  <div class="fg"><select id="sel-hac" class="fsel"></select></div>
-  <div class="fsep"></div>
-  <div class="flbl">Cultivo</div>
-  <div class="fg">
-    <select id="sel-cult" class="fsel">
-      <option value="all">Todos</option>
-      <option value="CAÑA">Caña</option>
-      <option value="ARROZ">Arroz</option>
-    </select>
+  <div class="facciones">
+    <button class="freset" id="btn-reset" title="Quitar todos los filtros">✕<span class="txt-largo"> Limpiar</span></button>
+    <button class="fbtn-excel" id="btn-excel" title="Descargar en Excel lo que muestra el dashboard">📊 Excel</button>
+    <button class="fbtn-edit" id="btn-gestionar" hidden title="Gestionar datos">✏️ Editar</button>
+    <button class="fbtn-refresh" id="btn-refresh" title="Refrescar">🔄</button>
   </div>
-  <div class="fsep"></div>
-  <div class="flbl">Estado</div>
-  <div class="fg">
-    <select id="sel-est" class="fsel">
-      <option value="all">Todos</option>
-      <option value="SEMBRADA">Sembrada</option>
-      <option value="PENDIENTE">Pendiente</option>
-    </select>
-  </div>
-  <div class="fsep"></div>
-  <div class="flbl">Presupuesto</div>
-  <div class="fg">
-    <select id="sel-ppto" class="fsel">
-      <option value="all">Todos</option>
-      <option value="SI">En presupuesto</option>
-      <option value="NO">Fuera presupuesto</option>
-    </select>
-  </div>
-  <div class="fsep"></div>
-  <div class="flbl">Días lucro</div>
-  <div class="fg">
-    <select id="sel-dias" class="fsel">
-      <option value="all">Todos</option>
-      <option value="critico">Crítico &lt;100</option>
-      <option value="alerta">Alerta 100–200</option>
-      <option value="normal">Normal &gt;200</option>
-    </select>
-  </div>
-  <button class="freset" id="btn-reset">✕ Limpiar</button>
-  <button class="fbtn-excel" id="btn-excel">📊 Descargar Excel</button>
-  <button class="fbtn-edit" id="btn-gestionar" hidden>✏️ Gestionar datos</button>
-  <button class="fbtn-refresh" id="btn-refresh">🔄 Refrescar</button>
 </div>
 
 <div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;backdrop-filter:blur(3px);align-items:center;justify-content:center">
@@ -268,13 +257,13 @@
   <div style="text-align:center;padding:12px 0;font-size:9px;color:var(--muted);border-top:1px solid var(--bdr)" id="footer"></div>
 </main>
 
-<script src="js/datos.js?v=20"></script>
-<script src="js/data.js?v=20"></script>
-<script src="js/store.js?v=20"></script>
-<script src="js/importer.js?v=20"></script>
-<script src="js/app.js?v=20"></script>
-<script src="js/exportar.js?v=20"></script>
-<script src="js/gestion.js?v=20"></script>
+<script src="js/datos.js?v=21"></script>
+<script src="js/data.js?v=21"></script>
+<script src="js/store.js?v=21"></script>
+<script src="js/importer.js?v=21"></script>
+<script src="js/app.js?v=21"></script>
+<script src="js/exportar.js?v=21"></script>
+<script src="js/gestion.js?v=21"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

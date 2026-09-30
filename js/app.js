@@ -47,14 +47,26 @@ function renderMeta(){
 
 function renderHacSelect(){
   const sel=q('sel-hac'),cur=F.hac;
-  sel.innerHTML='<option value="all">Todas las haciendas</option>'+
+  sel.innerHTML='<option value="all">Todas</option>'+
     hacsActuales().map(h=>`<option value="${esc(h)}">${esc(HAC_LABEL[h]||h)}</option>`).join('');
   sel.value=hacsActuales().includes(cur)?cur:'all';
   F.hac=sel.value;
   sel.className='fsel'+(sel.value!=='all'?' on':'');
 }
 
+// Celular: los filtros se abren con el botón "⚙️ Filtros", que muestra cuántos hay activos
+function contarFiltros(){
+  const n=Object.values(F).filter(v=>v!=='all').length;
+  q('filtros-n').textContent=n?` (${n})`:'';
+  q('btn-filtros').classList.toggle('on',n>0);
+}
+q('btn-filtros').addEventListener('click',()=>{
+  const abierto=q('ffiltros').classList.toggle('abierto');
+  q('btn-filtros').setAttribute('aria-expanded',abierto);
+});
+
 function render(){
+  contarFiltros();
   const data=filtered(),PPTO_TOTAL=DB.meta.pptoTotal;
   const sembL=data.filter(l=>l.e==='SEMBRADA'),pendL=data.filter(l=>l.e!=='SEMBRADA');
   const tot=sum(data,l=>l.a),semb=sum(sembL,l=>l.a);
@@ -504,13 +516,13 @@ let SERVIDOR=false;
 function renderEstadoEdicion(){
   if(!MODO_EDICION)return;
   const pend=hayCambiosSinPublicar();
-  q('btn-gestionar').textContent='✏️ Gestionar datos'+(pend?' ●':'');
+  q('btn-gestionar').textContent='✏️ Editar'+(pend?' ●':'');
   q('btn-gestionar').title=pend?'Hay cambios sin publicar':'';
   const pub=q('btn-publicar');if(pub)pub.hidden=!(SERVIDOR&&pend);
 }
 function crearBotonPublicar(){
   const b=document.createElement('button');
-  b.className='fbtn-publicar';b.id='btn-publicar';b.hidden=true;b.textContent='🚀 Publicar para todos';
+  b.className='fbtn-publicar';b.id='btn-publicar';b.hidden=true;b.textContent='🚀 Publicar';b.title='Publicar para todos';
   b.addEventListener('click',()=>openModal('publicar'));
   q('btn-gestionar').after(b);
 }
