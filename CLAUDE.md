@@ -5,7 +5,7 @@
 - Cada suerte en proceso pertenece a UNA sola labor (columna LABOR); nunca sumar en varias
 - Donut y KPI caña/arroz usan solo área sembrada
 - Zona 1: La Luisa, Lagunas, Riopaila, Paila Arriba, La Paila
-- Interfaz en español, fondo claro, ícono 🚜
+- Interfaz en español, fondo claro, logo de Riopaila Agrícola (img/logo-riopaila.png) en el encabezado; íconos de app en img/icono-192.png y img/icono-512.png
 ## App
 - App web estática sin build: `index.html` + `js/` (scripts clásicos, no módulos, para que funcione con doble clic desde file://)
 - Datos iniciales en `js/data.js`; estado real en localStorage (`comite-aps:v1`), todo cambio pasa por `save()` y `renderAll()`

@@ -42,5 +42,5 @@ Mientras no publiques, los cambios solo se ven en tu PC (el botón *Gestionar da
 | `js/gestion.js` | Ventana *Gestionar datos* y *Publicar* |
 | `servidor.ps1` | Servidor local con la edición y la publicación |
 | `publicar.ps1` | Sube la versión y publica en GitHub Pages (lo usa el servidor) |
-| `sw.js`, `manifest.webmanifest`, `icon.svg`, `version.json` | App instalable, sin internet y actualización automática |
+| `sw.js`, `manifest.webmanifest`, `img/`, `version.json` | App instalable, sin internet y actualización automática |
 | `_privado/` | Copias de los Excel del comité (no se suben a GitHub) |

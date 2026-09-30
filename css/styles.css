@@ -287,3 +287,6 @@ tr:not(.tot):hover td{background:#f0f7ff}
 /* Firma en el encabezado */
 .hdr{height:auto;min-height:60px;padding-block:8px}
 .hdr-firma{font-size:10.5px;font-weight:600;color:var(--cyan);letter-spacing:.1px;margin-top:1px}
+/* Logo Riopaila en el encabezado */
+.hdr-logo{height:52px;width:auto;flex-shrink:0;display:block}
+@media(max-width:960px){.hdr-logo{height:42px}}
