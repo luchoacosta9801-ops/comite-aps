@@ -17,13 +17,29 @@ function Responder($res, [int]$codigo, $obj) {
   $res.OutputStream.Write($bytes, 0, $bytes.Length)
 }
 
+# Solo la propia app puede usar la API: la local y la publicada en GitHub Pages
+# (donde el administrador activó el editor). Ninguna otra página del navegador.
+$permitidos = @("http://localhost:$Puerto", 'https://luchoacosta9801-ops.github.io')
+
+function Cors($ctx) {
+  $origen = $ctx.Request.Headers['Origin']
+  if ($origen -and $permitidos -contains $origen) {
+    $h = $ctx.Response.Headers
+    $h.Add('Access-Control-Allow-Origin', $origen)
+    $h.Add('Vary', 'Origin')
+    $h.Add('Access-Control-Allow-Methods', 'GET, POST')
+    $h.Add('Access-Control-Allow-Headers', 'Content-Type, X-Comite')
+    $h.Add('Access-Control-Allow-Private-Network', 'true')   # Chrome: página pública -> localhost
+    $h.Add('Access-Control-Max-Age', '600')
+  }
+}
+
 # POST /api/publicar  { contenido: "<js/datos.js>", mensaje: "...", publicar: true|false }
-# Solo acepta peticiones de la propia app (mismo origen + cabecera X-Comite),
-# así ninguna otra página abierta en el navegador puede usarlo.
+# Exige la cabecera X-Comite (fuerza la verificación CORS del navegador) y un origen permitido.
 function Publicar($ctx) {
   $req = $ctx.Request
   $origen = $req.Headers['Origin']
-  if ($req.Headers['X-Comite'] -ne '1' -or ($origen -and $origen -ne "http://localhost:$Puerto")) {
+  if ($req.Headers['X-Comite'] -ne '1' -or ($origen -and $permitidos -notcontains $origen)) {
     return Responder $ctx.Response 403 @{ ok = $false; error = 'Origen no permitido' }
   }
   $lector = New-Object IO.StreamReader($req.InputStream, [Text.Encoding]::UTF8)
@@ -52,7 +68,10 @@ while ($http.IsListening) {
   $res = $ctx.Response
   try {
     $ruta = [Uri]::UnescapeDataString($ctx.Request.Url.AbsolutePath).TrimStart('/')
-    if ($ruta -eq 'api/estado') {
+    if ($ruta.StartsWith('api/')) { Cors $ctx }
+    if ($ruta.StartsWith('api/') -and $ctx.Request.HttpMethod -eq 'OPTIONS') {
+      $res.StatusCode = 204
+    } elseif ($ruta -eq 'api/estado') {
       Responder $res 200 @{ ok = $true; edicion = $true }
     } elseif ($ruta -eq 'api/publicar' -and $ctx.Request.HttpMethod -eq 'POST') {
       Publicar $ctx

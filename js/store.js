@@ -2,8 +2,31 @@
 // los cambios se guardan en localStorage hasta publicarlos; en GitHub Pages todos ven
 // exactamente los datos publicados (js/datos.js), sin edición.
 const STORE_KEY = 'comite-aps:v1';
-const MODO_EDICION = location.protocol === 'file:' || ['localhost','127.0.0.1'].includes(location.hostname);
+// El editor también se puede activar en el link público, solo en el navegador del administrador,
+// abriendo una vez ?editor=<clave> (la clave está en _privado/clave-editor.txt; aquí solo su hash).
+// Es una comodidad, no seguridad: publicar exige servidor.ps1 en su PC y su acceso a GitHub.
+const EDITOR_KEY = 'comite-aps:editor';
+const EDITOR_HASH = 'af8b68f4115e09b71a8f924bf6eceee2db4329a3e3eab3638d2000068a65344d';
+const ES_LOCAL = location.protocol === 'file:' || ['localhost','127.0.0.1'].includes(location.hostname);
+function editorActivado(){ try { return localStorage.getItem(EDITOR_KEY) === EDITOR_HASH; } catch (e) { return false; } }
+const MODO_EDICION = ES_LOCAL || editorActivado();
+// Dónde está servidor.ps1: el mismo sitio si se abrió desde él; si no, el del PC
+const API_BASE = ES_LOCAL && location.protocol.startsWith('http') ? '' : 'http://localhost:8080/';
 let DB;
+
+// ?editor=<clave> activa el editor en este navegador; ?editor=salir lo desactiva
+(function activarEditor(){
+  const p = new URLSearchParams(location.search).get('editor');
+  if (p === null) return;
+  const limpiar = () => location.replace(location.pathname + location.hash);
+  if (p === 'salir') { try { localStorage.removeItem(EDITOR_KEY); } catch (e) {} limpiar(); return; }
+  if (!window.crypto || !crypto.subtle) return;
+  crypto.subtle.digest('SHA-256', new TextEncoder().encode(p)).then(buf => {
+    const h = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+    if (h === EDITOR_HASH) { try { localStorage.setItem(EDITOR_KEY, h); } catch (e) {} }
+    limpiar();
+  });
+})();
 
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 
@@ -14,7 +37,10 @@ function loadDB(){
     if (raw) {
       const d = JSON.parse(raw);
       // Un corte publicado más nuevo reemplaza lo guardado en el navegador
-      const vigente = d && d.meta && d.meta.corte === SEED.meta.corte;
+      // (o uno igual/más nuevo: recién publicado desde aquí, mientras Pages termina de actualizar)
+      const iso = c => /^\d{4}-\d{2}-\d{2}T/.test(String(c || ''));
+      const c0 = d && d.meta && d.meta.corte, c1 = SEED.meta.corte;
+      const vigente = c0 === c1 || (iso(c0) && iso(c1) && c0 > c1);
       if (d && Array.isArray(d.lotes) && vigente) { DB = Object.assign(clone(SEED), d); return; }
     }
   } catch (e) { console.warn('No se pudo leer el guardado local', e); }
@@ -59,7 +85,7 @@ const SEED = {
 function publicarDatos(mensaje, publicar = true){
   const d = clone(DB);
   d.meta.corte = new Date().toISOString();   // corte nuevo: todos los navegadores lo toman
-  return fetch('api/publicar', {
+  return fetch(API_BASE + 'api/publicar', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Comite': '1' },
     body: JSON.stringify({ contenido: datosJS(d), mensaje, publicar }),
@@ -72,8 +98,8 @@ function publicarDatos(mensaje, publicar = true){
     });
 }
 function servidorDisponible(){
-  if (!location.protocol.startsWith('http')) return Promise.resolve(false);
-  return fetch('api/estado', { cache:'no-store' }).then(r => r.ok ? r.json() : null).then(j => !!(j && j.edicion)).catch(() => false);
+  if (location.protocol === 'file:') return Promise.resolve(false);
+  return fetch(API_BASE + 'api/estado', { cache:'no-store' }).then(r => r.ok ? r.json() : null).then(j => !!(j && j.edicion)).catch(() => false);
 }
 
 function resetDB(){

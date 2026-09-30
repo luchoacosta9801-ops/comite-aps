@@ -4,8 +4,8 @@ Dashboard del Comité APS: renovación y siembra de caña y arroz por zona, haci
 
 - **Página para todos (solo lectura):** https://luchoacosta9801-ops.github.io/comite-aps/
   Se puede filtrar, buscar, plegar cuadros y **descargar en Excel**. No se puede editar.
-- **Edición (solo en el PC del administrador):** clic derecho en `servidor.ps1` → *Ejecutar con PowerShell*.
-  Abre `http://localhost:8080` con **✏️ Gestionar datos** y **🚀 Publicar para todos**.
+- **Edición (solo el administrador):** en el link público, tras abrir una vez el enlace de `_privado/clave-editor.txt` en tu navegador; o en tu PC con `servidor.ps1` (clic derecho → *Ejecutar con PowerShell*).
+  Aparecen **✏️ Gestionar datos** y **🚀 Publicar para todos** (publicar siempre requiere `servidor.ps1` abierto en tu PC).
 
 ## Actualización semanal
 

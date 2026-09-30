@@ -478,18 +478,20 @@ function renderEstadoEdicion(){
   q('btn-gestionar').title=pend?'Hay cambios sin publicar':'';
   const pub=q('btn-publicar');if(pub)pub.hidden=!(SERVIDOR&&pend);
 }
+function crearBotonPublicar(){
+  const b=document.createElement('button');
+  b.className='fbtn-publicar';b.id='btn-publicar';b.hidden=true;b.textContent='🚀 Publicar para todos';
+  b.addEventListener('click',()=>openModal('publicar'));
+  q('btn-gestionar').after(b);
+}
 if(MODO_EDICION){
   q('btn-gestionar').hidden=false;
-  servidorDisponible().then(ok=>{
-    SERVIDOR=ok;
-    if(ok){
-      const b=document.createElement('button');
-      b.className='fbtn-publicar';b.id='btn-publicar';b.hidden=true;b.textContent='🚀 Publicar para todos';
-      b.addEventListener('click',()=>openModal('publicar'));
-      q('btn-gestionar').after(b);
-    }
-    renderEstadoEdicion();
-  });
+  if(ES_LOCAL){
+    servidorDisponible().then(ok=>{SERVIDOR=ok;if(ok)crearBotonPublicar();renderEstadoEdicion();});
+  }else{
+    // Editor activado en el link público: el servidor del PC se busca al publicar
+    SERVIDOR=true;crearBotonPublicar();
+  }
 }
 
 // Redibuja todo tras cualquier cambio de datos

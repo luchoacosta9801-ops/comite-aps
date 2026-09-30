@@ -348,7 +348,7 @@ function renderPublicar(){
   modalBody.innerHTML=`${resumenCambios()}
     <div class="mrow" style="margin-top:14px"><div><label class="mlabel">Descripción del cambio</label>
       <input class="minput" id="pub-msg" value="Datos ${esc(DB.meta.fecha)} (${esc(DB.meta.semana)})"></div></div>
-    <div class="note">Se guarda en <b>js/datos.js</b>, se sube a GitHub y en 1–2 minutos todos ven la versión nueva (las pestañas abiertas se actualizan solas).</div>
+    <div class="note">Se guarda en <b>js/datos.js</b>, se sube a GitHub y en 1–2 minutos todos ven la versión nueva (las pestañas abiertas se actualizan solas).${ES_LOCAL?'':'<br>Requiere <b>servidor.ps1</b> abierto en tu PC: es quien sube los cambios a GitHub.'}</div>
     <div id="pub-res"></div>`;
   modalFooter.innerHTML=`${volver}<button class="mbtn mbtn-primary" id="pub-btn" onclick="confirmarPublicar()">🚀 Publicar ahora</button>`;
 }
@@ -360,9 +360,14 @@ function confirmarPublicar(){
     res.innerHTML='<div class="note" style="border-color:rgba(0,135,90,.3);background:rgba(0,135,90,.06)">✓ Publicado. GitHub Pages lo muestra a todos en 1–2 minutos.</div>';
     btn.textContent='✓ Publicado';
     toast('✓ Publicado para todos');
-    setTimeout(()=>location.reload(),1800);
+    // En el PC los archivos ya cambiaron: recargar. En el link público, Pages tarda 1–2 min
+    // y la página se actualiza sola cuando esté lista.
+    if(ES_LOCAL)setTimeout(()=>location.reload(),1800);else renderEstadoEdicion();
   }).catch(e=>{
-    res.innerHTML=`<div class="err" style="white-space:pre-wrap">No se pudo publicar: ${esc(e.message)}</div>`;
+    const sinServidor=e instanceof TypeError;   // fetch falló: servidor.ps1 no está abierto
+    res.innerHTML=sinServidor
+      ?`<div class="err">No encontré <b>servidor.ps1</b> abierto en este PC. Ábrelo (clic derecho en <b>servidor.ps1</b> → <i>Ejecutar con PowerShell</i>), acepta si el navegador pide permiso para acceder a dispositivos de la red local, y vuelve a intentar. Tus cambios no se pierden.</div>`
+      :`<div class="err" style="white-space:pre-wrap">No se pudo publicar: ${esc(e.message)}</div>`;
     btn.disabled=false;btn.textContent='🚀 Reintentar';
   });
 }
