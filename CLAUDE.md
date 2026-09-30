@@ -12,3 +12,5 @@
 - Importación Excel en `js/importer.js` (SheetJS desde cdnjs, carga diferida); columnas por nombre normalizado
 - Servidor local: `servidor.ps1` (no hay Python ni Node en esta máquina)
 - `Comité APS · Dashboard Ejecutivo.html` es la versión original; no editarla
+- Al cambiar CSS/JS, subir el `?v=N` en `index.html` y en `sw.js` (Pages cachea ~10 min y mezcla versiones)
+- Publicar: `git push origin main main:gh-pages` (Pages sirve la rama gh-pages)
