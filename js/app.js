@@ -583,6 +583,8 @@ function renderAll(){renderMeta();renderHacSelect();renderPPTO();renderCostos();
 loadDB();
 renderAll();
 initPlegables();
+// "Suertes en proceso" abre expandido siempre, para que no se pase por alto (se puede cerrar)
+if(!accAbierto())q('acc-btn').click();
 
 // ── Actualización automática ──
 // Si se publicó una versión más nueva (version.json), recarga la página sola.
