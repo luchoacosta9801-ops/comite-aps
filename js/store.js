@@ -9,7 +9,9 @@ function loadDB(){
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && Array.isArray(d.lotes)) { DB = Object.assign(clone(SEED), d); return; }
+      // Un corte publicado más nuevo reemplaza lo guardado en el navegador
+      const vigente = d && d.meta && d.meta.corte === SEED.meta.corte;
+      if (d && Array.isArray(d.lotes) && vigente) { DB = Object.assign(clone(SEED), d); return; }
     }
   } catch (e) { console.warn('No se pudo leer el guardado local', e); }
   DB = clone(SEED);
@@ -57,6 +59,7 @@ function importarRespaldo(file){
     if (!d || !Array.isArray(d.lotes) || !Array.isArray(d.ruta) || !Array.isArray(d.proceso))
       throw new Error('El archivo no es un respaldo válido del Comité APS.');
     DB = Object.assign(clone(SEED), d);
+    DB.meta = Object.assign({}, d.meta, { corte: SEED.meta.corte }); // que no lo descarte loadDB
     save();
   });
 }

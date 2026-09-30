@@ -30,7 +30,7 @@ No necesita instalación ni servidor de base de datos: los datos se guardan en e
 |---|---|
 | `index.html` | Estructura del dashboard |
 | `css/styles.css` | Estilos |
-| `js/data.js` | Datos iniciales (semana 37) y catálogos (haciendas, labores, variedades) |
+| `js/data.js` | Datos publicados (último corte del comité) y catálogos (haciendas, labores, variedades) |
 | `js/store.js` | Guardado local, respaldo JSON y exportación a Excel |
 | `js/importer.js` | Lectura del Excel semanal |
 | `js/app.js` | Cálculos, gráficos, filtros y buscador |

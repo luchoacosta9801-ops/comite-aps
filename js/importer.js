@@ -16,21 +16,27 @@ function txt(v){ const t = String(v ?? '').trim(); return t || null; }
 // Para cada campo: lista de patrones (sobre el encabezado normalizado).
 // Se toma la primera columna que cumpla alguno; el orden de los patrones importa.
 const COLS = {
+  // En el libro real: "sect-sue" trae la suerte completa (3110-050); "Suerte" solo el número.
+  // No hay columna Estado: sembrada = "Área Siemb" con hectáreas (pendiente = "X")
+  // u OBSERVACIÓN "SEMBRADA".
   lotes: {
-    s:[/SUERTE/], h:[/HACIENDA/], z:[/^ZONA$/,/ZONA/], a:[/AREA APS/,/AREA/,/^HA$/],
-    c:[/CULTIVO/], d:[/DIAS? (DE )?LUCRO/,/LUCRO/,/^DIAS$/], e:[/ESTADO/],
+    s:[/^SECT SUE$/,/SECT.*SUE/,/SUERTE/], h:[/HACIENDA/], z:[/^ZONA$/], a:[/AREA APS/,/^AREA/,/^HA$/],
+    c:[/CULTIVO/], d:[/DIAS? (DE )?LUCRO/,/LUCRO/,/^DIAS$/], e:[/^ESTADO$/],
+    siemb:[/AREA SIEMB/], obsE:[/^OBSERVACION$/],
     p:[/PPTO/,/PRESUPUESTO/], v:[/VARIEDAD/],
   },
   ruta: {
-    h:[/HACIENDA/], s:[/SUERTE/], a:[/AREA/], d:[/LUCRO/,/^DIAS$/], variedad:[/VARIEDAD/],
+    h:[/HACIENDA/], s:[/SECT.*SUE/,/SUERTE/], a:[/AREA APS/,/^AREA/], d:[/LUCRO/,/^DIAS$/], variedad:[/VARIEDAD/],
     semillero:[/SEMILLERO/], bandereo:[/BANDEREO/], cont:[/CONTRATISTA/,/^CONT/],
   },
   proceso: {
-    hac:[/HACIENDA/], z:[/^ZONA$/,/ZONA/], sue:[/SUERTE/], area:[/AREA/], dias:[/LUCRO/,/^DIAS$/],
-    cont:[/CONTRATISTA/,/^CONT/], labor:[/^LABOR$/,/LABOR/], obs:[/OBSERVACION/,/^OBS/], variedad:[/VARIEDAD/],
+    hac:[/HACIENDA/], z:[/^ZONA$/], sue:[/SECT.*SUE/,/SUERTE/], area:[/AREA APS/,/^AREA/], dias:[/LUCRO/,/^DIAS$/],
+    cont:[/CONTRATISTA/,/^CONT/], labor:[/^LABOR$/], obs:[/OBSERVACION/,/^OBS/], variedad:[/VARIEDAD/],
   },
 };
-const REQUERIDAS = { lotes:['s','h','a','e'], ruta:['h','s','a'], proceso:['hac','sue','area','labor'] };
+const REQUERIDAS = { lotes:['s','h','a'], ruta:['h','s','a'], proceso:['hac','sue','area','labor'] };
+// Campos auxiliares que no se muestran como columnas en la vista previa
+const AUXILIARES = new Set(['siemb','obsE']);
 const HOJAS = {
   lotes:   { nombres:[/COMITE APS/,/COMITE/], filaPreferida:4 },  // header en fila 5
   ruta:    { nombres:[/RUTA DE SIEMBRA/,/^RUTA SIEMBRA/] },
@@ -82,15 +88,15 @@ function convertirFila(tipo, get){
   if (tipo === 'lotes') {
     const s = txt(get('s')), h = txt(get('h')), a = num(get('a'));
     if (!s || !h || !a) return null;
-    const hac = h.toUpperCase(), est = norm(get('e'));
-    const zona = num(get('z'));
+    const hac = h.toUpperCase(), zona = num(get('z'));
+    const sembrada = /SEMBR/.test(norm(get('e'))) || num(get('siemb')) > 0 || /SEMBR/.test(norm(get('obsE')));
     return {
       s: s.toUpperCase(), h: hac,
       z: zona === 1 || zona === 2 ? zona : zonaDe(hac),
       a: +a.toFixed(2),
       c: /ARROZ/.test(norm(get('c'))) ? 'ARROZ' : 'CAÑA',
       d: Math.round(num(get('d')) || 0),
-      e: /SEMBR/.test(est) ? 'SEMBRADA' : 'PENDIENTE',
+      e: sembrada ? 'SEMBRADA' : 'PENDIENTE',
       p: /^(SI|S|X|1)$/.test(norm(get('p'))) ? 'SI' : 'NO',
       v: txt(get('v')) ? txt(get('v')).toUpperCase() : 'SIN DATO',
     };
@@ -127,6 +133,9 @@ function leerHoja(XLSX, wb, tipo){
   const map = mapearColumnas(rows[hi], tipo);
   res.columnas = map;
   res.faltan = REQUERIDAS[tipo].filter(c => !(c in map));
+  // Estado deducido de "Área Siemb" / OBSERVACIÓN cuando no hay columna Estado
+  res.estadoDerivado = tipo === 'lotes' && !('e' in map) && ('siemb' in map || 'obsE' in map);
+  if (tipo === 'lotes' && !('e' in map) && !res.estadoDerivado) res.faltan.push('e');
   for (let i = hi + 1; i < rows.length; i++) {
     const r = rows[i];
     const get = campo => campo in map ? r[map[campo]] : '';
@@ -136,6 +145,55 @@ function leerHoja(XLSX, wb, tipo){
     if (o) res.filas.push(o);
   }
   return res;
+}
+
+// Fecha serial de Excel → "30 Sep 2026"
+const MES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+function fechaExcel(serial){
+  const d = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+  return { texto: `${d.getUTCDate()} ${MES_CORTO[d.getUTCMonth()]} ${d.getUTCFullYear()}`, fecha: d };
+}
+function semanaISO(d){
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+  return Math.ceil(((t - Date.UTC(t.getUTCFullYear(), 0, 1)) / 86400000 + 1) / 7);
+}
+
+// RESUMEN: fecha de corte (celda de fecha junto a "DASHBOARD") y ppto total
+// (columna "PPTO A …" en la fila TOTAL).
+function leerResumen(XLSX, wb){
+  const n = wb.SheetNames.find(s => norm(s) === 'RESUMEN'); if (!n) return {};
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[n], { header:1, defval:'', raw:true });
+  const out = {};
+  const serial = (rows[0] || []).find(v => typeof v === 'number' && v > 40000 && v < 60000);
+  if (serial) { const f = fechaExcel(serial); out.fecha = f.texto; out.semana = 'Semana ' + semanaISO(f.fecha); }
+  for (let i = 0; i < Math.min(rows.length, 15); i++) {
+    const col = rows[i].findIndex(v => /^PPTO\b/.test(norm(v)));
+    if (col < 0) continue;
+    const tot = rows.slice(i + 1).find(r => r.some(v => norm(v) === 'TOTAL'));
+    if (tot && num(tot[col]) > 0) out.pptoTotal = +num(tot[col]).toFixed(2);
+    break;
+  }
+  return out;
+}
+
+// PANEL CONTROL: tabla "Concepto | $/ha Real | $/ha Ppto | … | Costo Total $"
+function leerCostos(XLSX, wb){
+  const n = wb.SheetNames.find(s => norm(s) === 'PANEL CONTROL'); if (!n) return null;
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[n], { header:1, defval:'', raw:true });
+  const hi = rows.findIndex(r => r.some(v => norm(v) === 'CONCEPTO') && r.some(v => /HA REAL/.test(norm(v))));
+  if (hi < 0) return null;
+  const H = rows[hi].map(norm);
+  const ci = H.indexOf('CONCEPTO'), ri = H.findIndex(h => /HA REAL/.test(h)),
+        pi = H.findIndex(h => /HA PPTO/.test(h)), ti = H.findIndex(h => /COSTO TOTAL/.test(h));
+  const costos = [];
+  for (let i = hi + 1; i < rows.length; i++) {
+    const c = txt(rows[i][ci]);
+    if (!c || /^NOTA/.test(norm(c))) break;
+    if (norm(c) === 'TOTAL') continue;
+    costos.push({ concepto: c, real: num(rows[i][ri]) || 0, ppto: pi >= 0 ? num(rows[i][pi]) : null, total: ti >= 0 ? (num(rows[i][ti]) || 0) : 0 });
+  }
+  return costos.length ? costos : null;
 }
 
 let IMPORT_PENDIENTE = null;
@@ -149,6 +207,8 @@ function leerLibro(file){
       lotes: leerHoja(XLSX, wb, 'lotes'),
       ruta: leerHoja(XLSX, wb, 'ruta'),
       proceso: leerHoja(XLSX, wb, 'proceso'),
+      resumen: leerResumen(XLSX, wb),
+      costos: leerCostos(XLSX, wb),
     };
   }));
 }
@@ -158,6 +218,8 @@ function aplicarImport(opts){
   ['lotes','ruta','proceso'].forEach(t => {
     if (opts[t] && imp[t].filas.length) DB[t] = imp[t].filas;
   });
+  if (opts.costos && imp.costos) DB.costos = imp.costos;
+  if (opts.costos && imp.resumen.pptoTotal) DB.meta.pptoTotal = imp.resumen.pptoTotal;
   if (opts.fecha) DB.meta.fecha = opts.fecha;
   if (opts.semana) DB.meta.semana = opts.semana;
   IMPORT_PENDIENTE = null;

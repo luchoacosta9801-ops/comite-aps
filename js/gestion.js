@@ -264,15 +264,22 @@ function procesarExcel(file){
       else{
         const extra=t==='lotes'?(()=>{const s=r.filas.filter(l=>l.e==='SEMBRADA');return ` · ${f2(sum(s,l=>l.a))} ha sembradas · ${r.filas.length-s.length} pendientes`;})():` · ${f2(sum(r.filas,x=>x.a??x.area))} ha`;
         det=`<div style="font-size:10.5px;color:var(--dim)">Hoja "${esc(r.hoja)}" · encabezado en fila ${r.fila} · <b>${r.filas.length} registros</b>${extra}</div>
-          <div class="imp-cols">${Object.keys(COLS[t]).map(c=>`<span class="chip ${c in r.columnas?'cg':'cr'}">${NOMBRE_CAMPO[c]}${c in r.columnas?' ✓':' ✗'}</span>`).join('')}</div>`;
+          <div class="imp-cols">${Object.keys(COLS[t]).filter(c=>!AUXILIARES.has(c)).map(c=>{
+            const ok=c in r.columnas||(c==='e'&&r.estadoDerivado);
+            const lbl=c==='e'&&r.estadoDerivado?'Estado (por Área Siemb)':NOMBRE_CAMPO[c];
+            return`<span class="chip ${ok?'cg':'cr'}">${lbl}${ok?' ✓':' ✗'}</span>`;}).join('')}</div>`;
       }
       return`<div class="imp-sheet ${ok?'ok':'bad'}"><div class="imp-title"><span>${titulos[t]}</span>
         <label style="font-size:10.5px;font-weight:600;display:flex;gap:5px;align-items:center"><input type="checkbox" id="chk-${t}" ${ok?'checked':'disabled'}> Reemplazar</label></div>${det}</div>`;
     };
-    res.innerHTML=`<div style="margin-top:14px">${bloque('lotes')}${bloque('ruta')}${bloque('proceso')}</div>
+    const rs=imp.resumen||{},cs=imp.costos;
+    const extra=(rs.pptoTotal||cs)?`<div class="imp-sheet ok"><div class="imp-title"><span>RESUMEN y PANEL CONTROL → Ppto y costos</span>
+        <label style="font-size:10.5px;font-weight:600;display:flex;gap:5px;align-items:center"><input type="checkbox" id="chk-costos" checked> Reemplazar</label></div>
+        <div style="font-size:10.5px;color:var(--dim)">${rs.pptoTotal?`Ppto total: <b>${f2(rs.pptoTotal)} ha</b>`:''}${rs.pptoTotal&&cs?' · ':''}${cs?`Costos: ${cs.map(c=>esc(c.concepto)+' '+money(c.real)+'/ha').join(' · ')}`:''}</div></div>`:'';
+    res.innerHTML=`<div style="margin-top:14px">${bloque('lotes')}${bloque('ruta')}${bloque('proceso')}${extra}</div>
       <div class="mrow" style="grid-template-columns:1fr 1fr;margin-top:10px">
-        <div><label class="mlabel">Nueva fecha de corte</label><input class="minput" id="imp-fecha" value="${esc(DB.meta.fecha)}"></div>
-        <div><label class="mlabel">Nueva semana</label><input class="minput" id="imp-sem" value="${esc(DB.meta.semana)}"></div>
+        <div><label class="mlabel">Nueva fecha de corte</label><input class="minput" id="imp-fecha" value="${esc(rs.fecha||DB.meta.fecha)}"></div>
+        <div><label class="mlabel">Nueva semana</label><input class="minput" id="imp-sem" value="${esc(rs.semana||DB.meta.semana)}"></div>
       </div>`;
     const alguno=['lotes','ruta','proceso'].some(t=>imp[t].filas.length&&!imp[t].faltan.length);
     modalFooter.innerHTML=`${volver}<button class="mbtn mbtn-ghost" onclick="exportarRespaldo()">💾 Respaldo antes</button>`+
@@ -280,7 +287,7 @@ function procesarExcel(file){
   }).catch(e=>{res.innerHTML=`<div class="err">No se pudo leer el archivo: ${esc(e.message)}</div>`;});
 }
 function confirmarImport(){
-  const o={};['lotes','ruta','proceso'].forEach(t=>o[t]=q('chk-'+t)?.checked);
+  const o={};['lotes','ruta','proceso','costos'].forEach(t=>o[t]=q('chk-'+t)?.checked);
   o.fecha=q('imp-fecha').value.trim();o.semana=q('imp-sem').value.trim();
   aplicarImport(o);renderAll();closeModal();toast('✓ Datos importados');
 }
@@ -298,7 +305,7 @@ function renderBackup(){
   </div>
   <input type="file" id="file-json" accept=".json,application/json" hidden>
   <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-    <div style="font-size:10.5px;color:var(--muted)">Volver a los datos originales de la semana 37 (se pierden los cambios).</div>
+    <div style="font-size:10.5px;color:var(--muted)">Volver a los datos publicados (${esc(SEED.meta.fecha)} · ${esc(SEED.meta.semana)}). Se pierden los cambios hechos aquí.</div>
     <button class="mbtn mbtn-danger" onclick="restablecer()">↺ Restablecer datos</button>
   </div>`;
   q('file-json').addEventListener('change',e=>{
