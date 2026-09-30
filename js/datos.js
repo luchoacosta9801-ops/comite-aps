@@ -1,7 +1,7 @@
 // Datos publicados del Comité APS. Archivo generado por la app ("Publicar para todos");
 // cambiar meta.corte hace que los navegadores descarten lo guardado y tomen estos datos.
 const SEED = {
-  meta: {"fecha":"30 Sep 2026","semana":"Semana 40","corte":"2026-09-30T16:23:00.176Z","pptoTotal":555.45},
+  meta: {"fecha":"30 Sep 2026","semana":"Semana 40","corte":"2026-09-30T16:40:39.565Z","pptoTotal":555.45},
   lotes: [
     {"s":"3110-050","h":"NORMANDIA","z":2,"a":8.33,"c":"CAÑA","d":273,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
     {"s":"3501-050","h":"RIOPAILA","z":1,"a":8.62,"c":"CAÑA","d":309,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
@@ -57,8 +57,8 @@ const SEED = {
     {"h":"RIOPAILA","s":"3501-050","a":8.62,"d":309,"variedad":null,"semillero":null,"bandereo":null,"cont":null}
   ],
   proceso: [
-    {"hac":"PERALONSO","z":2,"sue":"3111-200","area":12.44,"dias":381,"cont":"RIOCAST","labor":"DESCEPADA","obs":"SIN INICIAR","variedad":null},
-    {"hac":"PERALONSO","z":2,"sue":"3111-090","area":12.95,"dias":201,"cont":"RIOCAST","labor":"DESCEPADA","obs":"SIN INICIAR","variedad":null},
+    {"hac":"PERALONSO","z":2,"sue":"3111-200","area":12.44,"dias":381,"cont":"RIOCAST","labor":"DESCEPADA","obs":"1 PASE REALIZADO","variedad":null},
+    {"hac":"PERALONSO","z":2,"sue":"3111-090","area":12.95,"dias":201,"cont":"RIOCAST","labor":"DESCEPADA","obs":"1 PASE REALIZADO","variedad":null},
     {"hac":"PERALONSO","z":2,"sue":"3111-131","area":15.03,"dias":271,"cont":"RIOCAST","labor":"DESCEPADA","obs":"SIN INICIAR","variedad":null},
     {"hac":"RIOPAILA","z":1,"sue":"3501-050","area":8.62,"dias":309,"cont":"BIENES","labor":"SURCADA","obs":null,"variedad":null},
     {"hac":"RIOPAILA","z":1,"sue":"3501-052","area":2.92,"dias":311,"cont":"BIENES","labor":"SURCADA","obs":null,"variedad":null},
@@ -74,6 +74,9 @@ const SEED = {
       {"hac":"NORMANDIA","z":2,"sue":"3110-050","area":8.33,"dias":273,"cont":"RIOCAST","labor":"SURCADA","obs":null,"variedad":null},
       {"hac":"LA LUISA","z":1,"sue":"3107-780","area":9,"dias":434,"cont":"RIOCAST","labor":"PULIDA","obs":"1 PASE REALIZADO","variedad":null}
     ] },
+  // Contratistas de la ruta de siembra y el predeterminado
+  contratistas: ["ANDRUSV","RIOCAST","BIENES"],
+  contratistaDefecto: "ANDRUSV",
   pptoMensual: { z1: [45.32,116.75,45.63,0,0,33.03,66.76,41.56,22.26,39.81,9.74,48.35], z2: [15.77,47.44,3.4,0,0,33.33,13.35,48.96,21.89,24.98,0,63.46] },
   costos: [
     {"concepto":"Preparación","real":1007086,"ppto":2324317,"total":452815870},
