@@ -357,3 +357,8 @@ tr:not(.tot):hover td{background:#f0f7ff}
 }
 @media(max-width:380px){.facciones button{padding:0 9px}.ffiltros{grid-template-columns:1fr}}
 @media(max-width:760px){.txt-largo{display:none}.facciones button{padding:0 10px}}
+/* Nota de última actualización en el encabezado */
+.nota-act{flex-basis:100%;text-align:right;font-size:9.5px;color:var(--muted);margin-top:-2px}
+.nota-act b{color:var(--dim);font-weight:700}
+.hdr-right{flex-wrap:wrap;justify-content:flex-end;row-gap:4px}
+@media(max-width:760px){.nota-act{text-align:left}}

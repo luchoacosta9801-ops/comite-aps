@@ -35,9 +35,26 @@ function dc(d){return d<100?'var(--red)':d<200?'var(--amber)':'var(--dim)'}
 // Filtros de zona/hacienda aplicados a registros de ruta/proceso
 function fueraDeFiltro(hac,z){return (F.zona!=='all'&&z!=F.zona)||(F.hac!=='all'&&hac!==F.hac)}
 
+// Fecha del encabezado: la de hoy (se actualiza sola) salvo que se fije a mano (📌)
+function hoyTexto(){const d=new Date();return`${d.getDate()} ${MES_CORTO[d.getMonth()]} ${d.getFullYear()}`;}
+function renderFechaChip(){
+  const fija=DB.meta.fechaFija,chip=q('chip-fecha');
+  chip.textContent=fija?`📌 ${fija}`:hoyTexto();
+  chip.title=fija?'Fecha fijada a mano'+(MODO_EDICION?' · clic para cambiarla o dejarla automática':'')
+                 :'Fecha de hoy'+(MODO_EDICION?' · clic para fijar otra':'');
+}
+// Nota con la fecha y hora de la última publicación de los datos
+function renderNotaActualizacion(){
+  const c=SEED.meta.corte,d=/^\d{4}-\d{2}-\d{2}T/.test(String(c||''))?new Date(c):null;
+  const cuando=d?d.toLocaleString('es-CO',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'}):SEED.meta.fecha;
+  const pend=MODO_EDICION&&hayCambiosSinPublicar();
+  q('nota-act').innerHTML=`Última actualización: <b>${esc(cuando)}</b>${pend?' · <span style="color:var(--amber)">hay cambios sin publicar</span>':''}`;
+}
+setInterval(renderFechaChip,60*1000);   // al pasar la medianoche cambia sola
+
 function renderMeta(){
   const {fecha,semana}=DB.meta;
-  q('chip-fecha').textContent=fecha;
+  renderFechaChip();
   q('chip-sem').textContent=semana;
   q('slbl').innerHTML=`Indicadores generales · ${esc(fechaLarga(fecha))} · ${esc(semana)}<span class="slbl-arrow">▼</span>`;
   document.querySelectorAll('.sem-tag').forEach(t=>t.textContent=semana.replace(/semana/i,'SEM.'));
@@ -403,6 +420,7 @@ q('btn-reset').addEventListener('click',()=>{
 // ── Fecha y semana editables ──
 function editableChip(id,campo){
   q(id).addEventListener('click',function handler(){
+    if(campo==='fechaFija'){editarFechaChip();return;}
     const chip=q(id),cur=DB.meta[campo];
     const input=document.createElement('input');
     input.value=cur;input.className='hchip';
@@ -417,8 +435,29 @@ function editableChip(id,campo){
     input.addEventListener('keydown',e=>{if(e.key==='Enter')fin(true);if(e.key==='Escape')fin(false);});
   });
 }
+// Fecha del encabezado: escribir una fecha la fija; dejar vacío la vuelve automática (hoy)
+function editarFechaChip(){
+  const chip=q('chip-fecha'),cur=DB.meta.fechaFija||'';
+  const input=document.createElement('input');
+  input.value=cur||hoyTexto();input.className='hchip';input.placeholder='Vacío = hoy';
+  input.title='Escribe una fecha para fijarla, o bórrala para mostrar siempre la de hoy';
+  input.style.cssText='border:1px solid rgba(0,119,170,.5);outline:none;width:120px;text-align:center;font-family:var(--sans);background:#fff;color:var(--text)';
+  chip.hidden=true;chip.after(input);input.focus();input.select();
+  let done=false;
+  const fin=ok=>{if(done)return;done=true;
+    const v=input.value.trim();input.remove();chip.hidden=false;
+    if(!ok)return;
+    const nueva=(!v||v===hoyTexto())?null:v;
+    if(nueva===(DB.meta.fechaFija||null))return;
+    if(nueva)DB.meta.fechaFija=nueva;else delete DB.meta.fechaFija;
+    save();renderAll();
+    toast(nueva?`📌 Fecha fijada: ${nueva}`:'Fecha automática: se muestra el día de hoy');
+  };
+  input.addEventListener('blur',()=>fin(true));
+  input.addEventListener('keydown',e=>{if(e.key==='Enter')fin(true);if(e.key==='Escape')fin(false);});
+}
 if(MODO_EDICION){
-  editableChip('chip-fecha','fecha');
+  editableChip('chip-fecha','fechaFija');
   editableChip('chip-sem','semana');
 }else{
   // Vista publicada: solo lectura
@@ -514,6 +553,7 @@ busInput.addEventListener('keydown',e=>{if(e.key==='Escape'){busResults.classLis
 // y la app corre con servidor.ps1 (es quien escribe js/datos.js y sube a GitHub).
 let SERVIDOR=false;
 function renderEstadoEdicion(){
+  renderNotaActualizacion();
   if(!MODO_EDICION)return;
   const pend=hayCambiosSinPublicar();
   q('btn-gestionar').textContent='✏️ Editar'+(pend?' ●':'');
