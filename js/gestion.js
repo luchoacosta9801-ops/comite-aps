@@ -155,24 +155,82 @@ function renderEditRuta(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px">
         ${campo(i,'variedad','🌱 Variedad','ej: CC 01-1940')}${campo(i,'semillero','📍 Semillero','ej: 3113-160')}
-        ${campo(i,'bandereo','🚩 Bandereo (surcos)','ej: 12','number')}${campo(i,'cont','👤 Contratista','ej: ANDRUSV')}
+        ${campo(i,'bandereo','🚩 Bandereo (metros)','ej: 12','number')}${selectContratista(i)}
       </div>
     </div>`).join('');
   const enRuta=new Set(DB.ruta.map(r=>r.s));
   const disp=DB.lotes.filter(l=>l.e==='PENDIENTE'&&!enRuta.has(l.s));
-  modalBody.innerHTML=`<div>${items||'<div class="nores">No hay suertes en la ruta</div>'}</div>`+
+  modalBody.innerHTML=listaContratistas()+`<div>${items||'<div class="nores">No hay suertes en la ruta</div>'}</div>`+
     (disp.length?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bdr)"><div class="mlabel">Agregar suerte pendiente a la ruta</div>
       <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><select id="sel-add-ruta" class="mselect" style="flex:1;min-width:200px">${disp.map(l=>`<option value="${esc(l.s)}">${esc(l.s)} · ${esc(l.h)} · ${f2(l.a)} ha · ${l.d}d lucro</option>`).join('')}</select>
       <button class="mbtn mbtn-primary" onclick="addToRuta()">+ Agregar</button></div></div>`
     :'<div style="margin-top:12px;font-size:10px;color:var(--muted)">Todas las suertes pendientes ya están en la ruta.</div>');
   modalFooter.innerHTML=`${volver}<button class="mbtn mbtn-primary" onclick="closeModal()">✓ Listo</button>`;
 }
-function setRuta(i,k,v){cambio(()=>{DB.ruta[i][k]=k==='bandereo'?(parseInt(v,10)||null):(v.trim()||null);});}
+function setRuta(i,k,v){cambio(()=>{DB.ruta[i][k]=k==='bandereo'?(parseFloat(v)||null):(v.trim()||null);});}
+
+// Contratista de cada suerte: desplegable con la lista + "agregar otro"
+function selectContratista(i){
+  const cur=DB.ruta[i].cont||'',lista=contratistas();
+  const extra=cur&&!lista.includes(cur)?[cur]:[];   // uno que ya no está en la lista
+  return`<div><label class="mlabel">👤 Contratista</label>
+    <select class="mselect" style="font-size:11px" onchange="elegirContratista(${i},this)">
+      <option value="" ${!cur?'selected':''}>— Sin contratista —</option>
+      ${[...lista,...extra].map(c=>`<option value="${esc(c)}" ${c===cur?'selected':''}>${esc(c)}${c===contratistaDefecto()?' ★':''}</option>`).join('')}
+      <option value="__nuevo">➕ Agregar otro…</option>
+    </select></div>`;
+}
+function elegirContratista(i,sel){
+  if(sel.value!=='__nuevo'){setRuta(i,'cont',sel.value);return;}
+  // Cambia el desplegable por un campo para escribir el nombre nuevo
+  const caja=sel.parentElement;
+  caja.innerHTML=`<label class="mlabel">👤 Nuevo contratista</label>
+    <div style="display:flex;gap:6px"><input class="minput" id="nuevo-cont-${i}" placeholder="Nombre" style="font-size:11px">
+    <button class="mbtn mbtn-primary" style="padding:4px 10px" onclick="agregarContratista(q('nuevo-cont-${i}').value,${i})">✓</button>
+    <button class="mbtn mbtn-ghost" style="padding:4px 10px" onclick="renderEditRuta()">✕</button></div>`;
+  const inp=q(`nuevo-cont-${i}`);inp.focus();
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')agregarContratista(inp.value,i);if(e.key==='Escape')renderEditRuta();});
+}
+
+// Lista plegable de contratistas: agregar, quitar y elegir el predeterminado (★)
+let listaContAbierta=false;
+function listaContratistas(){
+  const lista=contratistas(),def=contratistaDefecto();
+  const chip=c=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 9px;border-radius:14px;border:1px solid ${c===def?'rgba(180,83,9,.4)':'var(--bdr)'};background:${c===def?'rgba(180,83,9,.08)':'#fff'};font-size:10.5px;font-weight:600">
+      ${esc(c)}
+      <button title="${c===def?'Predeterminado':'Usar como predeterminado'}" data-c="${esc(c)}" onclick="predeterminarContratista(this.dataset.c)" style="border:none;background:none;cursor:pointer;color:${c===def?'var(--amber)':'var(--bdr2)'};font-size:12px;padding:0 2px">★</button>
+      <button title="Quitar de la lista" data-c="${esc(c)}" onclick="quitarContratista(this.dataset.c)" style="border:none;background:none;cursor:pointer;color:var(--muted);font-size:11px;padding:0 3px">✕</button></span>`;
+  return`<details ${listaContAbierta?'open':''} ontoggle="listaContAbierta=this.open" style="border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;margin-bottom:12px;background:#fff">
+    <summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--text)">👤 Lista de contratistas (${lista.length}) · predeterminado: <span style="color:var(--amber)">${esc(def||'ninguno')}</span></summary>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0">${lista.map(chip).join('')||'<span style="font-size:10.5px;color:var(--muted)">Lista vacía</span>'}</div>
+    <div style="display:flex;gap:6px"><input class="minput" id="cont-nuevo" placeholder="Agregar contratista…" style="font-size:11px;max-width:220px">
+      <button class="mbtn mbtn-primary" style="padding:4px 12px" onclick="agregarContratista(q('cont-nuevo').value)">+ Agregar</button></div>
+    <div style="font-size:9.5px;color:var(--muted);margin-top:6px">★ = contratista que se asigna al agregar una suerte a la ruta. Quitar de la lista no cambia las suertes que ya lo tienen.</div>
+  </details>`;
+}
+function agregarContratista(nombre,i){
+  const c=String(nombre||'').trim().toUpperCase();
+  if(!c){toast('Escribe el nombre del contratista');return;}
+  listaContAbierta=listaContAbierta||i===undefined;
+  cambio(()=>{
+    const l=contratistas();if(!l.includes(c))l.push(c);DB.contratistas=l;
+    if(i!==undefined)DB.ruta[i].cont=c;
+  },{rehacer:renderEditRuta});
+  toast(`✓ ${c} agregado`);
+}
+function quitarContratista(c){
+  cambio(()=>{
+    DB.contratistas=contratistas().filter(x=>x!==c);
+    if(contratistaDefecto()===c)DB.contratistaDefecto=DB.contratistas[0]||'';
+  },{rehacer:renderEditRuta});
+  toast(`${c} quitado de la lista`);
+}
+function predeterminarContratista(c){cambio(()=>{DB.contratistaDefecto=c;},{rehacer:renderEditRuta});toast(`★ ${c} es el predeterminado`);}
 function moveRuta(from,to){if(to<0||to>=DB.ruta.length)return;cambio(()=>DB.ruta.splice(to,0,DB.ruta.splice(from,1)[0]),{rehacer:renderEditRuta});}
 function deleteRutaItem(i){const s=DB.ruta[i].s;if(!confirm(`¿Quitar ${s} de la ruta?`))return;cambio(()=>DB.ruta.splice(i,1),{rehacer:renderEditRuta});toast(`${s} quitada de la ruta`);}
 function addToRuta(){
   const s=q('sel-add-ruta').value,l=DB.lotes.find(x=>x.s===s&&x.e==='PENDIENTE');if(!l)return;
-  cambio(()=>DB.ruta.push({h:l.h,s:l.s,a:l.a,d:l.d,variedad:null,semillero:null,bandereo:null,cont:null}),{rehacer:renderEditRuta});
+  cambio(()=>DB.ruta.push({h:l.h,s:l.s,a:l.a,d:l.d,variedad:null,semillero:null,bandereo:null,cont:contratistaDefecto()||null}),{rehacer:renderEditRuta});
   toast(`${s} agregada a la ruta`);
 }
 

@@ -153,7 +153,7 @@ function renderRuta(){
         <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px">
           ${tag(r.variedad&&'🌱 '+esc(r.variedad),'background:rgba(0,135,90,.1);color:var(--green);font-weight:600')}
           ${tag(r.semillero&&'📍 '+esc(r.semillero),'background:rgba(0,119,170,.1);color:var(--cyan)')}
-          ${tag(r.bandereo&&'🚩 '+esc(r.bandereo)+' surcos','background:rgba(180,83,9,.1);color:var(--amber)')}
+          ${tag(r.bandereo&&'🚩 '+esc(r.bandereo)+' m','background:rgba(180,83,9,.1);color:var(--amber)')}
           ${tag(r.cont&&'👤 '+esc(r.cont),'background:var(--card2);color:var(--dim);border:1px solid var(--bdr)')}
         </div>
       </div>

@@ -75,6 +75,9 @@ const SEED = {
   proceso: ${lista(d.proceso)},
   // RUTA SEMANA PASADA del comité anterior, para la torta comparativa
   procesoAnterior: ${ant ? `{ fecha: ${J(ant.fecha)}, semana: ${J(ant.semana)}, items: ${lista(ant.items, '    ')} }` : 'null'},
+  // Contratistas de la ruta de siembra y el predeterminado
+  contratistas: ${J(d.contratistas || [...new Set([...CONTRATISTAS_BASE, ...d.ruta.map(r => r.cont).filter(Boolean)])])},
+  contratistaDefecto: ${J(d.contratistaDefecto !== undefined ? d.contratistaDefecto : CONTRATISTA_DEFECTO)},
   pptoMensual: { z1: ${J(d.pptoMensual.z1)}, z2: ${J(d.pptoMensual.z2)} },
   costos: ${lista(d.costos)},
 };
@@ -106,6 +109,10 @@ function resetDB(){
   DB = clone(SEED);
   save();
 }
+
+// Lista de contratistas para la ruta de siembra y cuál sale por defecto
+function contratistas(){ return DB.contratistas || [...new Set([...CONTRATISTAS_BASE, ...DB.ruta.map(r => r.cont).filter(Boolean)])]; }
+function contratistaDefecto(){ return DB.contratistaDefecto !== undefined ? DB.contratistaDefecto : CONTRATISTA_DEFECTO; }
 
 function hacsActuales(){
   const set = new Set(HACS_BASE);

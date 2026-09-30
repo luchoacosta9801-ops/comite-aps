@@ -71,7 +71,7 @@ function exportarExcel(){
 
     // RUTA DE SIEMBRA
     XLSX.utils.book_append_sheet(wb, hoja(XLSX,
-      [['ORDEN', 'HACIENDA', 'SUERTE', 'ÁREA (ha)', 'DÍAS LUCRO', 'VARIEDAD', 'SEMILLERO', 'BANDEREO (surcos)', 'CONTRATISTA'],
+      [['ORDEN', 'HACIENDA', 'SUERTE', 'ÁREA (ha)', 'DÍAS LUCRO', 'VARIEDAD', 'SEMILLERO', 'BANDEREO (m)', 'CONTRATISTA'],
        ...DB.ruta.map((r, i) => ({ r, i })).filter(({ r }) => !fueraDeFiltro(r.h, zonaDe(r.h))).map(({ r, i }) => [i + 1, r.h, r.s, r2(r.a), r.d, r.variedad || '', r.semillero || '', r.bandereo || '', r.cont || ''])],
       [7, 14, 11, 10, 11, 22, 20, 17, 13]), 'RUTA DE SIEMBRA');
 

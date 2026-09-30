@@ -107,7 +107,7 @@ function convertirFila(tipo, get){
     return {
       h: h.toUpperCase(), s: s.toUpperCase(), a: +a.toFixed(2), d: Math.round(num(get('d')) || 0),
       variedad: txt(get('variedad')), semillero: txt(get('semillero')),
-      bandereo: num(get('bandereo')), cont: txt(get('cont')),
+      bandereo: num(get('bandereo')), cont: txt(get('cont')) || contratistaDefecto(),
     };
   }
   const sue = txt(get('sue')), hac = txt(get('hac')), area = num(get('area')), labor = txt(get('labor'));
