@@ -118,49 +118,55 @@ function renderSimulador(){
   const Lv = simFiltroSuerte ? L.filter(s => s.r.sue === simFiltroSuerte) : L;
   const todasAbiertas = Lv.length && Lv.every(s => simAbiertas.has(s.r.sue));
   const barra = L.length ? `<div class="sim-bar">
-      <label class="fchip"><span>Suerte</span><select id="sim-fsuerte">
+      <label class="fchip"><span>Suerte</span><select id="sim-fsuerte" class="fsel">
         <option value="">Todas (${L.length})</option>
         ${L.map(s => `<option value="${esc(s.r.sue)}" ${s.r.sue === simFiltroSuerte ? 'selected' : ''}>${esc(s.r.sue)} · ${esc(s.r.hac)}</option>`).join('')}
       </select></label>
       <button type="button" class="plegar-todo" data-act="todas">${todasAbiertas ? '⊟ Contraer todas' : '⊞ Expandir todas'}</button>
       <span class="meta">Clic en una suerte para ver o editar sus labores</span>
     </div>` : '';
-  q('sim-suertes').innerHTML = barra + (Lv.length ? Lv.map(s => {
+  q('sim-suertes').innerHTML = barra + (Lv.length ? '<div class="sim-grid">' + Lv.map(s => {
     const r = s.r, abierta = simAbiertas.has(r.sue);
     const filas = s.plan.map((f, i) => {
       const c = s.filas[i], est = SIM_ESTADOS.find(e => e[0] === f.estado) || SIM_ESTADOS[1];
       const d = c.costoHa != null && c.pptoHa != null ? c.pptoHa - c.costoHa : null;
       return `<tr class="est-${f.estado}" data-sue="${esc(r.sue)}" data-i="${i}">
         <td class="lab">${esc(c.def.nombre)}</td>
-        <td>${ed ? `<span class="seg-sim">${SIM_ESTADOS.map(([k, t]) => `<button type="button" data-act="estado" data-v="${k}" class="${f.estado === k ? 'on ' + k : ''}">${t}</button>`).join('')}</span>` : `<span class="est-chip ${f.estado}">${est[1]}</span>`}</td>
-        <td>${ed ? `<select data-fld="contratista">${opCont(f.contratista)}</select>` : esc(f.contratista || '—')}</td>
-        <td class="n">${ed ? `<input data-fld="cant" type="number" min="0" step="any" value="${esc(f.cant)}">` : f2(c.cant).replace(/\.00$/, '')}</td>
-        <td class="n">${ed ? `<input data-fld="tarifa" type="number" min="0" step="any" class="${f.tarifaManual != null ? 'manual' : ''}" placeholder="sin tarifa" value="${c.tarifa != null ? Math.round(c.tarifa) : ''}" title="${f.tarifaManual != null ? 'Tarifa escrita a mano (borra para usar la del contratista)' : c.t ? esc(c.t.desc) + ' · ' + money(c.t.costo) + '/' + esc(c.t.unidad) : 'Sin tarifa para este contratista'}">` : (c.tarifa != null ? money(c.tarifa) : '<span class="warn-t">sin tarifa</span>')}${c.unidad !== 'HA' && c.t ? `<small>/${esc(c.t.unidad.toLowerCase())}</small>` : ''}</td>
-        <td class="n b">${c.costoHa != null ? money(c.costoHa) : c.sinTarifa ? '<span class="warn-t">sin tarifa</span>' : '—'}</td>
-        <td class="n">${c.pptoHa != null ? money(c.pptoHa) : '—'}</td>
-        <td class="n ${d == null ? '' : d >= 0 ? 'pos' : 'neg'}">${d == null ? '—' : (d >= 0 ? '+' : '−') + money(Math.abs(d))}</td>
-        <td class="n">${c.costoHa != null ? moneyM(c.costoHa * s.area) : '—'}</td>
-        ${ed ? `<td><button type="button" class="x" data-act="quitar" title="Quitar labor">×</button></td>` : ''}
+        <td class="c-est" data-label="Estado">${ed ? `<span class="seg-sim">${SIM_ESTADOS.map(([k, t]) => `<button type="button" data-act="estado" data-v="${k}" class="${f.estado === k ? 'on ' + k : ''}">${t}</button>`).join('')}</span>` : `<span class="est-chip ${f.estado}">${est[1]}</span>`}</td>
+        <td data-label="Contratista">${ed ? `<select data-fld="contratista">${opCont(f.contratista)}</select>` : esc(f.contratista || '—')}</td>
+        <td class="n" data-label="Pases">${ed ? `<input data-fld="cant" type="number" min="0" step="any" value="${esc(f.cant)}">` : f2(c.cant).replace(/\.00$/, '')}</td>
+        <td class="n" data-label="Tarifa">${ed ? `<input data-fld="tarifa" type="number" min="0" step="any" class="${f.tarifaManual != null ? 'manual' : ''}" placeholder="sin tarifa" value="${c.tarifa != null ? Math.round(c.tarifa) : ''}" title="${f.tarifaManual != null ? 'Tarifa escrita a mano (borra para usar la del contratista)' : c.t ? esc(c.t.desc) + ' · ' + money(c.t.costo) + '/' + esc(c.t.unidad) : 'Sin tarifa para este contratista'}">` : (c.tarifa != null ? money(c.tarifa) : '<span class="warn-t">sin tarifa</span>')}${c.unidad !== 'HA' && c.t ? `<small>/${esc(c.t.unidad.toLowerCase())}</small>` : ''}</td>
+        <td class="n b" data-label="Costo $/ha">${c.costoHa != null ? money(c.costoHa) : c.sinTarifa ? '<span class="warn-t">sin tarifa</span>' : '—'}</td>
+        <td class="n" data-label="Ppto $/ha">${c.pptoHa != null ? money(c.pptoHa) : '—'}</td>
+        <td data-label="Diferencia" class="n ${d == null ? '' : d >= 0 ? 'pos' : 'neg'}">${d == null ? '—' : (d >= 0 ? '+' : '−') + money(Math.abs(d))}</td>
+        <td class="n" data-label="Total $">${c.costoHa != null ? moneyM(c.costoHa * s.area) : '—'}</td>
+        ${ed ? `<td class="c-x"><button type="button" class="x" data-act="quitar" title="Quitar labor">×</button></td>` : ''}
       </tr>`;
     }).join('');
     const faltan = simData().labores.filter(l => !s.plan.some(f => norm(f.labor) === norm(l.nombre)));
     return `<div class="sim-card ${abierta ? 'abierta' : ''}" data-card="${esc(r.sue)}">
       <div class="sim-card-h" data-act="tarjeta" title="${abierta ? 'Ocultar labores' : 'Ver labores'}">
         <div class="sim-card-t"><span class="sim-flecha">▶</span><b class="sue">${esc(r.sue)}</b> <span class="sim-hac">${esc(r.hac)}</span>
-          <span class="meta">· ${f2(s.area)} ha · labor actual: <b>${esc(r.labor)}</b> (${esc(r.cont || '—')})</span></div>
-        <div class="tot">${simDif(s.dif, s.ppto, s.proy)} <span class="meta">Costo <b>${money(s.proy)}/ha</b> · Total <b>${moneyM(s.total)}</b> · ppto ${moneyM(s.pptoTotal)}</span></div>
+          <span class="sim-pill-wrap">${simDif(s.dif, s.ppto, s.proy)}</span></div>
+        <div class="meta sim-card-m">${f2(s.area)} ha · labor actual: <b>${esc(r.labor)}</b> (${esc(r.cont || '—')})</div>
+        <div class="sim-card-k">
+          <div><span>Costo/ha</span><b>${money(s.proy)}</b></div>
+          <div><span>Total</span><b>${moneyM(s.total)}</b></div>
+          <div><span>Ppto</span><b>${moneyM(s.pptoTotal)}</b></div>
+        </div>
+        <div class="sim-card-ver">${abierta ? 'Ocultar labores ▲' : 'Ver labores ▼'}</div>
       </div>
       <div class="sim-tw"><table class="sim-t">
         <thead><tr><th>Labor</th><th>Estado</th><th>Contratista</th><th class="n">Pases</th><th class="n">Tarifa</th><th class="n">Costo $/ha</th><th class="n">Ppto $/ha</th><th class="n">Diferencia</th><th class="n">Total $</th>${ed ? '<th></th>' : ''}</tr></thead>
         <tbody>${filas}</tbody>
-        <tfoot><tr><td colspan="5">Total suerte <span class="meta">(hecho ${money(s.hecho)}/ha · por hacer ${money(s.porHacer)}/ha)</span></td>
-          <td class="n b">${money(s.proy)}</td><td class="n">${money(s.ppto)}</td>
-          <td class="n ${s.dif >= 0 ? 'pos' : 'neg'}">${(s.dif >= 0 ? '+' : '−') + money(Math.abs(s.dif))}</td><td class="n b">${moneyM(s.total)}</td>${ed ? '<td></td>' : ''}</tr></tfoot>
+        <tfoot><tr><td colspan="5" class="c-tot">Total suerte <span class="meta">(hecho ${money(s.hecho)}/ha · por hacer ${money(s.porHacer)}/ha)</span></td>
+          <td class="n b" data-label="Costo $/ha">${money(s.proy)}</td><td class="n" data-label="Ppto $/ha">${money(s.ppto)}</td>
+          <td data-label="Diferencia" class="n ${s.dif >= 0 ? 'pos' : 'neg'}">${(s.dif >= 0 ? '+' : '−') + money(Math.abs(s.dif))}</td><td class="n b" data-label="Total $">${moneyM(s.total)}</td>${ed ? '<td class="c-x"></td>' : ''}</tr></tfoot>
       </table></div>
       ${ed && faltan.length ? `<div class="sim-add" data-sue="${esc(r.sue)}"><select data-act="agregar"><option value="">+ Agregar labor…</option>${faltan.map(l => `<option>${esc(l.nombre)}</option>`).join('')}</select>
         ${simData().planes[r.sue] ? `<button type="button" class="link" data-act="restaurar">↺ Volver al plan propuesto</button>` : ''}</div>` : ''}
     </div>`;
-  }).join('') : '<div class="nores">No hay suertes en proceso.</div>');
+  }).join('') + '</div>' : '<div class="nores">No hay suertes en proceso.</div>');
   renderSimParam();
 }
 
