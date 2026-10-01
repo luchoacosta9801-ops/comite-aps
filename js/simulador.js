@@ -114,8 +114,19 @@ function renderSimulador(){
   const cont = simContratistas();
   const opCont = sel => `<option value="">—</option>` + (sel && !cont.some(c => norm(c) === norm(sel)) ? `<option selected>${esc(sel)}</option>` : '') +
     cont.map(c => `<option ${norm(c) === norm(sel) ? 'selected' : ''}>${esc(c)}</option>`).join('');
-  q('sim-suertes').innerHTML = L.length ? L.map(s => {
-    const r = s.r;
+  // Tarjetas plegadas por defecto; se abren con clic, con el filtro o con "Expandir todas"
+  const Lv = simFiltroSuerte ? L.filter(s => s.r.sue === simFiltroSuerte) : L;
+  const todasAbiertas = Lv.length && Lv.every(s => simAbiertas.has(s.r.sue));
+  const barra = L.length ? `<div class="sim-bar">
+      <label class="fchip"><span>Suerte</span><select id="sim-fsuerte">
+        <option value="">Todas (${L.length})</option>
+        ${L.map(s => `<option value="${esc(s.r.sue)}" ${s.r.sue === simFiltroSuerte ? 'selected' : ''}>${esc(s.r.sue)} · ${esc(s.r.hac)}</option>`).join('')}
+      </select></label>
+      <button type="button" class="plegar-todo" data-act="todas">${todasAbiertas ? '⊟ Contraer todas' : '⊞ Expandir todas'}</button>
+      <span class="meta">Clic en una suerte para ver o editar sus labores</span>
+    </div>` : '';
+  q('sim-suertes').innerHTML = barra + (Lv.length ? Lv.map(s => {
+    const r = s.r, abierta = simAbiertas.has(r.sue);
     const filas = s.plan.map((f, i) => {
       const c = s.filas[i], est = SIM_ESTADOS.find(e => e[0] === f.estado) || SIM_ESTADOS[1];
       const d = c.costoHa != null && c.pptoHa != null ? c.pptoHa - c.costoHa : null;
@@ -133,10 +144,11 @@ function renderSimulador(){
       </tr>`;
     }).join('');
     const faltan = simData().labores.filter(l => !s.plan.some(f => norm(f.labor) === norm(l.nombre)));
-    return `<div class="sim-card">
-      <div class="sim-card-h">
-        <div><b class="sue">${esc(r.sue)}</b> <span class="hac">${esc(r.hac)}</span> <span class="meta">· ${f2(s.area)} ha · labor actual: <b>${esc(r.labor)}</b> (${esc(r.cont || '—')})</span></div>
-        <div class="tot">${simDif(s.dif, s.ppto, s.proy)} <span class="meta">Total <b>${moneyM(s.total)}</b> · ppto ${moneyM(s.pptoTotal)}</span></div>
+    return `<div class="sim-card ${abierta ? 'abierta' : ''}" data-card="${esc(r.sue)}">
+      <div class="sim-card-h" data-act="tarjeta" title="${abierta ? 'Ocultar labores' : 'Ver labores'}">
+        <div class="sim-card-t"><span class="sim-flecha">▶</span><b class="sue">${esc(r.sue)}</b> <span class="sim-hac">${esc(r.hac)}</span>
+          <span class="meta">· ${f2(s.area)} ha · labor actual: <b>${esc(r.labor)}</b> (${esc(r.cont || '—')})</span></div>
+        <div class="tot">${simDif(s.dif, s.ppto, s.proy)} <span class="meta">Costo <b>${money(s.proy)}/ha</b> · Total <b>${moneyM(s.total)}</b> · ppto ${moneyM(s.pptoTotal)}</span></div>
       </div>
       <div class="sim-tw"><table class="sim-t">
         <thead><tr><th>Labor</th><th>Estado</th><th>Contratista</th><th class="n">Pases</th><th class="n">Tarifa</th><th class="n">Costo $/ha</th><th class="n">Ppto $/ha</th><th class="n">Diferencia</th><th class="n">Total $</th>${ed ? '<th></th>' : ''}</tr></thead>
@@ -148,7 +160,7 @@ function renderSimulador(){
       ${ed && faltan.length ? `<div class="sim-add" data-sue="${esc(r.sue)}"><select data-act="agregar"><option value="">+ Agregar labor…</option>${faltan.map(l => `<option>${esc(l.nombre)}</option>`).join('')}</select>
         ${simData().planes[r.sue] ? `<button type="button" class="link" data-act="restaurar">↺ Volver al plan propuesto</button>` : ''}</div>` : ''}
     </div>`;
-  }).join('') : '<div class="nores">No hay suertes en proceso.</div>';
+  }).join('') : '<div class="nores">No hay suertes en proceso.</div>');
   renderSimParam();
 }
 
@@ -183,8 +195,19 @@ function renderSimParam(){
 }
 
 // ── Eventos (delegados) ──
+const simAbiertas = new Set();   // suertes con la tarjeta abierta (todas cerradas al entrar)
+let simFiltroSuerte = '';
+
 q('simulador').addEventListener('click', e => {
+  const h = e.target.closest('[data-act="tarjeta"]');
+  if (h) { const sue = h.closest('[data-card]').dataset.card; simAbiertas.has(sue) ? simAbiertas.delete(sue) : simAbiertas.add(sue); renderSimulador(); return; }
   const b = e.target.closest('button[data-act]'); if (!b) return;
+  if (b.dataset.act === 'todas') {
+    const vis = simSuertes().filter(s => !simFiltroSuerte || s.r.sue === simFiltroSuerte).map(s => s.r.sue);
+    const abrir = !vis.every(x => simAbiertas.has(x));
+    vis.forEach(x => abrir ? simAbiertas.add(x) : simAbiertas.delete(x));
+    renderSimulador(); return;
+  }
   const act = b.dataset.act, tr = b.closest('tr'), sue = b.closest('[data-sue]')?.dataset.sue;
   if (act === 'estado') simCambio(s => { const f = simPlanEditable(s, sue)[+tr.dataset.i]; f.estado = b.dataset.v; if (f.estado !== 'N' && !f.contratista) f.contratista = simMasBarato(f.labor); });
   else if (act === 'quitar') simCambio(s => { simPlanEditable(s, sue).splice(+tr.dataset.i, 1); });
@@ -195,6 +218,10 @@ q('simulador').addEventListener('click', e => {
 });
 q('simulador').addEventListener('change', e => {
   const el = e.target, tr = el.closest('tr'), sue = el.closest('[data-sue]')?.dataset.sue;
+  if (el.id === 'sim-fsuerte') {   // filtro: al elegir una suerte se abre su tarjeta
+    simFiltroSuerte = el.value; if (el.value) simAbiertas.add(el.value);
+    renderSimulador(); return;
+  }
   if (el.dataset.act === 'agregar') {
     const lab = el.value; if (!lab) return;
     simCambio(s => { const def = simLaborDef(lab), p = simPpto(def);

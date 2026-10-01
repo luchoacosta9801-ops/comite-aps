@@ -434,3 +434,15 @@ body.modo-sim .fbtn-sim{background:var(--green);color:#fff}
 .sim-tbar{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
 .sim-tbar input{flex:1;min-width:200px;max-width:380px;border:1px solid var(--bdr);border-radius:16px;padding:5px 12px;font-size:11px;font-family:var(--sans);outline:none}
 @media(max-width:900px){.sim-kpis{grid-template-columns:1fr 1fr}.sim-ayuda{text-align:left}}
+/* Simulador: tarjetas plegables y filtro de suerte */
+.sim-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.sim-bar .fchip{background:#fff}
+.sim-card-h{cursor:pointer;user-select:none}
+.sim-card-h:hover{background:#edf3fa}
+.sim-card-t{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.sim-hac{font-weight:700;font-size:11.5px;color:var(--text)}
+.sim-flecha{font-size:9px;color:var(--muted);transition:transform .2s;display:inline-block;width:10px}
+.sim-card.abierta .sim-flecha{transform:rotate(90deg)}
+.sim-card:not(.abierta) .sim-tw,.sim-card:not(.abierta) .sim-add{display:none}
+.sim-card:not(.abierta) .sim-card-h{border-bottom:none}
+.sim-card{margin-bottom:8px}
