@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Comité APS · Dashboard Ejecutivo</title>
 <meta name="theme-color" content="#0077aa">
-<meta name="app-version" content="24">
+<meta name="app-version" content="25">
 <link rel="icon" href="img/icono-192.png" type="image/png">
 <link rel="apple-touch-icon" href="img/icono-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="css/styles.css?v=24">
+<link rel="stylesheet" href="css/styles.css?v=25">
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -69,6 +69,7 @@
       </select></label>
   </div>
   <div class="facciones">
+    <button class="fbtn-sim" id="btn-sim" title="Simulador de costos por suerte">💰 Simulador</button>
     <button class="freset" id="btn-reset" title="Quitar todos los filtros">✕<span class="txt-largo"> Limpiar</span></button>
     <button class="fbtn-excel" id="btn-excel" title="Descargar en Excel lo que muestra el dashboard">📊 Excel</button>
     <button class="fbtn-edit" id="btn-gestionar" hidden title="Gestionar datos">✏️ Editar</button>
@@ -94,6 +95,20 @@
 </div>
 
 <main class="main">
+  <!-- Simulador de costos por suerte (se muestra con el botón 💰 Simulador) -->
+  <section class="sim" id="simulador">
+    <div class="sim-top">
+      <div><div class="sim-tit">💰 Simulador de costos · suertes en proceso</div><div class="sim-subt" id="sim-sub"></div></div>
+      <div class="sim-ayuda">Costo $/ha = pases × tarifa del contratista · Total $ = costo $/ha × área · Diferencia = presupuesto − costo</div>
+    </div>
+    <div class="sim-kpis" id="sim-kpis"></div>
+    <div id="sim-suertes"></div>
+    <details class="sim-param">
+      <summary>⚙️ Tarifas por contratista y presupuesto por labor</summary>
+      <div id="sim-param-cuerpo"></div>
+    </details>
+  </section>
+
   <section>
     <div class="sec-hdr"><div class="slbl" id="slbl"></div><button class="plegar-todo" id="btn-plegar-todo">⊟ Contraer todo</button></div>
     <div class="kgrid">
@@ -258,13 +273,15 @@
   <div style="text-align:center;padding:12px 0;font-size:9px;color:var(--muted);border-top:1px solid var(--bdr)" id="footer"></div>
 </main>
 
-<script src="js/datos.js?v=24"></script>
-<script src="js/data.js?v=24"></script>
-<script src="js/store.js?v=24"></script>
-<script src="js/importer.js?v=24"></script>
-<script src="js/app.js?v=24"></script>
-<script src="js/exportar.js?v=24"></script>
-<script src="js/gestion.js?v=24"></script>
+<script src="js/datos.js?v=25"></script>
+<script src="js/data.js?v=25"></script>
+<script src="js/store.js?v=25"></script>
+<script src="js/importer.js?v=25"></script>
+<script src="js/app.js?v=25"></script>
+<script src="js/exportar.js?v=25"></script>
+<script src="js/gestion.js?v=25"></script>
+<script src="js/sim-datos.js?v=25"></script>
+<script src="js/simulador.js?v=25"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

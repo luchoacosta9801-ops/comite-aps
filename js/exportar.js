@@ -96,6 +96,14 @@ function exportarExcel(){
       ], [14, 16, 18, 16, 18, 16]), 'COMPARATIVO LABORES');
     }
 
+    // SIMULADOR DE COSTOS (suertes en proceso)
+    if (typeof filasSimulador === 'function') {
+      XLSX.utils.book_append_sheet(wb, hoja(XLSX,
+        [['SUERTE', 'HACIENDA', 'ÁREA (ha)', 'LABOR', 'ESTADO', 'CONTRATISTA', 'PASES', 'TARIFA $', 'COSTO $/ha', 'PPTO $/ha', 'DIFERENCIA $/ha', 'COSTO TOTAL $'],
+         ...filasSimulador()],
+        [11, 13, 10, 13, 10, 30, 7, 11, 12, 12, 15, 14]), 'SIMULADOR COSTOS');
+    }
+
     // PPTO 2026
     const { z1, z2 } = DB.pptoMensual, zt = z1.map((v, i) => v + (z2[i] || 0));
     XLSX.utils.book_append_sheet(wb, hoja(XLSX, [

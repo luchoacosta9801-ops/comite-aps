@@ -20,3 +20,4 @@
 - Datos publicados en js/datos.js (generado por "Publicar para todos" vía POST /api/publicar de servidor.ps1, protegido con cabecera X-Comite y Origin)
 - Datos nuevos: importar el .xlsm en la app (localhost) y "Publicar"; fecha/semana salen del nombre del archivo (la fecha de RESUMEN es =HOY())
 - procesoAnterior = RUTA SEMANA PASADA del comité anterior (torta comparativa); se rota sola al importar una semana nueva
+- Simulador de costos (botón 💰 Simulador, #simulador): js/simulador.js + js/sim-datos.js (base copiada de Documents/Simulador Costos Suertes). Estado en DB.sim {tarifas, ppto, labores, planes{suerte: [...]}}; se publica en datos.js. Costo $/ha = pases × tarifa (o cant×tarifa/área si la unidad no es HA); Total $ = $/ha × área

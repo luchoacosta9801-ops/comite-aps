@@ -578,7 +578,8 @@ if(MODO_EDICION){
 }
 
 // Redibuja todo tras cualquier cambio de datos
-function renderAll(){renderMeta();renderHacSelect();renderPPTO();renderCostos();render();renderEstadoEdicion();}
+function renderAll(){renderMeta();renderHacSelect();renderPPTO();renderCostos();render();renderEstadoEdicion();
+  if(document.body.classList.contains('modo-sim')&&typeof renderSimulador==='function')renderSimulador();}
 
 loadDB();
 renderAll();

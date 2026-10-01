@@ -39,6 +39,7 @@ Mientras no publiques, los cambios solo se ven en tu PC (el botón *Gestionar da
 | `js/importer.js` | Lectura del Excel semanal |
 | `js/app.js` | Cálculos, gráficos, comparativo, filtros, cuadros plegables, actualización automática |
 | `js/exportar.js` | Descarga en Excel |
+| `js/simulador.js`, `js/sim-datos.js` | Simulador de costos por suerte en proceso (botón 💰 Simulador) y sus tarifas/presupuesto base |
 | `js/gestion.js` | Ventana *Gestionar datos* y *Publicar* |
 | `servidor.ps1` | Servidor local con la edición y la publicación |
 | `publicar.ps1` | Sube la versión y publica en GitHub Pages (lo usa el servidor) |

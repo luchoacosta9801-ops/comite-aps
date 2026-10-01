@@ -78,7 +78,9 @@ const SEED = {
   // Contratistas de la ruta de siembra y el predeterminado
   contratistas: ${J(d.contratistas || [...new Set([...CONTRATISTAS_BASE, ...d.ruta.map(r => r.cont).filter(Boolean)])])},
   contratistaDefecto: ${J(d.contratistaDefecto !== undefined ? d.contratistaDefecto : CONTRATISTA_DEFECTO)},
-  pptoMensual: { z1: ${J(d.pptoMensual.z1)}, z2: ${J(d.pptoMensual.z2)} },
+  pptoMensual: { z1: ${J(d.pptoMensual.z1)}, z2: ${J(d.pptoMensual.z2)} },${d.sim ? `
+  // Simulador de costos: tarifas, presupuesto por labor y plan de cada suerte en proceso
+  sim: ${J(d.sim)},` : ''}
   costos: ${lista(d.costos)},
 };
 `;
