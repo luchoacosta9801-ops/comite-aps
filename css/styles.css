@@ -488,3 +488,14 @@ body.modo-sim .fbtn-sim{background:var(--green);color:#fff}
 .sim-grid{grid-auto-flow:row dense}
 @media(max-width:760px){.sim-bar .fchip{width:100%;justify-content:space-between}.sim-bar .fchip .fsel{flex:1;text-align:right}}
 @media(max-width:760px){.hdr{position:static}}
+/* ── Simulador: recuadros pequeños (solo suerte y área); el detalle al abrir ── */
+.sim-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.sim-card:not(.abierta) .sim-card-h>:not(.sim-mini){display:none}
+.sim-card.abierta .sim-mini{display:none}
+.sim-card:not(.abierta) .sim-card-h{padding:10px 8px;text-align:center}
+.sim-mini b{display:block;font-family:var(--mono);font-size:14px;color:var(--cyan)}
+.sim-mini span{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.sim-card:not(.abierta):hover{border-color:rgba(0,119,170,.45);box-shadow:0 4px 14px rgba(0,119,170,.12)}
+.sim-card.abierta .sim-card-k{max-width:560px}
+@media(max-width:1100px){.sim-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}}
+@media(max-width:760px){.sim-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.sim-mini b{font-size:13px}}

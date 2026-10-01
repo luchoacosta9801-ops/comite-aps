@@ -145,7 +145,8 @@ function renderSimulador(){
     }).join('');
     const faltan = simData().labores.filter(l => !s.plan.some(f => norm(f.labor) === norm(l.nombre)));
     return `<div class="sim-card ${abierta ? 'abierta' : ''}" data-card="${esc(r.sue)}">
-      <div class="sim-card-h" data-act="tarjeta" title="${abierta ? 'Ocultar labores' : 'Ver labores'}">
+      <div class="sim-card-h" data-act="tarjeta" title="${abierta ? 'Ocultar labores' : `${esc(r.hac)} · ver costos y labores`}">
+        <div class="sim-mini"><b class="sue">${esc(r.sue)}</b><span>${f2(s.area)} ha</span></div>
         <div class="sim-card-t"><span class="sim-flecha">▶</span><b class="sue">${esc(r.sue)}</b> <span class="sim-hac">${esc(r.hac)}</span>
           <span class="sim-pill-wrap">${simDif(s.dif, s.ppto, s.proy)}</span></div>
         <div class="meta sim-card-m">${f2(s.area)} ha · labor actual: <b>${esc(r.labor)}</b> (${esc(r.cont || '—')})</div>
