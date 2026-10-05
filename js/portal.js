@@ -258,16 +258,15 @@ function renderPpto2027(){
     <div class="sim-kpis">
       <div class="sim-kpi"><div class="l">Área a renovar 2027${pf.mes ? ' · ' + MESES[pf.mes - 1] : ''}</div><div class="v">${f2(tt)} ha</div><div class="s">${S.length} suertes · ${hacs.length} ${hacs.length === 1 ? "hacienda" : "haciendas"}</div></div>
       <div class="sim-kpi"><div class="l">Por zona</div><div class="v" style="font-size:15px">Z1 ${f2(t1)} · Z2 ${f2(t2)}</div><div class="s">${tt ? Math.round(t1 / tt * 100) : 0}% · ${tt ? Math.round(t2 / tt * 100) : 0}%</div></div>
-      <div class="sim-kpi"><div class="l">Vs. programa 2026</div><div class="v">${tt && t26 ? ((tt - t26) >= 0 ? '+' : '−') + f2(Math.abs(tt - t26)) + ' ha' : '—'}</div><div class="s">${pf.hac ? "sin referencia por hacienda" : "2026: " + f2(t26) + " ha"}</div></div>
+      <div class="sim-kpi"><div class="l">Diferencia vs. programa 2026</div><div class="v">${tt && t26 ? ((tt - t26) >= 0 ? '+' : '−') + f2(Math.abs(tt - t26)) + ' ha' : '—'}</div><div class="s">${pf.hac ? "sin referencia por hacienda" : `2027: ${f2(tt)} ha · 2026: ${f2(t26)} ha`}</div></div>
       <div class="sim-kpi"><div class="l">Inversión estimada</div><div class="v">${moneyM(tt * costoHa)}</div><div class="s">${money(costoHa)}/ha (costo por labor)</div></div>
     </div>
     <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área a renovar por mes (ha)</b>
-        <span class="g-ley"><i style="background:var(--green)"></i>Zona 1 <i style="background:var(--amber)"></i>Zona 2 <i class="ref"></i>Programa 2026</span></div>
-      <div class="sim-tw" style="padding:6px 10px 2px">${graficoMeses(M, ref, pf.mes)}</div>
+        <span class="g-ley"><i style="background:var(--green)"></i>Zona 1 <i style="background:var(--amber)"></i>Zona 2</span></div>
+      <div class="sim-tw" style="padding:6px 10px 2px">${graficoMeses(M, Array(12).fill(0), pf.mes)}</div>
       <div class="sim-tw"><table class="sim-t ppto-t"><thead><tr><th>Zona</th>${MESES.map(m => `<th class="n">${m}</th>`).join('')}<th class="n">Total</th></tr></thead>
         <tbody>${[['Zona 1', M.z1], ['Zona 2', M.z2]].map(([n, z]) => `<tr><td class="lab">${n}</td>${z.map(v => `<td class="n">${v ? f2(v) : '—'}</td>`).join('')}<td class="n b">${f2(sum(z))}</td></tr>`).join('')}</tbody>
-        <tfoot><tr><td>Total 2027</td>${M.z1.map((v, i) => `<td class="n">${v + M.z2[i] ? f2(v + M.z2[i]) : '—'}</td>`).join('')}<td class="n b">${f2(tt)}</td></tr>
-          <tr class="ref"><td class="lab">Programa 2026</td>${ref.map(v => `<td class="n">${v ? f2(v) : '—'}</td>`).join('')}<td class="n">${f2(t26)}</td></tr></tfoot></table></div>
+        <tfoot><tr><td>Total 2027</td>${M.z1.map((v, i) => `<td class="n">${v + M.z2[i] ? f2(v + M.z2[i]) : '—'}</td>`).join('')}<td class="n b">${f2(sum(M.z1) + sum(M.z2))}</td></tr></tfoot></table></div>
     </div>
     ${Todas.length ? `<div class="pp-dos">
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Por hacienda</b> <span class="meta">· clic para ver sus suertes</span></div>
