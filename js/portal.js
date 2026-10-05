@@ -66,9 +66,17 @@ function renderPortal(){
       <img src="img/logo-riopaila.png" alt="Riopaila Agrícola S.A." class="pt-logo">
       <div>
         <div class="pt-h1">Ingeniería Agrícola</div>
-        <div class="pt-h2">Riopaila Agrícola S.A. · Renovación, siembra y adecuación de tierras</div>
+        <div class="pt-h2">Riopaila Agrícola S.A. · Indicadores del área</div>
         <div class="pt-firma">Luis Acosta · Esp. de Ingeniería Agrícola</div>
       </div>
+    </div>
+    <div class="pt-kpis">
+      <div><span>Sembradas APS</span><b>${f2(ha)} ha</b><small>${esc(DB.meta.semana)}</small></div>
+      <div><span>Avance vs ppto</span><b>${pct}%</b><small>${f2(DB.meta.pptoTotal)} ha ppto</small></div>
+      <div><span>En proceso</span><b>${DB.proceso.length} suertes</b><small>${f2(sum(DB.proceso, r => r.area))} ha</small></div>
+      <div><span>Costo proyectado</span><b>${moneyM(simTot)}</b><small>suertes en proceso</small></div>
+      <div><span>Ppto 2027</span><b>${haP ? f2(haP) + ' ha' : '—'}</b><small>${haP ? moneyM(haP * pptoHa2027(P)) : 'sin datos aún'}</small></div>
+      <div><span>Equipo del área</span><b>${E.personas.length} ${E.personas.length === 1 ? 'cargo' : 'cargos'}</b><small>${E.personas.filter(p => !p.nombre).length} por asignar</small></div>
     </div>
     <div class="pt-grid">
       ${card('aps', '📊', 'Dashboard Comité APS', 'Avance de renovación y siembra por zona, hacienda y suerte; labores, ruta de siembra y presupuesto.',
