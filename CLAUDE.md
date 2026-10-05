@@ -37,3 +37,6 @@
 - Navegación: irA(vista) pone body[data-vista] (portal|aps|simulador|estructura|ppto) y la dirección; sin dirección abre la portada. CSS muestra solo el módulo activo
 - Datos nuevos publicados en datos.js: DB.estructura {personas[{id,nombre,cargo,equipo,zona,funciones,reportaA}]} y DB.ppto2027 {z1[12],z2[12],labores[{labor,cant,costo}]}
 - Pendiente: llenar el organigrama (lo hace el usuario en pantalla) y cargar datos del Presupuesto 2027 cuando exista el archivo
+- Estructura cargada desde "Documents/ESTRUCTURA INGENIERIA AGRICOLA/...xlsx": SOLO nombre y cargo (nunca cédula, RH, ciudad, teléfono, estudio: la página es pública). DB.estructura.procesos = hoja "Procesos y Responsables I.A."
+- Presupuesto 2027 cargado de "Documents/PROTOCOLO LABORES/RENOVACION PPTO 2027 5 oct.xlsx", hoja Riopaila (DB.ppto2027.suertes)
+- Pendiente: portada con video/GIF (MP4 <8 MB, sin sonido, en bucle) guardado como archivo aparte vía servidor.ps1 (no en datos.js); hoy la foto va en DB.portada.imagen (JPEG reducido)
