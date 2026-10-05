@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 420" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfe8f6"/><stop offset="1" stop-color="#eef6ea"/>
+    </linearGradient>
+    <linearGradient id="tierra" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a6a45"/><stop offset="1" stop-color="#5c4128"/>
+    </linearGradient>
+    <linearGradient id="cana" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3fae6a"/><stop offset="1" stop-color="#00875a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="420" fill="url(#cielo)"/>
+  <circle cx="1310" cy="92" r="46" fill="#fff4c9"/>
+  <path d="M0 210 C 260 160 520 190 760 175 S 1240 150 1600 185 V 260 H 0 Z" fill="#9bc79a"/>
+  <path d="M0 235 C 300 205 600 230 900 215 S 1350 205 1600 225 V 290 H 0 Z" fill="#6fb47a"/>
+  <!-- caña sembrada (izquierda) -->
+  <g fill="url(#cana)">
+    <path d="M0 262 L 760 240 L 760 420 L 0 420 Z"/>
+  </g>
+  <g stroke="#0b6b46" stroke-width="3" opacity=".55" fill="none">
+    <path d="M0 290 L 760 250"/><path d="M0 325 L 760 262"/><path d="M0 365 L 760 276"/><path d="M0 410 L 760 292"/>
+  </g>
+  <!-- tierra preparada en surcos (derecha) -->
+  <path d="M760 240 L 1600 252 L 1600 420 L 760 420 Z" fill="url(#tierra)"/>
+  <g stroke="#3e2a18" stroke-width="5" opacity=".45" fill="none">
+    <path d="M760 250 L 1600 270"/><path d="M760 266 L 1600 300"/><path d="M760 285 L 1600 336"/>
+    <path d="M760 308 L 1600 378"/><path d="M760 336 L 1600 420"/><path d="M760 370 L 1450 420"/>
+  </g>
+  <!-- tractor -->
+  <g transform="translate(1060 232)">
+    <rect x="0" y="22" width="88" height="34" rx="6" fill="#c0392b"/>
+    <rect x="52" y="-6" width="40" height="34" rx="4" fill="#c0392b"/>
+    <rect x="58" y="0" width="28" height="18" rx="2" fill="#dff1fb"/>
+    <rect x="14" y="8" width="7" height="16" fill="#3a3a3a"/>
+    <circle cx="70" cy="62" r="22" fill="#2b2b2b"/><circle cx="70" cy="62" r="9" fill="#c9c9c9"/>
+    <circle cx="16" cy="66" r="14" fill="#2b2b2b"/><circle cx="16" cy="66" r="6" fill="#c9c9c9"/>
+    <path d="M-60 60 L 0 46" stroke="#4a4a4a" stroke-width="4"/>
+    <rect x="-96" y="52" width="44" height="14" rx="3" fill="#555"/>
+  </g>
+</svg>

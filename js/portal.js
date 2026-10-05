@@ -62,21 +62,11 @@ function renderPortal(){
       <span class="pt-ir">Abrir →</span>
     </button>`;
   q('portal').innerHTML = `
-    <div class="pt-hero">
-      <img src="img/logo-riopaila.png" alt="Riopaila Agrícola S.A." class="pt-logo">
-      <div>
-        <div class="pt-h1">Ingeniería Agrícola</div>
-        <div class="pt-h2">Riopaila Agrícola S.A. · Indicadores del área</div>
-        <div class="pt-firma">Luis Acosta · Esp. de Ingeniería Agrícola</div>
-      </div>
-    </div>
-    <div class="pt-kpis">
-      <div><span>Sembradas APS</span><b>${f2(ha)} ha</b><small>${esc(DB.meta.semana)}</small></div>
-      <div><span>Avance vs ppto</span><b>${pct}%</b><small>${f2(DB.meta.pptoTotal)} ha ppto</small></div>
-      <div><span>En proceso</span><b>${DB.proceso.length} suertes</b><small>${f2(sum(DB.proceso, r => r.area))} ha</small></div>
-      <div><span>Costo proyectado</span><b>${moneyM(simTot)}</b><small>suertes en proceso</small></div>
-      <div><span>Ppto 2027</span><b>${haP ? f2(haP) + ' ha' : '—'}</b><small>${haP ? moneyM(haP * pptoHa2027(P)) : 'sin datos aún'}</small></div>
-      <div><span>Equipo del área</span><b>${E.personas.length} ${E.personas.length === 1 ? 'cargo' : 'cargos'}</b><small>${E.personas.filter(p => !p.nombre).length} por asignar</small></div>
+    <div class="pt-banner">
+      <img src="${DB.portada && DB.portada.imagen ? DB.portada.imagen : 'img/portada.svg'}" alt="Ingeniería Agrícola · Riopaila Agrícola">
+      ${MODO_EDICION ? `<div class="pt-banner-acc">
+        <label class="pt-cambiar">📷 Cambiar imagen<input type="file" id="pt-foto" accept="image/*" hidden></label>
+        ${DB.portada ? '<button type="button" class="pt-cambiar" id="pt-quitar">↺ Imagen original</button>' : ''}</div>` : ''}
     </div>
     <div class="pt-grid">
       ${card('aps', '📊', 'Dashboard Comité APS', 'Avance de renovación y siembra por zona, hacienda y suerte; labores, ruta de siembra y presupuesto.',
@@ -90,7 +80,25 @@ function renderPortal(){
     </div>
     <div class="pt-pie">Comité APS · Riopaila Agrícola · Elaborado por: <b>Luis Acosta</b> · Esp. de Ingeniería Agrícola</div>`;
 }
-q('portal').addEventListener('click', e => { const b = e.target.closest('[data-ir]'); if (b) irA(b.dataset.ir); });
+q('portal').addEventListener('click', e => {
+  const b = e.target.closest('[data-ir]'); if (b) { irA(b.dataset.ir); return; }
+  if (e.target.closest('#pt-quitar')) { modCambio(() => { delete DB.portada; }); toast('Imagen original restaurada'); }
+});
+// Foto de portada (equipo o área): se reduce a máx. 1600 px y JPEG para que la página siga liviana
+q('portal').addEventListener('change', e => {
+  const f = e.target.id === 'pt-foto' && e.target.files[0]; if (!f) return;
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => {
+    const k = Math.min(1, 1600 / img.width), c = document.createElement('canvas');
+    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+    const dato = c.toDataURL('image/jpeg', 0.8);
+    modCambio(() => { DB.portada = {imagen: dato}; });
+    toast(`✓ Imagen cambiada (${Math.round(dato.length * 0.75 / 1024)} KB) · recuerda 🚀 Publicar`);
+  };
+  img.onerror = () => toast('⚠ No se pudo leer esa imagen');
+  img.src = url;
+});
 
 // ── Estructura del área ──
 let estBase = null;

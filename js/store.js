@@ -84,7 +84,9 @@ const SEED = {
   // Estructura del área (organigrama del portal)
   estructura: ${J(d.estructura)},` : ''}${d.ppto2027 ? `
   // Presupuesto APS 2027: hectáreas por mes y zona, costo por labor
-  ppto2027: ${J(d.ppto2027)},` : ''}
+  ppto2027: ${J(d.ppto2027)},` : ''}${d.portada ? `
+  // Imagen de la portada del portal (foto del equipo o del área)
+  portada: ${J(d.portada)},` : ''}
   costos: ${lista(d.costos)},
 };
 `;
