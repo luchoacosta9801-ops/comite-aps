@@ -1,2 +1,9 @@
 .claude/
 _privado/
+# Imágenes o documentos sueltos en la carpeta principal (las de la página van en img/)
+/*.jpg
+/*.jpeg
+/*.png
+/*.pdf
+/*.xlsx
+/*.xlsm
