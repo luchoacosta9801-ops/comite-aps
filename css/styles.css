@@ -610,3 +610,43 @@ body[data-vista="portal"] #btn-inicio{display:none}
 .org ul.org-hojas>li{padding-top:0}
 .org ul.org-hojas>li::before{display:none}
 .org ul.org-hojas .org-card{min-width:0;width:100%;max-width:none;height:100%}
+/* ── Organigrama de arriba hacia abajo (tarjetas con foto) ── */
+.org-scroll{overflow-x:auto;padding:8px 0 16px}
+.org,.org ul{display:flex;justify-content:center;list-style:none;margin:0;padding:0;border:none;width:max-content;min-width:100%}
+.org ul{padding-top:24px;position:relative;margin-left:0;border-left:none}
+.org ul::before{content:'';position:absolute;top:0;left:50%;height:24px;border-left:2px solid var(--bdr2)}
+.org li{display:flex;flex-direction:column;align-items:center;position:relative;padding:24px 10px 0}
+.org>li{padding-top:0}
+.org ul>li::before,.org ul>li::after{content:'';position:absolute;top:0;width:50%;height:24px;border-top:2px solid var(--bdr2)}
+.org ul>li::before{right:50%;left:auto;border-right:none}
+.org ul>li::after{left:50%;border-left:2px solid var(--bdr2)}
+.org ul>li:first-child::before,.org ul>li:last-child::after{border:none}
+.org ul>li:only-child::before{display:none}
+.org ul>li:only-child::after{border-top:none}
+.org ul>li:first-child::after{border-radius:8px 0 0 0}
+.org ul>li:last-child::before{border-right:2px solid var(--bdr2);border-radius:0 8px 0 0}
+.org .org-card{display:flex;flex-direction:column;align-items:center;width:190px;min-width:0;max-width:none;border:1px solid var(--bdr);border-bottom:3px solid var(--violet);border-left:1px solid var(--bdr);border-radius:12px;padding:0 0 8px;margin-top:30px;background:#fff;box-shadow:4px 4px 0 rgba(109,40,217,.12)}
+.org .org-card.vacante{border-bottom-color:var(--amber);background:#fffaf3}
+.org-foto{width:64px;height:64px;border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.18);background:linear-gradient(135deg,#ede7fb,#d9cff7);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.org .org-foto{margin-top:-32px}
+.org-foto img{width:100%;height:100%;object-fit:cover}
+.org-foto span{font-size:20px;font-weight:800;color:var(--violet)}
+.org .org-card.vacante .org-foto{background:linear-gradient(135deg,#fdf0dc,#fbe3bf)}
+.org .org-card.vacante .org-foto span{color:var(--amber)}
+.org .org-nom{font-size:12.5px;font-weight:800;text-align:center;padding:6px 10px 6px;color:var(--text)}
+.org-cel{display:grid;grid-template-columns:1fr 1fr;width:100%;border-top:1px solid var(--bdr)}
+.org-cel div{font-size:10px;color:var(--dim);text-align:center;padding:6px 6px 2px;line-height:1.3}
+.org-cel div+div{border-left:1px solid var(--bdr)}
+.org .org-acc{gap:4px;margin-top:6px;justify-content:center}
+.org .org-acc button{padding:1px 7px}
+/* varias personas del mismo nivel sin nadie a cargo: cuadrícula bajo una sola línea */
+.org ul.org-hojas{display:grid;grid-template-columns:repeat(3,190px);gap:4px 20px;justify-content:center;width:max-content;min-width:0;margin:0 auto}
+.org ul.org-hojas>li{padding:0}
+.org ul.org-hojas>li::before,.org ul.org-hojas>li::after{display:none}
+.org ul.org-hojas .org-card{width:190px;height:auto}
+@media(max-width:600px){
+  .org ul{margin-left:0;padding-left:0}
+  .org ul>li::before{left:auto;width:50%}
+  .org .org-card,.org ul.org-hojas .org-card{width:160px}
+  .org ul.org-hojas{grid-template-columns:repeat(2,160px)}
+}

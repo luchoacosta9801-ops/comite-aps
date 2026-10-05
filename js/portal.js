@@ -117,13 +117,14 @@ function renderEstructura(){
   const equipos = [...new Set(E.personas.map(p => p.equipo).filter(Boolean))];
   const nodo = (p, nivel) => {
     const hs = nivel < 12 ? hijos(p.id) : [];
+    // Tarjeta estilo organigrama: foto redonda (o iniciales), nombre y dos casillas (cargo | equipo)
+    const ini = p.nombre ? p.nombre.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('') : '?';
     return `<li>
-      <div class="org-card ${p.nombre ? '' : 'vacante'}">
+      <div class="org-card ${p.nombre ? '' : 'vacante'}" ${p.funciones ? `title="${esc(p.funciones)}"` : ''}>
+        <div class="org-foto">${p.foto ? `<img src="${p.foto}" alt="${esc(p.nombre)}">` : `<span>${esc(ini)}</span>`}</div>
         <div class="org-nom">${p.nombre ? esc(p.nombre) : 'Por asignar'}</div>
-        <div class="org-cargo">${esc(p.cargo || 'Cargo sin definir')}</div>
-        <div class="org-tags">${p.equipo ? `<span>${esc(p.equipo)}</span>` : ''}${p.zona ? `<span class="z">📍 ${esc(p.zona)}</span>` : ''}${hs.length ? `<span class="n">${hs.length} a cargo</span>` : ''}</div>
-        ${p.funciones ? `<div class="org-fun">${esc(p.funciones)}</div>` : ''}
-        ${ed ? `<div class="org-acc"><button type="button" data-org="editar" data-id="${esc(p.id)}">✏️ Editar</button><button type="button" data-org="agregar" data-id="${esc(p.id)}">➕ A cargo</button><button type="button" data-org="borrar" data-id="${esc(p.id)}">🗑</button></div>` : ''}
+        <div class="org-cel"><div>${esc(p.cargo || 'Cargo sin definir')}</div><div>${esc(p.equipo || p.zona || '—')}</div></div>
+        ${ed ? `<div class="org-acc"><button type="button" data-org="editar" data-id="${esc(p.id)}" title="Editar">✏️</button><button type="button" data-org="agregar" data-id="${esc(p.id)}" title="Agregar a su cargo">➕</button><button type="button" data-org="borrar" data-id="${esc(p.id)}" title="Quitar">🗑</button></div>` : ''}
       </div>
       ${hs.length ? `<ul class="${hs.length >= 3 && hs.every(h => !hijos(h.id).length) ? 'org-hojas' : ''}">${hs.map(h => nodo(h, nivel + 1)).join('')}</ul>` : ''}
     </li>`;
@@ -135,7 +136,7 @@ function renderEstructura(){
       ${ed ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><label class="mbtn mbtn-ghost pt-file">📥 Cargar desde Excel<input type="file" id="est-xls" accept=".xlsx,.xlsm,.xls" hidden></label>
         <button type="button" class="mbtn mbtn-primary" data-org="agregar" data-id="">➕ Agregar cargo</button></div>` : ''}
     </div>
-    ${E.personas.length ? `<ul class="org">${raices.map(p => nodo(p, 0)).join('')}</ul>` : '<div class="nores">Aún no hay cargos.' + (ed ? ' Pulsa «➕ Agregar cargo».' : '') + '</div>'}
+    ${E.personas.length ? `<div class="org-scroll"><ul class="org">${raices.map(p => nodo(p, 0)).join('')}</ul></div>` : '<div class="nores">Aún no hay cargos.' + (ed ? ' Pulsa «➕ Agregar cargo».' : '') + '</div>'}
     ${renderProcesos(E)}
     ${ed ? '<div class="note">💡 Organiza el área con «➕ A cargo» en cada persona. Deja el nombre vacío para un cargo por asignar. «Cargar desde Excel» lee solo nombre y cargo (no cédula, RH, ciudad ni teléfono) y la hoja de procesos y responsables. Los cambios llegan a todos al pulsar 🚀 Publicar.</div>' : ''}`;
   const f = q('est-xls'); if (f) f.addEventListener('change', () => f.files[0] && cargarEstructuraExcel(f.files[0]));
@@ -250,14 +251,35 @@ function formPersona(p, jefe){
       ${jefes.map(x => `<option value="${esc(x.id)}" ${x.id === p.reportaA ? 'selected' : ''}>${esc(x.nombre || 'Por asignar')} · ${esc(x.cargo)}</option>`).join('')}
     </select></div></div>
     <div class="mrow"><div><label class="mlabel">Funciones principales</label><textarea class="minput" id="org-funciones" rows="3" placeholder="ej: Seguimiento de labores de preparación y comité semanal">${esc(p.funciones || '')}</textarea></div></div>
+    <div class="mrow"><div><label class="mlabel">Foto</label>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="org-foto" id="org-foto-prev">${p.foto ? `<img src="${p.foto}" alt="">` : '<span>📷</span>'}</div>
+        <label class="mbtn mbtn-ghost pt-file">Elegir foto<input type="file" id="org-foto" accept="image/*" hidden></label>
+        <button type="button" class="mbtn mbtn-ghost" id="org-foto-quitar" ${p.foto ? '' : 'hidden'}>Quitar foto</button>
+      </div></div></div>
     <div id="org-err" class="err" hidden></div>`;
+  // Foto: recorte cuadrado de 240 px en JPEG (liviano para la página pública)
+  let foto = p.foto || '';
+  q('org-foto').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    const img = new Image(), url = URL.createObjectURL(f);
+    img.onload = () => {
+      const lado = Math.min(img.width, img.height), c = document.createElement('canvas'); c.width = c.height = 240;
+      c.getContext('2d').drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2, lado, lado, 0, 0, 240, 240);
+      URL.revokeObjectURL(url); foto = c.toDataURL('image/jpeg', 0.82);
+      q('org-foto-prev').innerHTML = `<img src="${foto}" alt="">`; q('org-foto-quitar').hidden = false;
+    };
+    img.onerror = () => toast('⚠ No se pudo leer esa imagen');
+    img.src = url;
+  });
+  q('org-foto-quitar').addEventListener('click', () => { foto = ''; q('org-foto-prev').innerHTML = '<span>📷</span>'; q('org-foto-quitar').hidden = true; });
   modalFooter.innerHTML = `<button class="mbtn mbtn-ghost" onclick="closeModal()">Cancelar</button><button class="mbtn mbtn-primary" id="org-guardar">✓ Guardar</button>`;
   overlay.style.display = 'flex'; document.body.style.overflow = 'hidden';
   q('org-guardar').addEventListener('click', () => {
     const v = k => q('org-' + k).value.trim();
     if (!v('cargo')) { q('org-err').hidden = false; q('org-err').textContent = 'Escribe el cargo.'; return; }
     modCambio(() => {
-      const D = estEditable(), datos = {nombre:v('nombre'), cargo:v('cargo'), equipo:v('equipo'), zona:v('zona'), funciones:v('funciones'), reportaA:v('reportaA')};
+      const D = estEditable(), datos = {nombre:v('nombre'), cargo:v('cargo'), equipo:v('equipo'), zona:v('zona'), funciones:v('funciones'), reportaA:v('reportaA'), foto};
       if (nuevo) D.personas.push(Object.assign({id:nuevoId()}, datos)); else Object.assign(D.personas.find(x => x.id === p.id), datos);
     });
     closeModal(); toast(nuevo ? '✓ Cargo agregado' : '✓ Cargo actualizado');
