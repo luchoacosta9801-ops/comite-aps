@@ -125,17 +125,101 @@ function renderEstructura(){
         ${p.funciones ? `<div class="org-fun">${esc(p.funciones)}</div>` : ''}
         ${ed ? `<div class="org-acc"><button type="button" data-org="editar" data-id="${esc(p.id)}">✏️ Editar</button><button type="button" data-org="agregar" data-id="${esc(p.id)}">➕ A cargo</button><button type="button" data-org="borrar" data-id="${esc(p.id)}">🗑</button></div>` : ''}
       </div>
-      ${hs.length ? `<ul>${hs.map(h => nodo(h, nivel + 1)).join('')}</ul>` : ''}
+      ${hs.length ? `<ul class="${hs.length >= 3 && hs.every(h => !hijos(h.id).length) ? 'org-hojas' : ''}">${hs.map(h => nodo(h, nivel + 1)).join('')}</ul>` : ''}
     </li>`;
   };
   q('estructura').innerHTML = `
     <div class="mod-top">
       <div><div class="sim-tit">👥 Estructura del área · Ingeniería Agrícola</div>
         <div class="sim-subt">${E.personas.length} ${E.personas.length === 1 ? 'cargo' : 'cargos'} · ${E.personas.filter(p => !p.nombre).length} por asignar${equipos.length ? ' · equipos: ' + equipos.map(esc).join(', ') : ''}${ed ? '' : ' · solo lectura'}</div></div>
-      ${ed ? '<button type="button" class="mbtn mbtn-primary" data-org="agregar" data-id="">➕ Agregar cargo</button>' : ''}
+      ${ed ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><label class="mbtn mbtn-ghost pt-file">📥 Cargar desde Excel<input type="file" id="est-xls" accept=".xlsx,.xlsm,.xls" hidden></label>
+        <button type="button" class="mbtn mbtn-primary" data-org="agregar" data-id="">➕ Agregar cargo</button></div>` : ''}
     </div>
     ${E.personas.length ? `<ul class="org">${raices.map(p => nodo(p, 0)).join('')}</ul>` : '<div class="nores">Aún no hay cargos.' + (ed ? ' Pulsa «➕ Agregar cargo».' : '') + '</div>'}
-    ${ed ? '<div class="note">💡 Organiza el área con «➕ A cargo» en cada persona. Deja el nombre vacío para un cargo por asignar. Los cambios se ven aquí y llegan a todos al pulsar 🚀 Publicar.</div>' : ''}`;
+    ${renderProcesos(E)}
+    ${ed ? '<div class="note">💡 Organiza el área con «➕ A cargo» en cada persona. Deja el nombre vacío para un cargo por asignar. «Cargar desde Excel» lee solo nombre y cargo (no cédula, RH, ciudad ni teléfono) y la hoja de procesos y responsables. Los cambios llegan a todos al pulsar 🚀 Publicar.</div>' : ''}`;
+  const f = q('est-xls'); if (f) f.addEventListener('change', () => f.files[0] && cargarEstructuraExcel(f.files[0]));
+}
+
+// Procesos y responsables del área, agrupados por proceso general; filtrables por responsable
+let estFiltroResp = '';
+function renderProcesos(E){
+  const P = E.procesos || []; if (!P.length) return '';
+  const resp = [...new Set(P.flatMap(p => String(p.responsable).split(/\s+-\s+/).map(x => x.trim()).filter(Boolean)))].sort();
+  const vis = estFiltroResp ? P.filter(p => String(p.responsable).split(/\s+-\s+/).map(x => x.trim().toUpperCase()).includes(estFiltroResp.toUpperCase())) : P;
+  const grupos = [];
+  vis.forEach(p => { let g = grupos.find(x => x.general === p.general); if (!g) grupos.push(g = {n:p.n, general:p.general, nucleo:p.nucleo, admin:p.admin, indic:p.indic, items:[]}); g.items.push(p); });
+  const si = v => /^SI$/i.test(String(v).trim());
+  return `<div class="mod-top" style="margin-top:22px"><div><div class="sim-tit" style="font-size:13.5px">🧭 Procesos y responsables del área</div>
+      <div class="sim-subt">${P.length} procesos específicos en ${new Set(P.map(p => p.general)).size} procesos generales</div></div>
+      <label class="fchip" style="background:#fff"><span>Responsable</span><select id="est-f-resp" class="fsel ${estFiltroResp ? 'on' : ''}"><option value="">Todos</option>${resp.map(r => `<option ${r === estFiltroResp ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select></label></div>
+    <div class="proc-grid">${grupos.map(g => `<div class="proc-card">
+      <div class="proc-h"><span class="proc-n">${esc(g.n)}</span><b>${esc(g.general)}</b></div>
+      ${g.nucleo && g.nucleo !== g.general ? `<div class="proc-nuc">${esc(g.nucleo)}</div>` : ''}
+      <div class="proc-tags">${g.admin ? `<span class="${si(g.admin) ? 'si' : 'no'}">Proceso administrativo: ${si(g.admin) ? 'Sí' : 'No'}</span>` : ''}${g.indic ? `<span class="${si(g.indic) ? 'si' : 'no'}">Genera indicadores: ${si(g.indic) ? 'Sí' : 'No'}</span>` : ''}</div>
+      <ul>${g.items.map(i => `<li><span>${esc(i.especifico)}</span><small>${esc(i.responsable)}</small></li>`).join('')}</ul>
+    </div>`).join('')}</div>`;
+}
+q('estructura').addEventListener('change', e => { if (e.target.id === 'est-f-resp') { estFiltroResp = e.target.value; renderEstructura(); } });
+
+// Lee del Excel del área: hoja con «NOMBRE Y APELLIDOS» y «CARGO» (solo esas dos columnas, por privacidad)
+// y hoja con «PROCESO ESPECÍFICO» y «RESPONSABLE». Las celdas combinadas se completan con la fila anterior.
+const titulo = t => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim()
+  .replace(/(^|[\s/(-])([a-záéíóúñ])/g, (m, a, b) => a + b.toUpperCase())
+  .replace(/ (De|Del|La|Las|Los|Y|E|En|A|Con|Para|Por|El) /g, s => s.toLowerCase()).replace(/ (De|Del|La|Las|Los|Y|E|En|A|Con|Para|Por|El) /g, s => s.toLowerCase())
+  .replace(/\(([A-Za-z]{1,4})\)/g, (m, s) => '(' + s.toUpperCase() + ')').replace(/\bAps\b/, 'APS')
+  .replace(/(Ingenieria|Agricola|Tecnico|Supervision|Administracion|Coordinacion|Instalacion|Adecuacion|Preparacion)/g, w => ({Ingenieria:'Ingeniería', Agricola:'Agrícola', Tecnico:'Técnico', Supervision:'Supervisión', Administracion:'Administración', Coordinacion:'Coordinación', Instalacion:'Instalación', Adecuacion:'Adecuación', Preparacion:'Preparación'})[w]);
+function leerEstructura(file){
+  return cargarXLSX().then(XLSX => file.arrayBuffer().then(buf => {
+    const wb = XLSX.read(buf, {type:'array'}), out = {personas:null, procesos:null};
+    for (const n of wb.SheetNames) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, defval:'', raw:false});
+      const hi = rows.findIndex(r => r.some(v => /NOMBRE/.test(norm(v))) && r.some(v => norm(v) === 'CARGO'));
+      if (!out.personas && hi >= 0) {
+        const H = rows[hi].map(norm), cn = H.findIndex(h => /NOMBRE/.test(h)), cc = H.indexOf('CARGO');
+        const L = rows.slice(hi + 1).filter(r => String(r[cc]).trim()).map((r, i) => {
+          const nom = String(r[cn]).trim(), vac = !nom || /VACANTE/.test(norm(nom));
+          return {id:'p' + (i + 1), nombre: vac ? '' : titulo(nom), cargo: titulo(r[cc]), equipo:'', zona:'', funciones:'', reportaA:''};
+        });
+        // Jerarquía: el primero es la cabeza; practicantes y maestro de obras le reportan; oficios varios, al maestro
+        const cabeza = L[0], maestro = L.find(p => /MAESTRO/.test(norm(p.cargo)));
+        L.forEach((p, i) => {
+          const c = norm(p.cargo);
+          p.equipo = /OBRA|OFICIOS/.test(c) ? 'Obras civiles' : 'Ingeniería Agrícola';
+          if (i === 0) return;
+          p.reportaA = /OFICIOS/.test(c) && maestro ? maestro.id : cabeza.id;
+        });
+        if (L.length) out.personas = L;
+      }
+      const hp = rows.findIndex(r => r.some(v => /PROCESO ESPECIFICO/.test(norm(v))) && r.some(v => norm(v) === 'RESPONSABLE'));
+      if (!out.procesos && hp >= 0) {
+        const H = rows[hp].map(norm), c = {nuc:H.findIndex(h => /NUCLEO/.test(h)), n:H.indexOf(''), gen:H.findIndex(h => /PROCESO GENERAL/.test(h)), esp:H.findIndex(h => /PROCESO ESPECIFICO/.test(h)), resp:H.indexOf('RESPONSABLE')};
+        const top = rows[hp - 1] ? rows[hp - 1].map(norm) : [], ca = top.findIndex(h => /ADMINISTRATIVO/.test(h)), ci = top.findIndex(h => /INDICADORES/.test(h));
+        const num = H.findIndex((h, j) => j > c.nuc && j < c.gen);
+        let prev = {nucleo:'', n:'', general:'', admin:'', indic:''};
+        const P = [];
+        rows.slice(hp + 1).forEach(r => {
+          const esp = String(r[c.esp] || '').replace(/\s+/g, ' ').trim(); if (!esp) return;
+          const nuevo = String(r[c.gen] || '').trim();
+          if (nuevo) prev = {nucleo: titulo(r[c.nuc]) || prev.nucleo, n: String(r[num] || '').trim(), general: titulo(nuevo), admin: ca >= 0 ? String(r[ca]).trim() : '', indic: ci >= 0 ? String(r[ci]).trim() : ''};
+          P.push(Object.assign({}, prev, {especifico: esp, responsable: String(r[c.resp] || '').replace(/\s+/g, ' ').trim()}));
+        });
+        if (P.length) out.procesos = P;
+      }
+    }
+    return out;
+  }));
+}
+function cargarEstructuraExcel(file){
+  leerEstructura(file).then(r => {
+    if (!r.personas && !r.procesos) { toast('⚠ No encontré la hoja de estructura (NOMBRE Y APELLIDOS / CARGO) ni la de procesos'); return; }
+    const txtC = r.personas ? `${r.personas.length} cargos (${r.personas.filter(p => !p.nombre).length} vacantes)` : 'sin hoja de estructura';
+    const txtP = r.procesos ? `${r.procesos.length} procesos` : 'sin hoja de procesos';
+    if (!confirm(`Encontré: ${txtC} · ${txtP}.\nSolo se toman nombre y cargo (no cédula, RH, ciudad ni teléfono).\n¿Reemplazar la estructura del área?`)) return;
+    modCambio(() => { const D = estEditable(); if (r.personas) D.personas = r.personas; if (r.procesos) D.procesos = r.procesos; D.fuente = file.name; });
+    estFiltroResp = '';
+    toast('✓ Estructura cargada · revisa a quién reporta cada uno y pulsa 🚀 Publicar');
+  }).catch(err => toast('⚠ ' + err.message));
 }
 q('estructura').addEventListener('click', e => {
   const b = e.target.closest('[data-org]'); if (!b || !MODO_EDICION) return;
