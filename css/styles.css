@@ -586,3 +586,8 @@ body[data-vista="portal"] #btn-inicio{display:none}
 .pp-niv span{font-weight:800;color:var(--violet)}.pp-niv b{font-family:var(--mono);text-align:right}.pp-niv small{color:var(--muted);text-align:right}
 @media(max-width:900px){.pp-dos{grid-template-columns:1fr}}
 .g-meses{max-width:1000px;margin:0 auto}
+/* Presupuesto 2027: filtros y barra seleccionada */
+.g-bar{cursor:pointer}
+.g-bar.g-off{opacity:.3}
+.g-bar.g-sel rect[fill="transparent"]{fill:rgba(0,119,170,.08)}
+.pp-filtros{margin:-4px 0 12px}

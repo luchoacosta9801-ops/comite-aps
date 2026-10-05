@@ -200,7 +200,7 @@ function pptoMeses(P){
 const haTotal2027 = P => { const M = pptoMeses(P); return sum(M.z1) + sum(M.z2); };
 
 // Gráfico de barras por mes (Zona 1 + Zona 2 apiladas) con la referencia 2026 como marca gris
-function graficoMeses(M, ref){
+function graficoMeses(M, ref, mesSel){
   const W = 900, H = 260, L = 44, R = 12, T = 18, B = 34, w = (W - L - R) / 12;
   const tot = M.z1.map((v, i) => v + M.z2[i]);
   const max = Math.max(10, ...tot, ...ref) * 1.12, y = v => T + (H - T - B) * (1 - v / max), bw = Math.min(42, w * 0.62);
@@ -210,8 +210,8 @@ function graficoMeses(M, ref){
   MESES.forEach((m, i) => {
     const x = L + w * i + (w - bw) / 2, a = M.z1[i], b = M.z2[i], gap = a && b ? 2 : 0;
     const h1 = y(0) - y(a), h2 = y(0) - y(b);
-    const tip = `${m}: ${f2(tot[i])} ha · Zona 1 ${f2(a)} · Zona 2 ${f2(b)} · ref. 2026 ${f2(ref[i])}`;
-    s += `<g class="g-bar"><title>${tip}</title><rect x="${L + w * i}" y="${T}" width="${w}" height="${H - T - B}" fill="transparent"/>`;
+    const tip = `${m}: ${f2(tot[i])} ha · Zona 1 ${f2(a)} · Zona 2 ${f2(b)}${ref[i] ? ' · ref. 2026 ' + f2(ref[i]) : ''} · clic para filtrar el mes`;
+    s += `<g class="g-bar ${mesSel && mesSel !== i + 1 ? 'g-off' : ''} ${mesSel === i + 1 ? 'g-sel' : ''}" data-mes="${i + 1}"><title>${tip}</title><rect x="${L + w * i}" y="${T}" width="${w}" height="${H - T - B}" fill="transparent"/>`;
     if (a) s += `<rect x="${x}" y="${y(a)}" width="${bw}" height="${Math.max(0, h1)}" fill="var(--green)" rx="${b ? 0 : 4}"/>`;
     if (b) s += `<path d="M${x},${y(a) - gap} v${-(h2 - 4)} q0,-4 4,-4 h${bw - 8} q4,0 4,4 v${h2 - 4} z" fill="var(--amber)"/>`;
     if (tot[i]) s += `<text x="${x + bw / 2}" y="${y(tot[i]) - 5 - gap}" text-anchor="middle" class="g-val">${Math.round(tot[i])}</text>`;
@@ -221,37 +221,55 @@ function graficoMeses(M, ref){
   return `<svg viewBox="0 0 ${W} ${H}" class="g-meses" role="img" aria-label="Hectáreas a renovar por mes en 2027">${s}<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="#b8c8db"/></svg>`;
 }
 
-let pptoFiltroHac = '';
+// Filtros del módulo: hacienda, zona y mes de renovación (columnas de la hoja)
+const pf = {hac:'', zona:'', mes:0};
+let pptoFiltroHac = '';   // (compatibilidad) = pf.hac
 function renderPpto2027(){
-  const P = ppto2027(), ed = MODO_EDICION, dis = ed ? '' : 'disabled', S = P.suertes || [];
-  const M = pptoMeses(P), t1 = sum(M.z1), t2 = sum(M.z2), tt = t1 + t2;
-  const a26 = DB.pptoMensual, ref = a26.z1.map((v, i) => v + (a26.z2[i] || 0)), t26 = sum(ref), costoHa = pptoHa2027(P);
+  const P = ppto2027(), ed = MODO_EDICION, dis = ed ? '' : 'disabled', Todas = P.suertes || [];
+  pptoFiltroHac = pf.hac;
+  // Sf: filtro de hacienda y zona (el gráfico muestra sus 12 meses) · S: además el mes elegido
+  const Sf = Todas.filter(s => (!pf.hac || s.h === pf.hac) && (!pf.zona || s.z === +pf.zona));
+  const S = pf.mes ? Sf.filter(s => +s.mes === pf.mes) : Sf;
+  const Mg = (Todas.length ? pptoMeses({suertes:Sf}) : pptoMeses(P));
+  const t1 = sum(S.filter(s => s.z === 1), s => s.a), t2 = sum(S.filter(s => s.z === 2), s => s.a);
+  const M = Todas.length ? {z1:Mg.z1, z2:Mg.z2} : Mg, tt = Todas.length ? t1 + t2 : sum(M.z1) + sum(M.z2);
+  const a26 = DB.pptoMensual, refZ = pf.zona === '1' ? a26.z1 : pf.zona === '2' ? a26.z2 : a26.z1.map((v, i) => v + (a26.z2[i] || 0));
+  const ref = pf.hac ? Array(12).fill(0) : refZ, t26 = pf.mes ? (ref[pf.mes - 1] || 0) : sum(ref), costoHa = pptoHa2027(P);
   const hacs = [...new Set(S.map(s => s.h))];
   const porHac = hacs.map(h => { const L = S.filter(s => s.h === h); return {h, z:L[0].z, n:L.length, a:sum(L, s => s.a),
     meses:[...new Set(L.map(s => +s.mes))].sort((x, y) => x - y).map(m => MESES[m - 1]).join(', ')}; }).sort((x, y) => y.a - x.a);
   const niv = ['N1','N2','N3','N4'].map(n => [n, sum(S.filter(s => s.niv === n), s => s.a)]);
-  const vis = pptoFiltroHac ? S.filter(s => s.h === pptoFiltroHac) : S;
+  const vis = S, hayFiltro = pf.hac || pf.zona || pf.mes;
+  const hacsTodas = [...new Set(Todas.map(s => s.h))].sort();
+  const filtros = Todas.length ? `<div class="sim-bar pp-filtros">
+      <label class="fchip"><span>Hacienda</span><select id="pp-f-hac" class="fsel ${pf.hac ? 'on' : ''}"><option value="">Todas</option>${hacsTodas.map(h => `<option ${h === pf.hac ? 'selected' : ''}>${esc(h)}</option>`).join('')}</select></label>
+      <label class="fchip"><span>Zona</span><select id="pp-f-zona" class="fsel ${pf.zona ? 'on' : ''}"><option value="">Todas</option><option value="1" ${pf.zona === '1' ? 'selected' : ''}>Zona 1</option><option value="2" ${pf.zona === '2' ? 'selected' : ''}>Zona 2</option></select></label>
+      <label class="fchip"><span>Mes</span><select id="pp-f-mes" class="fsel ${pf.mes ? 'on' : ''}"><option value="0">Todos</option>${MESES.map((m, i) => `<option value="${i + 1}" ${pf.mes === i + 1 ? 'selected' : ''}>${m}</option>`).join('')}</select></label>
+      ${hayFiltro ? '<button type="button" class="plegar-todo" data-pp-limpiar>✕ Quitar filtros</button>' : ''}
+      <span class="meta">${hayFiltro ? `Mostrando: ${[pf.hac, pf.zona && 'Zona ' + pf.zona, pf.mes && MESES[pf.mes - 1]].filter(Boolean).map(esc).join(' · ')}` : 'Clic en una barra para ver ese mes'}</span>
+    </div>` : '';
   q('ppto2027').innerHTML = `
     <div class="mod-top">
       <div><div class="sim-tit">📅 Presupuesto APS 2027 · Programa de renovación</div>
-        <div class="sim-subt">${S.length ? `Fuente: ${esc(P.fuente || 'Excel de renovación')}` : 'Sin datos aún'}${ed ? '' : ' · solo lectura'}</div></div>
+        <div class="sim-subt">${Todas.length ? `Fuente: ${esc(P.fuente || 'Excel de renovación')}` : 'Sin datos aún'}${ed ? '' : ' · solo lectura'}</div></div>
       ${ed ? '<label class="mbtn mbtn-ghost pt-file">📥 Cargar desde Excel<input type="file" id="ppto-xls" accept=".xlsx,.xlsm,.xls" hidden></label>' : ''}
     </div>
+    ${filtros}
     <div class="sim-kpis">
-      <div class="sim-kpi"><div class="l">Área a renovar 2027</div><div class="v">${f2(tt)} ha</div><div class="s">${S.length} suertes · ${hacs.length} haciendas</div></div>
+      <div class="sim-kpi"><div class="l">Área a renovar 2027${pf.mes ? ' · ' + MESES[pf.mes - 1] : ''}</div><div class="v">${f2(tt)} ha</div><div class="s">${S.length} suertes · ${hacs.length} ${hacs.length === 1 ? "hacienda" : "haciendas"}</div></div>
       <div class="sim-kpi"><div class="l">Por zona</div><div class="v" style="font-size:15px">Z1 ${f2(t1)} · Z2 ${f2(t2)}</div><div class="s">${tt ? Math.round(t1 / tt * 100) : 0}% · ${tt ? Math.round(t2 / tt * 100) : 0}%</div></div>
-      <div class="sim-kpi"><div class="l">Vs. programa 2026</div><div class="v">${tt && t26 ? ((tt - t26) >= 0 ? '+' : '−') + f2(Math.abs(tt - t26)) + ' ha' : '—'}</div><div class="s">2026: ${f2(t26)} ha</div></div>
+      <div class="sim-kpi"><div class="l">Vs. programa 2026</div><div class="v">${tt && t26 ? ((tt - t26) >= 0 ? '+' : '−') + f2(Math.abs(tt - t26)) + ' ha' : '—'}</div><div class="s">${pf.hac ? "sin referencia por hacienda" : "2026: " + f2(t26) + " ha"}</div></div>
       <div class="sim-kpi"><div class="l">Inversión estimada</div><div class="v">${moneyM(tt * costoHa)}</div><div class="s">${money(costoHa)}/ha (costo por labor)</div></div>
     </div>
     <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área a renovar por mes (ha)</b>
         <span class="g-ley"><i style="background:var(--green)"></i>Zona 1 <i style="background:var(--amber)"></i>Zona 2 <i class="ref"></i>Programa 2026</span></div>
-      <div class="sim-tw" style="padding:6px 10px 2px">${graficoMeses(M, ref)}</div>
+      <div class="sim-tw" style="padding:6px 10px 2px">${graficoMeses(M, ref, pf.mes)}</div>
       <div class="sim-tw"><table class="sim-t ppto-t"><thead><tr><th>Zona</th>${MESES.map(m => `<th class="n">${m}</th>`).join('')}<th class="n">Total</th></tr></thead>
         <tbody>${[['Zona 1', M.z1], ['Zona 2', M.z2]].map(([n, z]) => `<tr><td class="lab">${n}</td>${z.map(v => `<td class="n">${v ? f2(v) : '—'}</td>`).join('')}<td class="n b">${f2(sum(z))}</td></tr>`).join('')}</tbody>
         <tfoot><tr><td>Total 2027</td>${M.z1.map((v, i) => `<td class="n">${v + M.z2[i] ? f2(v + M.z2[i]) : '—'}</td>`).join('')}<td class="n b">${f2(tt)}</td></tr>
           <tr class="ref"><td class="lab">Programa 2026</td>${ref.map(v => `<td class="n">${v ? f2(v) : '—'}</td>`).join('')}<td class="n">${f2(t26)}</td></tr></tfoot></table></div>
     </div>
-    ${S.length ? `<div class="pp-dos">
+    ${Todas.length ? `<div class="pp-dos">
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Por hacienda</b> <span class="meta">· clic para ver sus suertes</span></div>
         <div class="sim-tw"><table class="sim-t"><thead><tr><th>Hacienda</th><th>Zona</th><th class="n">Suertes</th><th class="n">Área (ha)</th><th class="n">%</th><th>Meses</th></tr></thead>
           <tbody>${porHac.map(x => `<tr class="pp-hac ${x.h === pptoFiltroHac ? 'on' : ''}" data-hac="${esc(x.h)}"><td class="lab">${esc(x.h)}</td><td>Z${x.z}</td><td class="n">${x.n}</td><td class="n b">${f2(x.a)}</td><td class="n">${(x.a / tt * 100).toFixed(1)}%</td><td>${x.meses}</td></tr>`).join('')}</tbody></table></div></div>
@@ -259,7 +277,7 @@ function renderPpto2027(){
         <div style="padding:10px 14px">${niv.map(([n, a]) => `<div class="pp-niv"><span>${n}</span><div class="bt"><div class="bf" style="width:${tt ? a / tt * 100 : 0}%;background:var(--violet)"></div></div><b>${f2(a)} ha</b><small>${tt ? (a / tt * 100).toFixed(0) : 0}%</small></div>`).join('')}
           <div class="meta" style="margin-top:6px">N1 mínimo · N2 moderado · N3 alto · N4 muy alto movimiento de tierra</div></div></div>
     </div>
-    <details class="sim-param" ${pptoFiltroHac ? 'open' : ''}><summary>📋 Suertes a renovar ${pptoFiltroHac ? `· ${esc(pptoFiltroHac)} (${vis.length}) <button type="button" class="link" data-pp-todas>ver todas</button>` : `(${S.length})`}</summary>
+    <details class="sim-param" ${hayFiltro ? 'open' : ''}><summary>📋 Suertes a renovar (${vis.length}${hayFiltro ? ' con los filtros' : ''})</summary>
       <div class="sim-tw" style="max-height:420px;margin-top:8px"><table class="sim-t"><thead><tr><th>Suerte</th><th>Hacienda</th><th>Zona</th><th>Tipo</th><th class="n">Área (ha)</th><th>Mes</th><th>Variedad actual → nueva</th><th>Nivelación</th></tr></thead>
         <tbody>${vis.slice().sort((x, y) => x.mes - y.mes || x.s.localeCompare(y.s)).map(s => `<tr><td class="lab" style="font-family:var(--mono)">${esc(s.s)}</td><td>${esc(s.h)}</td><td>Z${s.z}</td><td>${esc(s.f || '')}</td><td class="n">${f2(s.a)}</td><td>${MESES[s.mes - 1] || '—'}</td><td>${esc(s.vAct || '—')} → <b>${esc(s.v1 || '—')}</b>${s.v2 ? ' / ' + esc(s.v2) : ''}</td><td>${esc(s.niv || '—')}</td></tr>`).join('')}</tbody></table></div>
     </details>` : `<div class="nores">${ed ? 'Pulsa «📥 Cargar desde Excel» y elige el libro de renovación 2027 (hoja «Riopaila»).' : 'Aún no se ha cargado el programa de renovación 2027.'}</div>`}
@@ -277,12 +295,17 @@ function renderPpto2027(){
 }
 q('ppto2027').addEventListener('change', e => {
   const el = e.target;
+  if (el.id === 'pp-f-hac') { pf.hac = el.value; renderPpto2027(); return; }
+  if (el.id === 'pp-f-zona') { pf.zona = el.value; renderPpto2027(); return; }
+  if (el.id === 'pp-f-mes') { pf.mes = +el.value; renderPpto2027(); return; }
   if (el.dataset.pl) modCambio(() => { const l = pptoEditable().labores[+el.closest('tr').dataset.i]; l[el.dataset.pl] = el.dataset.pl === 'labor' ? el.value.trim() : (num(el.value) || 0); });
 });
 q('ppto2027').addEventListener('click', e => {
   const h = e.target.closest('.pp-hac');
-  if (h) { pptoFiltroHac = pptoFiltroHac === h.dataset.hac ? '' : h.dataset.hac; renderPpto2027(); return; }
-  if (e.target.closest('[data-pp-todas]')) { e.preventDefault(); pptoFiltroHac = ''; renderPpto2027(); return; }
+  if (h) { pf.hac = pf.hac === h.dataset.hac ? '' : h.dataset.hac; renderPpto2027(); return; }
+  const bar = e.target.closest('.g-bar[data-mes]');
+  if (bar) { const m = +bar.dataset.mes; pf.mes = pf.mes === m ? 0 : m; renderPpto2027(); return; }
+  if (e.target.closest('[data-pp-limpiar]')) { pf.hac = ''; pf.zona = ''; pf.mes = 0; renderPpto2027(); return; }
   if (e.target.closest('[data-pl-agregar]')) modCambio(() => { pptoEditable().labores.push({labor:'Nueva labor', cant:1, costo:0}); });
   else if (e.target.closest('[data-pl-borrar]')) { const i = +e.target.closest('tr').dataset.i; modCambio(() => { pptoEditable().labores.splice(i, 1); }); }
 });
@@ -317,7 +340,7 @@ function cargarPptoExcel(file){
     const ha = sum(r.suertes, s => s.a), sinMes = r.suertes.filter(s => !(s.mes >= 1 && s.mes <= 12)).length;
     if (!confirm(`Hoja «${r.hoja}»: ${r.suertes.length} suertes · ${f2(ha)} ha${sinMes ? `\n(${sinMes} sin mes de renovación)` : ''}.\n¿Reemplazar el programa de renovación 2027?`)) return;
     modCambio(() => { const P = pptoEditable(); P.suertes = r.suertes; P.fuente = `${file.name} · hoja ${r.hoja}`; delete P.z1; delete P.z2; });
-    pptoFiltroHac = '';
+    pf.hac = ''; pf.zona = ''; pf.mes = 0;
     toast('✓ Programa 2027 cargado · recuerda 🚀 Publicar');
   }).catch(err => toast('⚠ ' + err.message));
 }
