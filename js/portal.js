@@ -200,10 +200,10 @@ function pptoMeses(P){
 const haTotal2027 = P => { const M = pptoMeses(P); return sum(M.z1) + sum(M.z2); };
 
 // Gráfico de barras por mes (Zona 1 + Zona 2 apiladas) con la referencia 2026 como marca gris
-function graficoMeses(M, ref, mesSel){
+function graficoMeses(M, ref, mesSel, maxFijo){
   const W = 900, H = 260, L = 44, R = 12, T = 18, B = 34, w = (W - L - R) / 12;
   const tot = M.z1.map((v, i) => v + M.z2[i]);
-  const max = Math.max(10, ...tot, ...ref) * 1.12, y = v => T + (H - T - B) * (1 - v / max), bw = Math.min(42, w * 0.62);
+  const max = (maxFijo || Math.max(10, ...tot, ...ref)) * 1.12, y = v => T + (H - T - B) * (1 - v / max), bw = Math.min(42, w * 0.62);
   const paso = max > 200 ? 50 : max > 80 ? 20 : 10;
   let s = '';
   for (let v = 0; v <= max; v += paso) s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#e6edf4"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end" class="g-ax">${v}</text>`;
@@ -240,6 +240,10 @@ function renderPpto2027(){
     meses:[...new Set(L.map(s => +s.mes))].sort((x, y) => x - y).map(m => MESES[m - 1]).join(', ')}; }).sort((x, y) => y.a - x.a);
   const niv = ['N1','N2','N3','N4'].map(n => [n, sum(S.filter(s => s.niv === n), s => s.a)]);
   const vis = S, hayFiltro = pf.hac || pf.zona || pf.mes;
+  // Programa 2026 por mes (del comité), con el filtro de zona; misma escala que 2027 para comparar
+  const cero = Array(12).fill(0);
+  const M26 = {z1: pf.zona === '2' ? cero : a26.z1.slice(), z2: pf.zona === '1' ? cero : a26.z2.slice()};
+  const maxComun = Math.max(10, ...M.z1.map((v, i) => v + M.z2[i]), ...(pf.hac ? [] : M26.z1.map((v, i) => v + M26.z2[i])));
   const hacsTodas = [...new Set(Todas.map(s => s.h))].sort();
   const filtros = Todas.length ? `<div class="sim-bar pp-filtros">
       <label class="fchip"><span>Hacienda</span><select id="pp-f-hac" class="fsel ${pf.hac ? 'on' : ''}"><option value="">Todas</option>${hacsTodas.map(h => `<option ${h === pf.hac ? 'selected' : ''}>${esc(h)}</option>`).join('')}</select></label>
@@ -261,9 +265,13 @@ function renderPpto2027(){
       <div class="sim-kpi"><div class="l">Diferencia vs. programa 2026</div><div class="v">${tt && t26 ? ((tt - t26) >= 0 ? '+' : '−') + f2(Math.abs(tt - t26)) + ' ha' : '—'}</div><div class="s">${pf.hac ? "sin referencia por hacienda" : `2027: ${f2(tt)} ha · 2026: ${f2(t26)} ha`}</div></div>
       <div class="sim-kpi"><div class="l">Inversión estimada</div><div class="v">${moneyM(tt * costoHa)}</div><div class="s">${money(costoHa)}/ha (costo por labor)</div></div>
     </div>
-    <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área a renovar por mes (ha)</b>
+    <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Programa 2026 por mes (ha)</b> <span class="meta">· ${pf.hac ? 'no disponible por hacienda' : `total ${f2(sum(M26.z1) + sum(M26.z2))} ha`}</span>
         <span class="g-ley"><i style="background:var(--green)"></i>Zona 1 <i style="background:var(--amber)"></i>Zona 2</span></div>
-      <div class="sim-tw" style="padding:6px 10px 2px">${graficoMeses(M, Array(12).fill(0), pf.mes)}</div>
+      ${pf.hac ? '<div class="nores">El programa 2026 del comité no viene por hacienda.</div>' : `<div class="sim-tw" style="padding:6px 10px 2px">${graficoMeses(M26, Array(12).fill(0), pf.mes, maxComun)}</div>`}
+    </div>
+    <div class="sim-card abierta" style="margin-top:12px"><div class="sim-card-h" style="cursor:default"><b>Programa 2027 por mes (ha)</b> <span class="meta">· total ${f2(sum(M.z1) + sum(M.z2))} ha</span>
+        <span class="g-ley"><i style="background:var(--green)"></i>Zona 1 <i style="background:var(--amber)"></i>Zona 2</span></div>
+      <div class="sim-tw" style="padding:6px 10px 2px">${graficoMeses(M, Array(12).fill(0), pf.mes, maxComun)}</div>
       <div class="sim-tw"><table class="sim-t ppto-t"><thead><tr><th>Zona</th>${MESES.map(m => `<th class="n">${m}</th>`).join('')}<th class="n">Total</th></tr></thead>
         <tbody>${[['Zona 1', M.z1], ['Zona 2', M.z2]].map(([n, z]) => `<tr><td class="lab">${n}</td>${z.map(v => `<td class="n">${v ? f2(v) : '—'}</td>`).join('')}<td class="n b">${f2(sum(z))}</td></tr>`).join('')}</tbody>
         <tfoot><tr><td>Total 2027</td>${M.z1.map((v, i) => `<td class="n">${v + M.z2[i] ? f2(v + M.z2[i]) : '—'}</td>`).join('')}<td class="n b">${f2(sum(M.z1) + sum(M.z2))}</td></tr></tfoot></table></div>
