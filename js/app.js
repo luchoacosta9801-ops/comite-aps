@@ -50,13 +50,19 @@ function renderNotaActualizacion(){
   const pend=MODO_EDICION&&hayCambiosSinPublicar();
   q('nota-act').innerHTML=`Última actualización: <b>${esc(cuando)}</b>${pend?' · <span style="color:var(--amber)">hay cambios sin publicar</span>':''}`;
 }
-setInterval(renderFechaChip,60*1000);   // al pasar la medianoche cambia sola
+// "Indicadores generales": fecha de hoy y su semana (o la fecha fijada a mano 📌)
+function renderSlbl(){
+  const d=new Date(),fija=DB.meta.fechaFija;
+  const sem=fija?DB.meta.semana:'Semana '+semanaISO(new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())));
+  q('slbl').innerHTML=`Indicadores generales · ${esc(fechaLarga(fija||hoyTexto()))} · ${esc(sem)}<span class="slbl-arrow">▼</span>`;
+}
+setInterval(()=>{renderFechaChip();renderSlbl();},60*1000);   // al pasar la medianoche cambian solas
 
 function renderMeta(){
   const {fecha,semana}=DB.meta;
   renderFechaChip();
   q('chip-sem').textContent=semana;
-  q('slbl').innerHTML=`Indicadores generales · ${esc(fechaLarga(fecha))} · ${esc(semana)}<span class="slbl-arrow">▼</span>`;
+  renderSlbl();
   document.querySelectorAll('.sem-tag').forEach(t=>t.textContent=semana.replace(/semana/i,'SEM.'));
   q('footer').innerHTML=`Comité APS · Riopaila Agrícola · Datos al ${esc(fecha)} · ${esc(semana)} · Fuentes: PANEL CONTROL · COMITE APS · RESUMEN · PPTO 2026`+
     `<div class="footer-firma">Elaborado por: <b>Luis Acosta</b> · Esp. de Ingeniería Agrícola</div>`;
