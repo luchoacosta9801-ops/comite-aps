@@ -499,3 +499,7 @@ body.modo-sim .fbtn-sim{background:var(--green);color:#fff}
 .sim-card.abierta .sim-card-k{max-width:560px}
 @media(max-width:1100px){.sim-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}}
 @media(max-width:760px){.sim-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.sim-mini b{font-size:13px}}
+/* Botón para pasar la semana actual a anterior (comparativo, solo editor) */
+.comp-tit-fila{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.btn-rotar{border:1px solid rgba(0,119,170,.35);background:rgba(0,119,170,.08);color:var(--cyan);border-radius:14px;padding:3px 11px;font-size:9.5px;font-weight:800;cursor:pointer;font-family:var(--sans);text-transform:none;letter-spacing:0}
+.btn-rotar:hover{background:rgba(0,119,170,.16)}

@@ -622,3 +622,22 @@ revisarVersion();
 function ajustarBarra(){document.querySelector('.fbar').style.top=document.querySelector('.hdr').offsetHeight+'px';}
 window.addEventListener('resize',ajustarBarra);
 ajustarBarra();
+
+// ── Pasar la semana actual a "semana anterior" (solo editor) ──
+// Útil cuando no hay Excel nuevo o las labores no avanzaron: la torta actual queda como anterior
+// y la actual pasa a la semana de hoy con las mismas suertes (se pueden editar o importar encima).
+if(MODO_EDICION){
+  q('btn-rotar').hidden=false;
+  q('btn-rotar').addEventListener('click',e=>{
+    e.stopPropagation();
+    const d=new Date(),hoy=hoyTexto();
+    const semHoy='Semana '+semanaISO(new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())));
+    const mismaSemana=DB.meta.semana===semHoy;
+    if(!confirm(`¿Pasar ${DB.meta.semana} (${DB.meta.fecha}) a "semana anterior"?\n\nLa semana actual quedará como ${semHoy} (${hoy}) con las mismas ${DB.proceso.length} suertes en proceso.`+
+      (mismaSemana?`\n\nOjo: los datos ya están en ${semHoy}; la anterior y la actual quedarían como la misma semana.`:'')))return;
+    DB.procesoAnterior={fecha:DB.meta.fecha,semana:DB.meta.semana,items:clone(DB.proceso)};
+    DB.meta.fecha=hoy;DB.meta.semana=semHoy;
+    save();renderAll();
+    toast(`✓ ${DB.procesoAnterior.semana} pasó a semana anterior · recuerda 🚀 Publicar`);
+  });
+}

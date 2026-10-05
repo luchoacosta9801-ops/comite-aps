@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Comité APS · Dashboard Ejecutivo</title>
 <meta name="theme-color" content="#0077aa">
-<meta name="app-version" content="31">
+<meta name="app-version" content="32">
 <link rel="icon" href="img/icono-192.png" type="image/png">
 <link rel="apple-touch-icon" href="img/icono-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="css/styles.css?v=31">
+<link rel="stylesheet" href="css/styles.css?v=32">
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -166,7 +166,7 @@
     </div>
     <div class="acc-body" id="acc-body">
       <div class="comp" id="comp-labores">
-        <div class="comp-tit">Comparativo de labores · semana anterior vs semana actual</div>
+        <div class="comp-tit comp-tit-fila"><span>Comparativo de labores · semana anterior vs semana actual</span><button type="button" class="btn-rotar" id="btn-rotar" hidden title="La semana actual pasa a ser la anterior y la actual queda como la semana de hoy">⇦ Pasar semana actual a anterior</button></div>
         <div class="comp-grid">
           <div class="comp-pie"><div class="comp-sem" id="comp-sem-0"></div><svg id="pie-ant" viewBox="0 0 160 160" width="140" height="140"></svg></div>
           <div class="comp-pie"><div class="comp-sem" id="comp-sem-1"></div><svg id="pie-act" viewBox="0 0 160 160" width="140" height="140"></svg></div>
@@ -273,15 +273,15 @@
   <div style="text-align:center;padding:12px 0;font-size:9px;color:var(--muted);border-top:1px solid var(--bdr)" id="footer"></div>
 </main>
 
-<script src="js/datos.js?v=31"></script>
-<script src="js/data.js?v=31"></script>
-<script src="js/store.js?v=31"></script>
-<script src="js/importer.js?v=31"></script>
-<script src="js/app.js?v=31"></script>
-<script src="js/exportar.js?v=31"></script>
-<script src="js/gestion.js?v=31"></script>
-<script src="js/sim-datos.js?v=31"></script>
-<script src="js/simulador.js?v=31"></script>
+<script src="js/datos.js?v=32"></script>
+<script src="js/data.js?v=32"></script>
+<script src="js/store.js?v=32"></script>
+<script src="js/importer.js?v=32"></script>
+<script src="js/app.js?v=32"></script>
+<script src="js/exportar.js?v=32"></script>
+<script src="js/gestion.js?v=32"></script>
+<script src="js/sim-datos.js?v=32"></script>
+<script src="js/simulador.js?v=32"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
