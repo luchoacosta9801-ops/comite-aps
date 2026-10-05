@@ -80,7 +80,11 @@ const SEED = {
   contratistaDefecto: ${J(d.contratistaDefecto !== undefined ? d.contratistaDefecto : CONTRATISTA_DEFECTO)},
   pptoMensual: { z1: ${J(d.pptoMensual.z1)}, z2: ${J(d.pptoMensual.z2)} },${d.sim ? `
   // Simulador de costos: tarifas, presupuesto por labor y plan de cada suerte en proceso
-  sim: ${J(d.sim)},` : ''}
+  sim: ${J(d.sim)},` : ''}${d.estructura ? `
+  // Estructura del área (organigrama del portal)
+  estructura: ${J(d.estructura)},` : ''}${d.ppto2027 ? `
+  // Presupuesto APS 2027: hectáreas por mes y zona, costo por labor
+  ppto2027: ${J(d.ppto2027)},` : ''}
   costos: ${lista(d.costos)},
 };
 `;

@@ -503,3 +503,56 @@ body.modo-sim .fbtn-sim{background:var(--green);color:#fff}
 .comp-tit-fila{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .btn-rotar{border:1px solid rgba(0,119,170,.35);background:rgba(0,119,170,.08);color:var(--cyan);border-radius:14px;padding:3px 11px;font-size:9.5px;font-weight:800;cursor:pointer;font-family:var(--sans);text-transform:none;letter-spacing:0}
 .btn-rotar:hover{background:rgba(0,119,170,.16)}
+/* ── Portal de Ingeniería: un módulo visible a la vez según body[data-vista] ── */
+.modulo{display:none}
+body[data-vista]:not([data-vista="aps"]) .main>*{display:none}
+body[data-vista="portal"] #portal,body[data-vista="estructura"] #estructura,body[data-vista="ppto"] #ppto2027,body[data-vista="simulador"] #simulador{display:block}
+body:not([data-vista="aps"]) .ffiltros,body:not([data-vista="aps"]) .fbtn-filtros,body:not([data-vista="aps"]) #btn-reset{display:none!important}
+body:is([data-vista="portal"],[data-vista="estructura"],[data-vista="ppto"]) :is(#btn-excel,#btn-sim,#btn-gestionar,#chip-sem,#results-pill){display:none!important}
+body[data-vista="portal"] #btn-inicio{display:none}
+.fbtn-inicio{padding:0 12px;border-radius:20px;border:1px solid var(--bdr);background:var(--card2);color:var(--text);font-size:10.5px;font-weight:800;cursor:pointer;font-family:var(--sans)}
+.fbtn-inicio:hover{border-color:var(--bdr2);background:var(--bg)}
+/* Portada */
+.pt-hero{display:flex;align-items:center;gap:18px;background:#fff;border:1px solid var(--bdr);border-radius:16px;padding:20px 24px;box-shadow:var(--shadow);margin-bottom:16px}
+.pt-logo{height:78px;width:auto;flex-shrink:0}
+.pt-h1{font-size:24px;font-weight:900;color:var(--text);letter-spacing:-.4px}
+.pt-h2{font-size:12px;color:var(--muted);margin-top:2px}
+.pt-firma{font-size:11.5px;font-weight:700;color:var(--cyan);margin-top:6px}
+.pt-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.pt-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;background:#fff;border:1px solid var(--bdr);border-top:4px solid var(--c);border-radius:14px;padding:18px 18px 14px;box-shadow:var(--shadow);cursor:pointer;font-family:var(--sans);transition:transform .15s,box-shadow .15s}
+.pt-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
+.pt-ico{font-size:30px;line-height:1}
+.pt-tit{font-size:15px;font-weight:800;color:var(--text);margin-top:4px}
+.pt-desc{font-size:11px;color:var(--dim);line-height:1.45;flex:1}
+.pt-dato{font-size:11px;color:var(--text);background:var(--card2);border:1px solid var(--bdr);border-radius:8px;padding:6px 9px;width:100%}
+.pt-dato b{color:var(--c)}
+.pt-ir{font-size:11px;font-weight:800;color:var(--c);margin-top:2px}
+.pt-pie{text-align:center;font-size:10px;color:var(--muted);margin-top:18px}
+.pt-pie b{color:var(--cyan)}
+@media(max-width:1100px){.pt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.pt-grid{grid-template-columns:1fr}.pt-hero{padding:14px;gap:12px}.pt-logo{height:56px}.pt-h1{font-size:19px}}
+/* Encabezado de los módulos */
+.mod-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.pt-file{cursor:pointer;display:inline-flex;align-items:center}
+/* Organigrama: árbol con líneas, se ve igual en celular (sangría) */
+.org,.org ul{list-style:none;margin:0;padding:0}
+.org ul{margin-left:22px;padding-left:16px;border-left:2px solid var(--bdr)}
+.org li{position:relative;padding-top:10px}
+.org ul>li::before{content:'';position:absolute;left:-16px;top:32px;width:14px;border-top:2px solid var(--bdr)}
+.org-card{display:inline-block;min-width:240px;max-width:420px;background:#fff;border:1px solid var(--bdr);border-left:4px solid var(--violet);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow)}
+.org-card.vacante{border-left-color:var(--amber);background:#fffaf3}
+.org-nom{font-size:13px;font-weight:800;color:var(--text)}
+.org-card.vacante .org-nom{color:var(--amber);font-style:italic}
+.org-cargo{font-size:11px;color:var(--dim);margin-top:1px}
+.org-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.org-tags span{font-size:9px;font-weight:700;border-radius:10px;padding:2px 8px;background:rgba(109,40,217,.08);color:var(--violet)}
+.org-tags span.z{background:rgba(0,135,90,.08);color:var(--green)}
+.org-tags span.n{background:var(--card2);color:var(--muted)}
+.org-fun{font-size:10px;color:var(--dim);margin-top:6px;line-height:1.4}
+.org-acc{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.org-acc button{border:1px solid var(--bdr);background:var(--card2);border-radius:12px;padding:2px 9px;font-size:9.5px;font-weight:700;color:var(--dim);cursor:pointer;font-family:var(--sans)}
+.org-acc button:hover{border-color:var(--bdr2);color:var(--text)}
+@media(max-width:600px){.org-card{min-width:0;max-width:none;width:100%}.org ul{margin-left:8px;padding-left:12px}.org ul>li::before{left:-12px;width:10px}}
+/* Presupuesto 2027 */
+.ppto-t input[type=number]{width:62px}
+.ppto-t tfoot tr.ref td{color:var(--muted);font-weight:400;background:#fff;border-top:1px dashed var(--bdr)}

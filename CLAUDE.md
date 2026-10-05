@@ -27,10 +27,13 @@
 - Antes de publicar, revisar `git log` por si el usuario publicó cambios de datos desde la app; no pisarlos
 - La actualización semanal la puede hacer el usuario solo (Editar → Importar Excel → Publicar); conservar observaciones escritas en la app si el Excel viene vacío
 
-## Próximo trabajo: portal de Ingeniería (decidido el 5 oct 2026)
+## Portal de Ingeniería (hecho el 5 oct 2026, js/portal.js)
 - Convertir la página en portal "Ingeniería Agrícola · Riopaila Agrícola" (logo + firma) con botones a módulos:
   📊 Dashboard Comité APS (lo actual, sin cambios) · 💰 Simulador (lo actual) ·
   👥 Estructura del área (organigrama editable en pantalla; nombres y cargos pueden ser públicos; no hay Excel fuente) ·
   📅 Presupuesto APS 2027 (estructura lista, sin datos aún; no hay archivo todavía)
 - Mismo enlace de GitHub Pages; cada módulo con su dirección (#aps, #simulador, #estructura, #ppto2027)
 - Reutilizar modo editor, Publicar, actualización automática, vista celular, Excel y firma. No romper lo que existe
+- Navegación: irA(vista) pone body[data-vista] (portal|aps|simulador|estructura|ppto) y la dirección; sin dirección abre la portada. CSS muestra solo el módulo activo
+- Datos nuevos publicados en datos.js: DB.estructura {personas[{id,nombre,cargo,equipo,zona,funciones,reportaA}]} y DB.ppto2027 {z1[12],z2[12],labores[{labor,cant,costo}]}
+- Pendiente: llenar el organigrama (lo hace el usuario en pantalla) y cargar datos del Presupuesto 2027 cuando exista el archivo

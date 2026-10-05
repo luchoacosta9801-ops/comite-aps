@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Comité APS · Dashboard Ejecutivo</title>
 <meta name="theme-color" content="#0077aa">
-<meta name="app-version" content="32">
+<meta name="app-version" content="33">
 <link rel="icon" href="img/icono-192.png" type="image/png">
 <link rel="apple-touch-icon" href="img/icono-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="css/styles.css?v=32">
+<link rel="stylesheet" href="css/styles.css?v=33">
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -69,6 +69,7 @@
       </select></label>
   </div>
   <div class="facciones">
+    <button class="fbtn-inicio" id="btn-inicio" title="Volver al portal de Ingeniería Agrícola">🏠 Inicio</button>
     <button class="fbtn-sim" id="btn-sim" title="Simulador de costos por suerte">💰 Simulador</button>
     <button class="freset" id="btn-reset" title="Quitar todos los filtros">✕<span class="txt-largo"> Limpiar</span></button>
     <button class="fbtn-excel" id="btn-excel" title="Descargar en Excel lo que muestra el dashboard">📊 Excel</button>
@@ -95,6 +96,11 @@
 </div>
 
 <main class="main">
+  <!-- Portal y módulos (js/portal.js): se muestra uno según la dirección: inicio, aps, simulador, estructura, ppto2027 -->
+  <section class="modulo" id="portal"></section>
+  <section class="modulo" id="estructura"></section>
+  <section class="modulo" id="ppto2027"></section>
+
   <!-- Simulador de costos por suerte (se muestra con el botón 💰 Simulador) -->
   <section class="sim" id="simulador">
     <div class="sim-top">
@@ -273,15 +279,16 @@
   <div style="text-align:center;padding:12px 0;font-size:9px;color:var(--muted);border-top:1px solid var(--bdr)" id="footer"></div>
 </main>
 
-<script src="js/datos.js?v=32"></script>
-<script src="js/data.js?v=32"></script>
-<script src="js/store.js?v=32"></script>
-<script src="js/importer.js?v=32"></script>
-<script src="js/app.js?v=32"></script>
-<script src="js/exportar.js?v=32"></script>
-<script src="js/gestion.js?v=32"></script>
-<script src="js/sim-datos.js?v=32"></script>
-<script src="js/simulador.js?v=32"></script>
+<script src="js/datos.js?v=33"></script>
+<script src="js/data.js?v=33"></script>
+<script src="js/store.js?v=33"></script>
+<script src="js/importer.js?v=33"></script>
+<script src="js/app.js?v=33"></script>
+<script src="js/exportar.js?v=33"></script>
+<script src="js/gestion.js?v=33"></script>
+<script src="js/sim-datos.js?v=33"></script>
+<script src="js/simulador.js?v=33"></script>
+<script src="js/portal.js?v=33"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
