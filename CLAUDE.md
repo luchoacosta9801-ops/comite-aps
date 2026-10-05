@@ -21,3 +21,16 @@
 - Datos nuevos: importar el .xlsm en la app (localhost) y "Publicar"; fecha/semana salen del nombre del archivo (la fecha de RESUMEN es =HOY())
 - procesoAnterior = RUTA SEMANA PASADA del comité anterior (torta comparativa); se rota sola al importar una semana nueva
 - Simulador de costos (botón 💰 Simulador, #simulador): js/simulador.js + js/sim-datos.js (base copiada de Documents/Simulador Costos Suertes). Estado en DB.sim {tarifas, ppto, labores, planes{suerte: [...]}}; se publica en datos.js. Costo $/ha = pases × tarifa (o cant×tarifa/área si la unidad no es HA); Total $ = $/ha × área
+
+## Para cada sesión
+- Responder SIEMPRE en español (también los avisos de progreso). Usuario: Luis Acosta, Esp. de Ingeniería Agrícola (no programador: explicar en lenguaje simple)
+- Antes de publicar, revisar `git log` por si el usuario publicó cambios de datos desde la app; no pisarlos
+- La actualización semanal la puede hacer el usuario solo (Editar → Importar Excel → Publicar); conservar observaciones escritas en la app si el Excel viene vacío
+
+## Próximo trabajo: portal de Ingeniería (decidido el 5 oct 2026)
+- Convertir la página en portal "Ingeniería Agrícola · Riopaila Agrícola" (logo + firma) con botones a módulos:
+  📊 Dashboard Comité APS (lo actual, sin cambios) · 💰 Simulador (lo actual) ·
+  👥 Estructura del área (organigrama editable en pantalla; nombres y cargos pueden ser públicos; no hay Excel fuente) ·
+  📅 Presupuesto APS 2027 (estructura lista, sin datos aún; no hay archivo todavía)
+- Mismo enlace de GitHub Pages; cada módulo con su dirección (#aps, #simulador, #estructura, #ppto2027)
+- Reutilizar modo editor, Publicar, actualización automática, vista celular, Excel y firma. No romper lo que existe
