@@ -571,3 +571,18 @@ body[data-vista="portal"] #btn-inicio{display:none}
 .pt-cambiar{background:rgba(255,255,255,.92);border:1px solid var(--bdr);border-radius:16px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text);cursor:pointer;font-family:var(--sans);box-shadow:var(--shadow)}
 .pt-cambiar:hover{background:#fff}
 @media(max-width:600px){.pt-banner img{height:170px}}
+/* Presupuesto 2027: gráfico por mes, hacienda y nivelación */
+.g-meses{width:100%;min-width:640px;height:auto;display:block}
+.g-ax{font-size:10px;fill:#7a95ae;font-family:var(--sans)}
+.g-val{font-size:10.5px;font-weight:800;fill:#1a2e42;font-family:var(--mono)}
+.g-bar:hover rect[fill="transparent"]{fill:rgba(0,119,170,.06)}
+.g-ley{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:10px;color:var(--dim);font-weight:600}
+.g-ley i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-left:8px}
+.g-ley i.ref{height:0;border-top:2px dashed #7a95ae;width:14px;border-radius:0}
+#ppto2027 .sim-card-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pp-dos{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-top:12px;align-items:start}
+.pp-hac{cursor:pointer}.pp-hac:hover td{background:#f0f7ff}.pp-hac.on td{background:rgba(0,119,170,.08)}
+.pp-niv{display:grid;grid-template-columns:28px 1fr 70px 34px;align-items:center;gap:8px;padding:5px 0;font-size:11px}
+.pp-niv span{font-weight:800;color:var(--violet)}.pp-niv b{font-family:var(--mono);text-align:right}.pp-niv small{color:var(--muted);text-align:right}
+@media(max-width:900px){.pp-dos{grid-template-columns:1fr}}
+.g-meses{max-width:1000px;margin:0 auto}
