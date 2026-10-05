@@ -460,3 +460,46 @@ function cargarPptoExcel(file){
 
 // Arranque: abre el módulo que indique la dirección (sin dirección = portada)
 irA(vistaDeHash(location.hash), {historial:false});
+
+// ── Buscador del portal (encabezado): módulos, personas, procesos, haciendas y suertes ──
+// Corre después del buscador original del dashboard y reemplaza sus resultados.
+const TEMAS = [
+  {ir:'aps', t:'Dashboard Comité APS', d:'Avance de renovación y siembra, labores, ruta, presupuesto', k:'dashboard comite aps avance siembra renovacion labores ruta indicadores zona hacienda'},
+  {ir:'simulador', t:'Simulador de costos', d:'Costos por suerte, tarifas y contratistas', k:'simulador costos tarifas contratistas pases presupuesto labor'},
+  {ir:'estructura', t:'Estructura del área', d:'Organigrama, cargos y procesos', k:'estructura organigrama cargos personas equipo procesos responsables'},
+  {ir:'ppto', t:'Presupuesto APS 2027', d:'Programa de renovación 2027 por mes, zona y hacienda', k:'presupuesto 2027 programa renovacion meses zona hacienda nivelacion'},
+];
+busInput.addEventListener('input', () => {
+  const s = busInput.value.trim(), n = norm(s);
+  if (!n) { busResults.classList.remove('show'); return; }
+  const R = [], add = (tipo, titulo, sub, ir, extra = '') => R.push({tipo, titulo, sub, ir, extra});
+  TEMAS.forEach(m => { if (norm(m.t + ' ' + m.k).includes(n)) add('Módulo', m.t, m.d, m.ir); });
+  const E = estructura();
+  E.personas.forEach(p => { if (norm(`${p.nombre} ${p.cargo} ${p.equipo}`).includes(n)) add('Persona', p.nombre || 'Por asignar', p.cargo, 'estructura'); });
+  (E.procesos || []).forEach(p => { if (norm(`${p.especifico} ${p.general}`).includes(n)) add('Proceso', p.especifico, p.general, 'estructura'); });
+  const hacs = new Set();
+  DB.lotes.forEach(l => { if (norm(l.h).includes(n)) hacs.add(l.h); });
+  (ppto2027().suertes || []).forEach(x => { if (norm(x.h).includes(n)) hacs.add(x.h); });
+  hacs.forEach(h => add('Hacienda', h, 'Ver en el dashboard APS', 'aps', `data-hac="${esc(h)}"`));
+  DB.lotes.forEach(l => { if (norm(l.s).includes(n)) add('Suerte APS', `${l.s} · ${l.h}`, `${f2(l.a)} ha · ${l.c} · ${l.e}`, 'aps', `data-sue="${esc(l.s)}" data-hac="${esc(l.h)}"`); });
+  (ppto2027().suertes || []).forEach(x => { if (norm(x.s).includes(n)) add('Suerte 2027', `${x.s} · ${x.h}`, `${f2(x.a)} ha · renovación ${MESES[x.mes - 1] || '—'}`, 'ppto', `data-hac27="${esc(x.h)}"`); });
+  const vis = R.slice(0, 14);
+  busResults.innerHTML = vis.length
+    ? `<div class="sr-header">${R.length} resultado${R.length !== 1 ? 's' : ''}${R.length > vis.length ? ' · primeros ' + vis.length : ''}</div>` +
+      vis.map(r => `<div class="sr-tema" data-ir="${r.ir}" ${r.extra}><span class="chip cc" style="font-size:8px">${r.tipo}</span><div><b>${hl(r.titulo, s)}</b><small>${esc(r.sub || '')}</small></div></div>`).join('')
+    : `<div class="sr-empty">Sin resultados para "<b>${esc(s)}</b>"</div>`;
+  busResults.classList.add('show');
+});
+busResults.addEventListener('click', e => {
+  const it = e.target.closest('.sr-tema'); if (!it) return;
+  const {ir, sue, hac, hac27} = it.dataset;
+  busResults.classList.remove('show'); busInput.value = '';
+  if (ir === 'ppto' && hac27) { pf.hac = hac27; pf.zona = ''; pf.mes = 0; }
+  irA(ir);
+  if (ir === 'aps' && hac) {
+    F.hac = hac; q('sel-hac').value = hac; q('sel-hac').className = 'fsel on'; estadoTabla = 'all'; render();
+    const row = sue && [...q('lotes-tbody').querySelectorAll('tr')].find(r => r.dataset.sue === sue);
+    if (row) { row.scrollIntoView({behavior:'smooth', block:'center'}); row.style.background = '#fff3cd'; setTimeout(() => row.style.background = '', 1800); }
+    toast(sue ? `Suerte ${sue} · ${hac}` : `Hacienda ${hac}`);
+  }
+});
