@@ -41,3 +41,4 @@
 - Presupuesto 2027 cargado de "Documents/PROTOCOLO LABORES/RENOVACION PPTO 2027 5 oct.xlsx", hoja Riopaila (DB.ppto2027.suertes)
 - Gestión Agronomía (#agronomia, vista 'agro'): filas = proceso con labor SURCADA + ruta de siembra; Sector/Suerte salen de partir el código "3501-050"; fecha de siembra, variedad y observación en DB.agronomia.filas["HACIENDA|suerte"] (se conservan aunque la suerte salga del proceso)
 - Pendiente: portada con video/GIF (MP4 <8 MB, sin sonido, en bucle) guardado como archivo aparte vía servidor.ps1 (no en datos.js); hoy la foto va en DB.portada.imagen (JPEG reducido)
+- Inge Virtual (js/inge.js): asistente de chat sin IA (palabras clave), botón flotante 👷 en todo el portal; responde con DB (lotes, proceso, ruta, sim, agronomía, ppto2027, estructura) + GLOSARIO de labores/mecanización/drenajes/obras civiles. Para enseñarle algo nuevo: agregar al GLOSARIO o un caso en responder()
