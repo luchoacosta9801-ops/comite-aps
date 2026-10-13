@@ -731,6 +731,6 @@ body[data-vista="portal"] #btn-inicio{display:none}
   .iv-f input{font-size:16px}
 }
 @media print{.iv-fab,.iv-win{display:none!important}}
-.iv-borrar{margin-left:auto;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:14px;padding:3px 10px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+.iv-borrar{margin-left:auto;white-space:nowrap;flex-shrink:0;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:14px;padding:3px 10px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:var(--sans)}
 .iv-borrar:hover{background:rgba(255,255,255,.28)}
 .iv-borrar+.iv-x{margin-left:4px}
