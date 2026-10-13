@@ -518,11 +518,11 @@ function renderAgronomia(){
     <div class="sim-card abierta"><div class="sim-tw"><table class="sim-t ag-t">
       <thead><tr><th>Sector</th><th>Suerte</th><th>Hacienda</th><th class="n">Área (ha)</th><th>Cultivo</th><th>Estado</th><th>Fecha de siembra</th><th>Variedad</th><th>Observación</th>${ed ? '<th></th>' : ''}</tr></thead>
       <tbody>${A.length ? A.map(x => `<tr data-k="${esc(x.k)}">
-        <td style="font-family:var(--mono)">${esc(x.sector) || '—'}</td><td class="lab" style="font-family:var(--mono)">${esc(x.ste)}</td>
-        <td>${esc(x.h)} <span class="meta">Z${x.z}</span></td><td class="n b">${f2(x.a)}</td>
-        <td>${esc(x.c)}</td><td><span class="ag-est" style="--c:${colorEst[x.origen]}">${esc(x.origen)}</span></td>
-        <td>${celda(x, 'fecha', 'date', '')}</td><td>${celda(x, 'variedad', 'text', 'Variedad')}</td><td style="min-width:200px">${celda(x, 'obs', 'text', 'Observación')}</td>
-        ${ed ? `<td>${x.origen === 'Guardada' ? '<button type="button" class="x" data-ag-borrar title="Quitar de la lista">×</button>' : ''}</td>` : ''}</tr>`).join('')
+        <td class="ag-sec" style="font-family:var(--mono)">${esc(x.sector) || '—'}</td><td class="lab ag-ste" style="font-family:var(--mono)">${esc(x.ste)}</td>
+        <td class="ag-hac">${esc(x.h)} <span class="meta">Z${x.z}</span></td><td class="n b ag-a">${f2(x.a)}<span class="ag-u"> ha</span></td>
+        <td class="ag-c">${esc(x.c)}</td><td class="ag-e"><span class="ag-est" style="--c:${colorEst[x.origen]}">${esc(x.origen)}</span></td>
+        <td class="ag-f" data-l="Fecha de siembra">${celda(x, 'fecha', 'date', '')}</td><td class="ag-v" data-l="Variedad">${celda(x, 'variedad', 'text', 'Variedad')}</td><td class="ag-o" data-l="Observación" style="min-width:200px">${celda(x, 'obs', 'text', 'Observación')}</td>
+        ${ed ? `<td class="ag-x">${x.origen === 'Guardada' ? '<button type="button" class="x" data-ag-borrar title="Quitar de la lista">×</button>' : ''}</td>` : ''}</tr>`).join('')
         : `<tr><td colspan="${ed ? 10 : 9}" class="nores">${hayFiltro ? 'Ninguna suerte con esos filtros.' : 'No hay suertes cerradas en el último comité.'}</td></tr>`}</tbody>
       ${A.length ? `<tfoot><tr><td colspan="3">Total</td><td class="n b">${f2(sum(A, x => x.a))}</td><td colspan="${ed ? 6 : 5}"></td></tr></tfoot>` : ''}
     </table></div></div>

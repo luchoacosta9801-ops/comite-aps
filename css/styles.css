@@ -537,6 +537,41 @@ body[data-vista="portal"] #btn-inicio{display:none}
 .ag-t input[type=text]{min-width:110px}
 .ag-est{display:inline-block;font-size:9.5px;font-weight:800;color:var(--c);border:1px solid var(--c);border-radius:10px;padding:1px 7px;white-space:nowrap}
 #agronomia .sim-tw{max-height:70vh}
+.ag-u{display:none}
+/* Celular: cada suerte es una tarjeta y se ven todas (sin desplazamiento interno) */
+@media(max-width:760px){
+  #agronomia .sim-tw{max-height:none;overflow:visible}
+  #agronomia .sim-card{background:transparent;border:0;box-shadow:none}
+  #agronomia .pp-filtros{flex-wrap:wrap}
+  #agronomia .pp-filtros .fchip{flex:1 1 140px}
+  #agronomia .sim-kpis{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  #agronomia .sim-kpi .v{font-size:17px}
+  #agronomia .ag-t,#agronomia .ag-t tbody{display:block;width:100%}
+  #agronomia .ag-t thead{display:none}
+  #agronomia .ag-t tbody tr{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr) auto;gap:4px 0;align-items:center;background:#fff;border:1px solid var(--bdr);border-radius:12px;padding:10px 12px;margin-bottom:10px;box-shadow:var(--shadow)}
+  #agronomia .ag-t tbody td{padding:0;border:0;min-width:0!important;width:auto!important;font-size:12px}
+  #agronomia .ag-t .ag-sec{grid-column:1;grid-row:1;font-size:14px;font-weight:800}
+  #agronomia .ag-t .ag-sec::after{content:"-"}
+  #agronomia .ag-t .ag-ste{grid-column:2;grid-row:1;font-size:14px;font-weight:800}
+  #agronomia .ag-t .ag-e{grid-column:3/5;grid-row:1;justify-self:end}
+  #agronomia .ag-t .ag-hac{grid-column:1/3;grid-row:2}
+  #agronomia .ag-t .ag-a{grid-column:3;grid-row:2;text-align:right;padding-right:10px}
+  #agronomia .ag-t .ag-u{display:inline}
+  #agronomia .ag-t .ag-c{grid-column:4;grid-row:2;justify-self:end;color:var(--dim)}
+  #agronomia .ag-t .ag-f,#agronomia .ag-t .ag-v,#agronomia .ag-t .ag-o{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+  #agronomia .ag-t .ag-f{grid-column:1/3;grid-row:3;padding-right:6px}
+  #agronomia .ag-t .ag-v{grid-column:3/5;grid-row:3;padding-left:6px}
+  #agronomia .ag-t .ag-o{grid-column:1/-1;grid-row:4}
+  #agronomia .ag-t .ag-f::before,#agronomia .ag-t .ag-v::before,#agronomia .ag-t .ag-o::before{content:attr(data-l);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  #agronomia .ag-t input[type=date],#agronomia .ag-t input[type=text]{width:100%!important;max-width:none;font-size:14px;padding:7px 9px;min-width:0;box-sizing:border-box}
+  #agronomia .ag-t .ag-x:empty{display:none}
+  #agronomia .ag-t .ag-x{grid-column:1/-1;grid-row:5;text-align:right}
+  #agronomia .ag-t tfoot{display:block}
+  #agronomia .ag-t tfoot tr{display:flex;justify-content:space-between;padding:8px 12px;font-weight:800}
+  #agronomia .ag-t tfoot td{border:0;padding:0}
+  #agronomia .ag-t tfoot td:empty{display:none}
+  #agronomia .ag-t .nores{display:block}
+}
 @media(max-width:600px){.pt-grid{grid-template-columns:1fr}.pt-hero{padding:14px;gap:12px}.pt-logo{height:56px}.pt-h1{font-size:19px}}
 /* Encabezado de los módulos */
 .mod-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
