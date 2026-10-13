@@ -1,7 +1,7 @@
 // Datos publicados del Comité APS. Archivo generado por la app ("Publicar para todos");
 // cambiar meta.corte hace que los navegadores descarten lo guardado y tomen estos datos.
 const SEED = {
-  meta: {"fecha":"13 Oct 2026","semana":"Semana 42","corte":"2026-10-13T15:57:06.842Z","pptoTotal":620.24},
+  meta: {"fecha":"13 Oct 2026","semana":"Semana 42","corte":"2026-10-13T18:23:37.030Z","pptoTotal":620.24},
   lotes: [
     {"s":"3110-050","h":"NORMANDIA","z":2,"a":8.33,"c":"CAÑA","d":278,"e":"SEMBRADA","p":"SI","v":"CC 01-1940"},
     {"s":"3501-050","h":"RIOPAILA","z":1,"a":8.62,"c":"CAÑA","d":314,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
@@ -52,7 +52,7 @@ const SEED = {
     {"s":"3426-020","h":"MEDIA LUNA","z":2,"a":10.26,"c":"CAÑA","d":320,"e":"SEMBRADA","p":"NO","v":"CC 01-1940"}
   ],
   ruta: [
-    {"h":"RIOPAILA","s":"3501-050","a":8.62,"d":314,"variedad":"CC 85-92","semillero":"3111-080","bandereo":12,"cont":"ANDRUSV"}
+    {"h":"RIOPAILA","s":"3501-050","a":8.62,"d":314,"variedad":"CC 01-1940","semillero":"3118-060","bandereo":12,"cont":"ANDRUSV"}
   ],
   proceso: [
     {"hac":"PERALONSO","z":2,"sue":"3111-200","area":12.44,"dias":386,"cont":"RIOCAST","labor":"NIVELACION","obs":"EN LEVANTAMIENTO","variedad":null},
