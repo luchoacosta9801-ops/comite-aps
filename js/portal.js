@@ -9,6 +9,7 @@ const VISTAS = {
   simulador:  {hash:'#simulador',  titulo:'Comité APS · Simulador',  sub:'Costos por suerte · Riopaila Agrícola',    doc:'Simulador de costos · Comité APS'},
   estructura: {hash:'#estructura', titulo:'Estructura del área',      sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Estructura del área · Ingeniería Agrícola'},
   ppto:       {hash:'#ppto2027',   titulo:'Presupuesto APS 2027',     sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Presupuesto APS 2027 · Ingeniería Agrícola'},
+  agro:       {hash:'#agronomia',  titulo:'Gestión Agronomía',        sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Gestión Agronomía · Ingeniería Agrícola'},
 };
 const vistaDeHash = h => (Object.entries(VISTAS).find(([, v]) => v.hash === h) || ['portal'])[0];
 let vistaActual = 'portal';
@@ -33,6 +34,7 @@ function renderVista(){
   else if (vistaActual === 'simulador') renderSimulador();
   else if (vistaActual === 'estructura') renderEstructura();
   else if (vistaActual === 'ppto') renderPpto2027();
+  else if (vistaActual === 'agro') renderAgronomia();
 }
 // El simulador ya traía su propio botón: ahora navega con el portal
 function modoSimulador(abrir){ irA(abrir ? 'simulador' : 'aps'); }
@@ -77,6 +79,8 @@ function renderPortal(){
         E.personas.length ? `<b>${E.personas.length}</b> ${E.personas.length === 1 ? 'cargo' : 'cargos'} · ${E.personas.filter(p => !p.nombre).length} por asignar` : 'Por completar', 'var(--violet)')}
       ${card('ppto', '📅', 'Presupuesto APS 2027', 'Hectáreas a renovar por mes y zona, y costo presupuestado por labor.',
         haP ? `<b>${f2(haP)} ha</b> · inversión <b>${moneyM(haP * pptoHa2027(P))}</b>` : 'Estructura lista · sin datos aún', 'var(--amber)')}
+      ${(() => { const A = agroFilas(); return card('agro', '🌱', 'Gestión Agronomía', 'Suertes surcadas del Comité APS: fecha de siembra, variedad y observaciones.',
+        A.length ? `<b>${A.length}</b> ${A.length === 1 ? 'suerte' : 'suertes'} · <b>${f2(sum(A, x => x.a))} ha</b> · ${A.filter(x => x.fecha).length} con fecha de siembra` : 'Sin suertes surcadas aún', '#15803d'); })()}
     </div>
     <div class="pt-pie">Comité APS · Riopaila Agrícola · Elaborado por: <b>Luis Acosta</b> · Esp. de Ingeniería Agrícola</div>`;
 }
@@ -458,6 +462,69 @@ function cargarPptoExcel(file){
   }).catch(err => toast('⚠ ' + err.message));
 }
 
+// ── Gestión Agronomía ──
+// Suertes surcadas del dashboard APS (labor SURCADA en proceso y las de la ruta de siembra).
+// Lo que se escribe (fecha de siembra, variedad, observación) queda en DB.agronomia.filas por
+// suerte, y la fila se conserva aunque la suerte ya no esté en proceso (ya sembrada).
+const agroClave = (s, h) => `${h}|${s}`;
+function agroFilas(){
+  const guard = (DB.agronomia && DB.agronomia.filas) || {}, M = new Map();
+  const lote = s => DB.lotes.find(l => l.s === s);
+  const poner = (s, h, a, z, v, origen) => {
+    const k = agroClave(s, h); if (M.has(k)) return;
+    M.set(k, {k, s, h, a:+a || 0, z:z || zonaDe(h), vBase:v || (lote(s) || {}).v || '', origen});
+  };
+  DB.proceso.filter(r => norm(r.labor) === 'SURCADA').forEach(r => poner(r.sue, r.hac, r.area, r.z, r.variedad, 'Surcada'));
+  DB.ruta.forEach(r => poner(r.s, r.h, r.a, null, r.variedad, 'En ruta de siembra'));
+  Object.entries(guard).forEach(([k, g]) => { if (!M.has(k) && g.s) M.set(k, {k, s:g.s, h:g.h, a:+g.a || 0, z:g.z || zonaDe(g.h), vBase:'', origen:'Guardada'}); });
+  return [...M.values()].map(x => {
+    const g = guard[x.k] || {}, partes = String(x.s).split('-');
+    return Object.assign(x, {sector:partes.length > 1 ? partes[0] : '', ste:partes.length > 1 ? partes.slice(1).join('-') : x.s,
+      fecha:g.fecha || '', variedad:g.variedad !== undefined ? g.variedad : x.vBase, obs:g.obs || ''});
+  }).sort((a, b) => a.h.localeCompare(b.h) || a.s.localeCompare(b.s));
+}
+function fechaLarga(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[3]} ${MESES[+m[2] - 1]} ${m[1]}` : ''; }
+function renderAgronomia(){
+  const A = agroFilas(), ed = MODO_EDICION;
+  const celda = (x, campo, tipo, ph) => ed
+    ? `<input type="${tipo}" data-ag="${campo}" value="${esc(x[campo])}" placeholder="${ph}" ${tipo === 'text' ? 'style="width:100%"' : ''}>`
+    : (campo === 'fecha' ? (fechaLarga(x.fecha) || '<span class="meta">—</span>') : (esc(x[campo]) || '<span class="meta">—</span>'));
+  q('agronomia').innerHTML = `
+    <div class="mod-top">
+      <div><div class="sim-tit">🌱 Gestión Agronomía · Suertes surcadas</div>
+        <div class="sim-subt">Se traen solas del Dashboard APS (labor «Surcada» y ruta de siembra) · ${DB.meta.semana ? esc(DB.meta.semana) : ''}${ed ? ' · escribe y se guarda solo; luego 🚀 Publicar' : ' · solo lectura'}</div></div>
+    </div>
+    <div class="sim-kpis">
+      <div class="sim-kpi"><div class="l">Suertes</div><div class="v">${A.length}</div><div class="s">${[...new Set(A.map(x => x.h))].length} haciendas</div></div>
+      <div class="sim-kpi"><div class="l">Área</div><div class="v">${f2(sum(A, x => x.a))} ha</div><div class="s">Z1 ${f2(sum(A.filter(x => x.z === 1), x => x.a))} · Z2 ${f2(sum(A.filter(x => x.z === 2), x => x.a))}</div></div>
+      <div class="sim-kpi"><div class="l">Con fecha de siembra</div><div class="v">${A.filter(x => x.fecha).length}</div><div class="s">${A.filter(x => !x.fecha).length} por definir</div></div>
+    </div>
+    <div class="sim-card abierta"><div class="sim-tw"><table class="sim-t ag-t">
+      <thead><tr><th>Sector</th><th>Suerte</th><th>Hacienda</th><th class="n">Área (ha)</th><th>Fecha de siembra</th><th>Variedad</th><th>Observación</th>${ed ? '<th></th>' : ''}</tr></thead>
+      <tbody>${A.length ? A.map(x => `<tr data-k="${esc(x.k)}">
+        <td style="font-family:var(--mono)">${esc(x.sector) || '—'}</td><td class="lab" style="font-family:var(--mono)" title="${esc(x.origen)}">${esc(x.ste)}</td>
+        <td>${esc(x.h)} <span class="meta">Z${x.z}</span></td><td class="n b">${f2(x.a)}</td>
+        <td>${celda(x, 'fecha', 'date', '')}</td><td>${celda(x, 'variedad', 'text', 'Variedad')}</td><td style="min-width:200px">${celda(x, 'obs', 'text', 'Observación')}</td>
+        ${ed ? `<td>${x.origen === 'Guardada' ? '<button type="button" class="x" data-ag-borrar title="Quitar de la lista">×</button>' : ''}</td>` : ''}</tr>`).join('')
+        : `<tr><td colspan="${ed ? 8 : 7}" class="nores">No hay suertes surcadas en el último comité.</td></tr>`}</tbody>
+      ${A.length ? `<tfoot><tr><td colspan="3">Total</td><td class="n b">${f2(sum(A, x => x.a))}</td><td colspan="${ed ? 4 : 3}"></td></tr></tfoot>` : ''}
+    </table></div></div>
+    <div class="meta" style="margin-top:8px">Las suertes que salen del proceso (ya sembradas) se conservan aquí si tienen datos escritos.</div>`;
+}
+q('agronomia').addEventListener('change', e => {
+  const el = e.target, tr = el.closest('tr[data-k]'); if (!el.dataset.ag || !tr) return;
+  const x = agroFilas().find(f => f.k === tr.dataset.k); if (!x) return;
+  modCambio(() => {
+    DB.agronomia = DB.agronomia || {filas:{}};
+    const g = DB.agronomia.filas[x.k] = Object.assign({s:x.s, h:x.h, a:x.a, z:x.z}, DB.agronomia.filas[x.k]);
+    g[el.dataset.ag] = el.value.trim();
+  });
+});
+q('agronomia').addEventListener('click', e => {
+  const tr = e.target.closest('[data-ag-borrar]') && e.target.closest('tr[data-k]');
+  if (tr && confirm('¿Quitar esta suerte de la lista de agronomía?')) modCambio(() => { delete DB.agronomia.filas[tr.dataset.k]; });
+});
+
 // Arranque: abre el módulo que indique la dirección (sin dirección = portada)
 irA(vistaDeHash(location.hash), {historial:false});
 
@@ -468,6 +535,7 @@ const TEMAS = [
   {ir:'simulador', t:'Simulador de costos', d:'Costos por suerte, tarifas y contratistas', k:'simulador costos tarifas contratistas pases presupuesto labor'},
   {ir:'estructura', t:'Estructura del área', d:'Organigrama, cargos y procesos', k:'estructura organigrama cargos personas equipo procesos responsables'},
   {ir:'ppto', t:'Presupuesto APS 2027', d:'Programa de renovación 2027 por mes, zona y hacienda', k:'presupuesto 2027 programa renovacion meses zona hacienda nivelacion'},
+  {ir:'agro', t:'Gestión Agronomía', d:'Suertes surcadas: fecha de siembra, variedad y observaciones', k:'gestion agronomia surcadas siembra fecha variedad observacion sector'},
 ];
 busInput.addEventListener('input', () => {
   const s = busInput.value.trim(), n = norm(s);
