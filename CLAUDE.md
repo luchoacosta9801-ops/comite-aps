@@ -10,7 +10,7 @@
 - App web estática sin build: `index.html` + `js/` (scripts clásicos, no módulos, para que funcione con doble clic desde file://)
 - Datos iniciales en `js/data.js`; estado real en localStorage (`comite-aps:v1`), todo cambio pasa por `save()` y `renderAll()`
 - Importación Excel en `js/importer.js` (SheetJS desde cdnjs, carga diferida); columnas por nombre normalizado
-- Servidor local: `servidor.ps1` (no hay Python ni Node en esta máquina)
+- Servidor local: `servidor.ps1` (no hay Python ni Node en esta máquina). Arranca solo al iniciar Windows (acceso "Servidor Comite APS.lnk" en la carpeta Inicio del usuario, ventana minimizada)
 - `Comité APS · Dashboard Ejecutivo.html` es la versión original; no editarla
 - Publicar SIEMPRE con `publicar.ps1 "mensaje"`: sube la versión (?v=N en index.html y sw.js, meta app-version, version.json), commit y push a main y gh-pages
 - Las pestañas abiertas consultan version.json cada 5 min y al volver a la pestaña; si cambió, recargan solas
