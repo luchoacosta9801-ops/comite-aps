@@ -1,11 +1,11 @@
 // Datos publicados del Comité APS. Archivo generado por la app ("Publicar para todos");
 // cambiar meta.corte hace que los navegadores descarten lo guardado y tomen estos datos.
 const SEED = {
-  meta: {"fecha":"5 Oct 2026","semana":"Semana 41","corte":"2026-10-08T21:15:06.027Z","pptoTotal":620.24},
+  meta: {"fecha":"13 Oct 2026","semana":"Semana 42","corte":"2026-10-13T15:56:25.595Z","pptoTotal":620.24},
   lotes: [
-    {"s":"3110-050","h":"NORMANDIA","z":2,"a":8.33,"c":"CAÑA","d":278,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
+    {"s":"3110-050","h":"NORMANDIA","z":2,"a":8.33,"c":"CAÑA","d":278,"e":"SEMBRADA","p":"SI","v":"CC 01-1940"},
     {"s":"3501-050","h":"RIOPAILA","z":1,"a":8.62,"c":"CAÑA","d":314,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
-    {"s":"3501-052","h":"RIOPAILA","z":1,"a":2.92,"c":"CAÑA","d":316,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
+    {"s":"3501-052","h":"RIOPAILA","z":1,"a":2.92,"c":"CAÑA","d":316,"e":"SEMBRADA","p":"SI","v":"CC 01-1940"},
     {"s":"3111-200","h":"PERALONSO","z":2,"a":12.44,"c":"CAÑA","d":386,"e":"PENDIENTE","p":"NO","v":"CC 01-1940"},
     {"s":"3111-090","h":"PERALONSO","z":2,"a":12.95,"c":"CAÑA","d":206,"e":"PENDIENTE","p":"NO","v":"VARIAS"},
     {"s":"3111-131","h":"PERALONSO","z":2,"a":15.03,"c":"CAÑA","d":276,"e":"PENDIENTE","p":"SI","v":"CC 11-595"},
@@ -52,26 +52,22 @@ const SEED = {
     {"s":"3426-020","h":"MEDIA LUNA","z":2,"a":10.26,"c":"CAÑA","d":320,"e":"SEMBRADA","p":"NO","v":"CC 01-1940"}
   ],
   ruta: [
-    {"h":"NORMANDIA","s":"3110-050","a":8.33,"d":278,"variedad":"CC 13-2035","semillero":"3113-080","bandereo":12,"cont":"ANDRUSV"},
-    {"h":"RIOPAILA","s":"3501-052","a":2.92,"d":316,"variedad":"CC 01-1940","semillero":"3118-060","bandereo":12,"cont":"ANDRUSV"},
     {"h":"RIOPAILA","s":"3501-050","a":8.62,"d":314,"variedad":"CC 85-92","semillero":"3111-080","bandereo":12,"cont":"ANDRUSV"}
   ],
   proceso: [
-    {"hac":"PERALONSO","z":2,"sue":"3111-200","area":12.44,"dias":386,"cont":"RIOCAST","labor":"DESCEPADA","obs":"2 PASE REALIZADO","variedad":null},
-    {"hac":"PERALONSO","z":2,"sue":"3111-090","area":12.95,"dias":206,"cont":"RIOCAST","labor":"DESCEPADA","obs":"2 PASE PARCIAL","variedad":null},
+    {"hac":"PERALONSO","z":2,"sue":"3111-200","area":12.44,"dias":386,"cont":"RIOCAST","labor":"NIVELACION","obs":"EN LEVANTAMIENTO","variedad":null},
+    {"hac":"PERALONSO","z":2,"sue":"3111-090","area":12.95,"dias":206,"cont":"RIOCAST","labor":"NIVELACION","obs":"PENDIENTE POR TOPOGRAFIA","variedad":null},
     {"hac":"PERALONSO","z":2,"sue":"3111-131","area":15.03,"dias":276,"cont":"RIOCAST","labor":"DESCEPADA","obs":"SIN INICIAR","variedad":null},
-    {"hac":"RIOPAILA","z":1,"sue":"3501-050","area":8.62,"dias":314,"cont":"BIENES","labor":"SURCADA","obs":null,"variedad":null},
-    {"hac":"RIOPAILA","z":1,"sue":"3501-052","area":2.92,"dias":316,"cont":"BIENES","labor":"SURCADA","obs":null,"variedad":null},
-    {"hac":"NORMANDIA","z":2,"sue":"3110-050","area":8.33,"dias":278,"cont":"RIOCAST","labor":"SURCADA","obs":"EN PROCESO DE SIEMBRA","variedad":null}
+    {"hac":"RIOPAILA","z":1,"sue":"3501-050","area":8.62,"dias":314,"cont":"BIENES","labor":"SURCADA","obs":"EN PROCESO DE SIEMBRA","variedad":null}
   ],
   // RUTA SEMANA PASADA del comité anterior, para la torta comparativa
-  procesoAnterior: { fecha: "30 Sep 2026", semana: "Semana 40", items: [
-      {"hac":"PERALONSO","z":2,"sue":"3111-200","area":12.44,"dias":381,"cont":"RIOCAST","labor":"DESCEPADA","obs":"1 PASE REALIZADO","variedad":null},
-      {"hac":"PERALONSO","z":2,"sue":"3111-090","area":12.95,"dias":201,"cont":"RIOCAST","labor":"DESCEPADA","obs":"1 PASE REALIZADO","variedad":null},
-      {"hac":"PERALONSO","z":2,"sue":"3111-131","area":15.03,"dias":271,"cont":"RIOCAST","labor":"DESCEPADA","obs":"SIN INICIAR","variedad":null},
-      {"hac":"RIOPAILA","z":1,"sue":"3501-050","area":8.62,"dias":309,"cont":"BIENES","labor":"SURCADA","obs":null,"variedad":null},
-      {"hac":"RIOPAILA","z":1,"sue":"3501-052","area":2.92,"dias":311,"cont":"BIENES","labor":"SURCADA","obs":null,"variedad":null},
-      {"hac":"NORMANDIA","z":2,"sue":"3110-050","area":8.33,"dias":273,"cont":"RIOCAST","labor":"SURCADA","obs":"PENDIENTE POR LABOR EN INFRAESTRUCTURA","variedad":null}
+  procesoAnterior: { fecha: "5 Oct 2026", semana: "Semana 41", items: [
+      {"hac":"PERALONSO","z":2,"sue":"3111-200","area":12.44,"dias":386,"cont":"RIOCAST","labor":"DESCEPADA","obs":"2 PASE REALIZADO","variedad":null},
+      {"hac":"PERALONSO","z":2,"sue":"3111-090","area":12.95,"dias":206,"cont":"RIOCAST","labor":"DESCEPADA","obs":"2 PASE PARCIAL","variedad":null},
+      {"hac":"PERALONSO","z":2,"sue":"3111-131","area":15.03,"dias":276,"cont":"RIOCAST","labor":"DESCEPADA","obs":"SIN INICIAR","variedad":null},
+      {"hac":"RIOPAILA","z":1,"sue":"3501-050","area":8.62,"dias":314,"cont":"BIENES","labor":"SURCADA","obs":null,"variedad":null},
+      {"hac":"RIOPAILA","z":1,"sue":"3501-052","area":2.92,"dias":316,"cont":"BIENES","labor":"SURCADA","obs":null,"variedad":null},
+      {"hac":"NORMANDIA","z":2,"sue":"3110-050","area":8.33,"dias":278,"cont":"RIOCAST","labor":"SURCADA","obs":"EN PROCESO DE SIEMBRA","variedad":null}
     ] },
   // Contratistas de la ruta de siembra y el predeterminado
   contratistas: ["ANDRUSV","RIOCAST","BIENES"],
