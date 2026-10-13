@@ -39,7 +39,79 @@ const IV = (() => {
     {k:['variedad','variedades','cc 01-1940','cenicana'], t:'Variedades', d:'Las variedades CC (de Cenicaña, Colombia), como CC 01-1940, CC 11-595 o CC 13-2035, se eligen por productividad, contenido de sacarosa y adaptación a cada zona agroecológica.'},
     {k:['zona agroecologica','agroecologica'], t:'Zona agroecológica', d:'Clasificación de cada suerte por suelo y humedad (ej. 1H2). Sirve para escoger la variedad más adecuada.'},
     {k:['combustible','acpm','tanqueo','aforo'], t:'Combustible', d:'Administración del ACPM de la maquinaria: entregas, registro de tanqueos y aforos (medir el consumo real de cada equipo por hora o por hectárea).'},
+    // ── Suelos ──
+    {k:['textura','arcilla','arcilloso','limo','limoso','arenoso','franco'], t:'Textura del suelo', d:'Proporción de arena, limo y arcilla. Los suelos arcillosos retienen más agua y nutrientes pero drenan lento y se compactan; los arenosos drenan rápido y retienen poco; los francos son los más equilibrados para la caña.'},
+    {k:['densidad aparente'], t:'Densidad aparente', d:'Masa de suelo seco por volumen (g/cm³). Valores altos (más de 1.5–1.6 en suelos finos) indican compactación y restricción de raíces.'},
+    {k:['penetrometro','resistencia a la penetracion'], t:'Penetrómetro', d:'Instrumento que mide la resistencia del suelo a la penetración (kPa o MPa) para ubicar capas compactadas y decidir profundidad de subsuelo. Por encima de ~2 MPa las raíces crecen con dificultad.'},
+    {k:['capacidad de campo','punto de marchitez','agua disponible','humedad del suelo'], t:'Humedad del suelo', d:'Capacidad de campo: agua que queda tras drenar el exceso. Punto de marchitez: humedad en que la planta ya no puede extraer agua. La diferencia es el agua disponible, base para programar el riego.'},
+    {k:['materia organica'], t:'Materia orgánica', d:'Restos vegetales y animales descompuestos. Mejora estructura, retención de agua y nutrientes. Dejar residuos de cosecha (trash) y aplicar compost o cachaza ayuda a mantenerla.'},
+    {k:['ph','acidez','salinidad','sodicidad','encalado','cal agricola','yeso'], t:'pH, salinidad y enmiendas', d:'El pH indica acidez (la caña va bien entre 5.5 y 7.5). La salinidad se mide con la conductividad eléctrica y el sodio con el PSI. Se corrigen con enmiendas: cal para acidez, yeso agrícola para sodio, más buen drenaje para lavar sales.'},
+    {k:['erosion','escorrentia','carcava'], t:'Erosión', d:'Pérdida de suelo por agua o viento. Se controla con buena nivelación, pendientes suaves de surco, cobertura y obras de manejo de aguas (cunetas, disipadores, trinchos).'},
+    {k:['curvas de nivel','pendiente','cota','altimetria'], t:'Pendiente y curvas de nivel', d:'La pendiente es el desnivel por distancia (%, o m por cada 100 m). Las curvas de nivel unen puntos de igual cota. En riego por surcos se buscan pendientes suaves y uniformes (del orden de 0.1–0.5 %) para que el agua avance sin erosionar.'},
+    // ── Riego y drenaje ──
+    {k:['evapotranspiracion','eto','etc','kc','coeficiente de cultivo'], t:'Evapotranspiración', d:'Agua que pierde el cultivo por evaporación del suelo y transpiración. ETc = ETo × Kc: la ETo sale del clima y el Kc depende de la etapa del cultivo. Es la base para calcular cuánta agua regar.'},
+    {k:['lamina de riego','lamina','frecuencia de riego','turno de riego'], t:'Lámina y frecuencia de riego', d:'La lámina es la altura de agua aplicada (mm; 1 mm = 10 m³/ha). La frecuencia es cada cuántos días se riega, según el agua disponible del suelo y el consumo del cultivo.'},
+    {k:['eficiencia de riego','eficiencia'], t:'Eficiencia de riego', d:'Porcentaje del agua aplicada que realmente queda para el cultivo. Gravedad por surcos ~40–60 %, aspersión ~70–80 %, goteo ~90 %. Se mejora con nivelación, surcos de longitud adecuada y riego alterno o con caudal reducido.'},
+    {k:['caudal','litros por segundo','l s','aforo de canal','vertedero','parshall','molinete'], t:'Caudal y aforos', d:'Caudal es el volumen de agua por tiempo (L/s o m³/s). Se afora con vertederos, canaletas Parshall, molinete o método volumétrico. Q = V × A (velocidad por área de la sección).'},
+    {k:['manning','seccion hidraulica','canal trapezoidal','talud'], t:'Diseño de canales', d:'Los canales se dimensionan con la ecuación de Manning (caudal según sección, pendiente y rugosidad n). En tierra se usan secciones trapezoidales con taludes 1:1 a 1.5:1; revestidos en concreto soportan más velocidad sin erosión.'},
+    {k:['aspersion','goteo','riego localizado','pivote','cañon','microaspersion'], t:'Métodos de riego', d:'Gravedad (surcos), aspersión (cañones, pivotes, enrolladores) y localizado (goteo superficial o subterráneo). El goteo ahorra más agua y permite fertirriego, pero cuesta más instalar y mantener.'},
+    {k:['nivel freatico','tabla de agua','piezometro','pozo de observacion'], t:'Nivel freático', d:'Profundidad del agua subterránea. En caña conviene mantenerlo por debajo de ~1–1.2 m; si sube, las raíces se asfixian. Se monitorea con pozos de observación o piezómetros.'},
+    {k:['drenaje superficial','drenaje subterraneo','zanja','colector','espaciamiento de drenes'], t:'Tipos de drenaje', d:'Superficial: saca el agua encharcada (zanjas, cunetas, nivelación). Subterráneo: baja el nivel freático con zanjas profundas o tubería perforada; el espaciamiento entre drenes se calcula con la conductividad hidráulica y la recarga (ej. ecuación de Hooghoudt). Los drenes descargan a colectores.'},
+    {k:['reservorio','jaguey','pozo profundo','bombeo','bomba'], t:'Fuentes y bombeo', d:'El agua viene de ríos (bocatomas), pozos profundos o reservorios. Una bomba se elige por caudal y altura dinámica total (m); su potencia aproximada es P (kW) ≈ Q (m³/s) × H (m) × 9.81 / eficiencia.'},
+    // ── Maquinaria y mecanización ──
+    {k:['potencia','hp','caballos','toma de fuerza','tdf','pto'], t:'Potencia del tractor', d:'Se mide en HP o kW (1 HP ≈ 0.746 kW). La potencia en la barra de tiro es menor que la del motor por pérdidas de patinaje y rodadura. La toma de fuerza (TDF) mueve implementos rotativos a 540 o 1000 rpm.'},
+    {k:['patinaje','lastre','lastrado'], t:'Patinaje y lastre', d:'Patinaje es cuánto giran las ruedas sin avanzar. Lo ideal en labranza es 10–15 %; más patinaje gasta combustible y compacta. Se corrige con lastre (pesos o agua en llantas) o bajando la carga.'},
+    {k:['capacidad operativa','capacidad de campo operativa','rendimiento operativo','ha por hora','eficiencia de campo'], t:'Capacidad operativa', d:'Hectáreas por hora que hace un equipo: ancho de trabajo (m) × velocidad (km/h) ÷ 10 × eficiencia de campo (giros, tiempos muertos; típico 65–85 %). Sirve para programar frentes y estimar costos.'},
+    {k:['costo horario','costo de maquinaria','depreciacion'], t:'Costo de maquinaria', d:'Costo por hora = costos fijos (depreciación, intereses, seguros) + variables (combustible, lubricantes, llantas, reparaciones, operador). Dividido por la capacidad operativa da el costo por hectárea.'},
+    {k:['mantenimiento preventivo','mantenimiento','horometro','engrase'], t:'Mantenimiento de maquinaria', d:'Preventivo por horas de horómetro (cambio de aceites y filtros, engrase, revisión de llantas y rodamientos). Reduce varadas en plena preparación y alarga la vida útil.'},
+    {k:['agricultura de precision','gps','rtk','piloto automatico','trafico controlado'], t:'Agricultura de precisión', d:'Uso de GPS/RTK (precisión de centímetros), piloto automático y mapas para nivelar, surcar recto y controlar el tráfico (la maquinaria siempre por las mismas huellas), reduciendo compactación y traslapes.'},
+    {k:['drone','dron','fotogrametria','ortofoto','lidar'], t:'Drones y fotogrametría', d:'Los drones generan ortofotos y modelos de elevación para medir áreas, revisar germinación, detectar encharcamientos y apoyar el diseño de nivelación y drenajes.'},
+    {k:['sig','gis','qgis','arcgis','shapefile','sistema de informacion geografica'], t:'SIG', d:'Sistema de Información Geográfica: mapas de suertes con sus datos (área, variedad, suelos, labores). Permite planear rutas de maquinaria, drenajes y renovación.'},
+    {k:['cosecha mecanizada','cosechadora','alce','corte mecanico'], t:'Cosecha mecanizada', d:'La cosechadora corta y pica la caña en trozos y la descarga a vagones. Exige surcos y bordes bien conformados, sin piedras ni tocones, y suelo con humedad adecuada para no compactar.'},
+    // ── Caña y siembra ──
+    {k:['siembra','sembrar','chorrillo','trozos','yemas','esquejes'], t:'Siembra de caña', d:'Se siembran trozos de tallo (esquejes) con 2–3 yemas, a chorrillo continuo en el fondo del surco, y se tapan con poca tierra. Se calculan unas 8–10 t de semilla por hectárea; la semilla debe venir sana de semilleros jóvenes.'},
+    {k:['germinacion','resiembra','fallas','poblacion'], t:'Germinación y resiembra', d:'Se evalúa a las 4–6 semanas contando brotes o metros de falla. Si las fallas son grandes se resiembra pronto para no perder población.'},
+    {k:['macollamiento','macolla','ahijamiento'], t:'Macollamiento', d:'Etapa en que la planta produce nuevos tallos desde la base. Necesita buena humedad, luz y nitrógeno; define cuántos tallos molibles tendrá la suerte.'},
+    {k:['madurante','maduracion','sacarosa','brix','pol'], t:'Maduración', d:'Etapa final en que la caña acumula sacarosa. Se mide con Brix y Pol. A veces se aplica madurante químico semanas antes de cosecha para concentrar azúcar.'},
+    {k:['tch','tah','toneladas de caña','productividad','rendimiento'], t:'TCH y TAH', d:'TCH: toneladas de caña por hectárea. TAH: toneladas de azúcar por hectárea (TCH × rendimiento). Son los indicadores principales de productividad de una suerte.'},
+    {k:['edad de corte','meses de corte','ciclo'], t:'Edad de corte', d:'Meses desde la siembra o el corte anterior hasta la cosecha (en el valle del Cauca normalmente 12–14 meses).'},
+    {k:['arroz','rotacion','rotar cultivos'], t:'Rotación con arroz', d:'Sembrar arroz u otro cultivo entre ciclos de caña rompe ciclos de plagas y enfermedades, aprovecha la adecuación y genera ingresos mientras la suerte se renueva.'},
+    {k:['malezas','herbicida','preemergente','control de malezas'], t:'Control de malezas', d:'Las malezas compiten fuerte en los primeros 3–4 meses. Se controlan con herbicidas preemergentes y posemergentes, cultivo mecánico y buena población de caña que cierre rápido.'},
+    {k:['fertilizacion','nitrogeno','fosforo','potasio','urea','npk'], t:'Fertilización', d:'Nitrógeno, fósforo y potasio según análisis de suelo y foliar. El nitrógeno se aplica normalmente entre los 2 y 4 meses; el fósforo conviene al fondo del surco en la siembra.'},
+    {k:['plagas','diatraea','barrenador','salivazo','control biologico'], t:'Plagas', d:'Las principales en caña son el barrenador (Diatraea) y el salivazo. Se manejan sobre todo con control biológico (moscas y avispas parasitoides), monitoreo y variedades tolerantes.'},
+    // ── Ingeniería civil ──
+    {k:['concreto','hormigon','resistencia del concreto','psi','mpa','fc'], t:'Concreto', d:'Mezcla de cemento, arena, grava y agua. Su resistencia (f\'c) se da en MPa o psi a 28 días: 21 MPa (3000 psi) es común en obras menores. Mientras menos agua (relación agua/cemento baja), más resistente. Hay que curarlo (mantenerlo húmedo) al menos 7 días.'},
+    {k:['dosificacion','mezcla 1 2 3','proporcion de mezcla','bultos de cemento'], t:'Dosificación del concreto', d:'Mezclas típicas por volumen: 1:2:3 (cemento:arena:grava) para unos 3000 psi, y 1:2:4 para unos 2500 psi. Como referencia, 1 m³ de concreto 1:2:3 lleva unos 7 bultos de 50 kg de cemento. Para obras importantes se diseña la mezcla.'},
+    {k:['acero de refuerzo','varilla','hierro','estribos','recubrimiento'], t:'Acero de refuerzo', d:'Las varillas (3/8", 1/2", 5/8"…) toman la tracción que el concreto no resiste. Deben llevar recubrimiento de concreto (≈ 5–7.5 cm en contacto con suelo o agua) para no oxidarse; los estribos amarran y resisten cortante.'},
+    {k:['slump','asentamiento','cono de abrams','cilindros','ensayo de concreto'], t:'Slump y ensayos del concreto', d:'El slump o asentamiento (cono de Abrams) mide la manejabilidad del concreto fresco: 7–10 cm es típico para obras vaciadas a mano. La resistencia se verifica con cilindros fallados a 7, 14 y 28 días.'},
+    {k:['mortero','pañete','repello','pega'], t:'Mortero', d:'Mezcla de cemento, arena y agua (sin grava) para pegar ladrillo o bloque y para pañetes. Proporciones comunes 1:3 a 1:5 según el uso.'},
+    {k:['mamposteria','ladrillo','bloque'], t:'Mampostería', d:'Muros de ladrillo o bloque pegados con mortero. La confinada lleva columnetas y vigas de amarre en concreto reforzado para resistir sismo.'},
+    {k:['cimentacion','zapata','cimiento','viga de cimentacion','pilote'], t:'Cimentación', d:'Transmite las cargas al suelo. Zapatas aisladas o corridas para obras livianas; pilotes cuando el suelo firme está profundo. Se desplanta sobre suelo firme, nunca sobre relleno sin compactar o capa orgánica.'},
+    {k:['compactacion de suelos','proctor','vibrocompactador','rana','canguro','rodillo'], t:'Compactación de rellenos', d:'Los rellenos se compactan en capas de 15–30 cm con humedad cercana a la óptima del ensayo Proctor; se exige normalmente 90–95 % del Proctor. Rana o canguro en sitios estrechos, vibrocompactador en vías y terraplenes.'},
+    {k:['vias','via interna','carreteable','afirmado','subrasante','base granular','bombeo de via'], t:'Vías internas', d:'Estructura: subrasante compactada, subbase y base granular (afirmado o balasto). Llevan bombeo (inclinación transversal del 2–4 %) y cunetas para sacar el agua: el agua es el principal enemigo de una vía.'},
+    {k:['cuneta','cunetas','badén','baden'], t:'Cunetas y badenes', d:'Las cunetas recogen el agua de la vía y la llevan a un drenaje. El badén es un paso de agua a nivel de la vía, revestido, para cruces de agua poco frecuentes.'},
+    {k:['tuberia','tubo de concreto','pvc','novafort','diametro de alcantarilla'], t:'Tuberías y alcantarillas', d:'Las alcantarillas en tubo de concreto o PVC estructural (tipo Novafort) se dimensionan por el caudal de diseño. Necesitan buena cama de apoyo, relleno compactado por capas y una cobertura mínima (≈ 0.6 m bajo vías de maquinaria pesada) o una losa de protección.'},
+    {k:['muro de contencion','gavion','gaviones','enrocado','proteccion de orillas'], t:'Muros y protección de orillas', d:'Muros de contención en concreto o gaviones (canastas de malla rellenas de piedra), que son flexibles y drenantes. El enrocado protege orillas de ríos y zanjones contra la socavación.'},
+    {k:['socavacion','socavar'], t:'Socavación', d:'Erosión del lecho o de las orillas por la fuerza del agua, que deja sin apoyo cimientos, alcantarillas o diques. Se previene con enrocado, dentellones, disipadores y velocidades de agua controladas.'},
+    {k:['disipador','caida','rapida','escalones'], t:'Disipadores de energía', d:'Estructuras (caídas, rápidas escalonadas, pozos amortiguadores) que bajan la velocidad del agua en cambios de nivel para evitar erosión aguas abajo.'},
+    {k:['movimiento de tierras','corte y relleno','volumen de tierra','m3 de tierra','abundamiento','esponjamiento'], t:'Movimiento de tierras', d:'Se calcula el volumen de corte y relleno a partir de la topografía (secciones o modelo 3D). Al excavar la tierra se esponja (+20–30 % de volumen suelto) y al compactar se reduce; hay que tenerlo en cuenta para volquetas y rellenos.'},
+    {k:['presupuesto de obra','apu','analisis de precios unitarios','cantidades de obra'], t:'Presupuesto de obra', d:'Se arma con las cantidades de obra (m³, m², ml, und) por sus análisis de precios unitarios (APU: materiales, equipo, mano de obra y transporte), más administración, imprevistos y utilidad (AIU) si es contratada.'},
+    {k:['interventoria','supervision de obra','bitacora','acta de obra'], t:'Supervisión de obra', d:'Verificar que la obra se haga según diseño, especificaciones, cantidades y cronograma: bitácora diaria, control de materiales, ensayos (cilindros de concreto, densidades de campo), actas de avance y de recibo.'},
+    {k:['seguridad','sst','trabajo en alturas','excavaciones seguras','epp'], t:'Seguridad en obra', d:'Elementos de protección personal, señalización, permisos para trabajos de alto riesgo (alturas, excavaciones de más de 1.5 m con entibado o taludes, trabajos en caliente) y distancia segura alrededor de maquinaria en movimiento.'},
+    {k:['geotextil','geomembrana','geomalla'], t:'Geosintéticos', d:'Geotextil: separa y filtra (evita que el suelo fino se mezcle con el material granular o tape un dren). Geomembrana: impermeabiliza reservorios y canales. Geomalla: refuerza bases de vías y rellenos.'},
+    {k:['impermeabilizacion','filtracion','fuga de canal','revestimiento'], t:'Revestimiento de canales', d:'Revestir en concreto, geomembrana o suelo-cemento reduce las pérdidas por infiltración, el mantenimiento y la erosión. Conviene donde el canal pasa por suelos arenosos o de alta filtración.'},
+    {k:['unidades','conversion','hectarea','plaza','fanegada','cuadra'], t:'Unidades de área', d:'1 ha = 10.000 m². En el valle se usa la plaza (≈ 0.64 ha = 6.400 m²) y la fanegada o cuadra (≈ 0.64 ha en el Valle; en otras regiones varía). 1 m³/ha = 0.1 mm de lámina.'},
   ];
+
+  // Concepto del glosario: palabra completa (admite plural) y gana la clave más larga,
+  // así "eficiencia de riego" no se confunde con "riego" ni "sig" con "siguiente"
+  const CLAVES = GLOSARIO.flatMap(g => g.k.map(k => [n(k), g]));
+  function buscarConcepto(t){
+    const T = ' ' + t + ' ';
+    let mejor = null, largo = 0;
+    CLAVES.forEach(([k, g]) => { if (k.length > largo && new RegExp(' ' + k.replace(/[-]/g, '\\-') + '(s|es)? ').test(T)) { mejor = g; largo = k.length; } });
+    return mejor && Object.assign({largo}, mejor);
+  }
 
   // ── Datos ──
   const haciendas = () => [...new Set([...HACS_BASE, ...DB.lotes.map(l => l.h), ...DB.proceso.map(r => r.hac), ...DB.ruta.map(r => r.h),
@@ -183,9 +255,10 @@ const IV = (() => {
     if (/\b\d{1,3}\b/.test(t) && hac && tiene(t, 'suerte', 'ste', 'la ')) return `No encontré esa suerte en ${esc(hac)}. ${resumenHacienda(hac)}`;
 
     // 2) Glosario (qué es, para qué sirve…) antes que listas, si lo pide explícito
-    const g = GLOSARIO.find(x => x.k.some(k => t.includes(k)));
-    const definir = tiene(t, 'que es', 'que son', 'para que', 'como se hace', 'explica', 'definicion', 'significa', 'diferencia', 'cual es la funcion', 'sirve');
-    if (g && definir) return `<b>${g.t}</b><br>${g.d}`;
+    const g = buscarConcepto(t);
+    const definir = tiene(t, 'que es', 'que son', 'para que', 'como se hace', 'explica', 'definicion', 'significa', 'diferencia', 'cual es la funcion', 'sirve', 'como se calcula', 'como calcular', 'tipos de', 'cuales son', 'recomend', 'como se mide', 'cada cuanto', 'cuanto se', 'cuantos bultos', 'que tan');
+    const pideDatos = tiene(t, 'mas dias', 'mayor', 'prioridad', 'cuales tienen', 'cuantas', 'suertes', 'ruta', 'zona', '2027', 'semana');
+    if (g && (definir || (g.largo >= 10 && !hac && !S.length && !pideDatos))) return `<b>${g.t}</b><br>${g.d}`;
 
     // 3) Tarifas / costos
     const c = contratistaEn(t);
@@ -227,7 +300,7 @@ const IV = (() => {
       const A = agroFilas(); return `<b>Gestión Agronomía</b>${lista([`${A.length} suertes · ${ha(sum(A, x => x.a))}`, `${A.filter(x => x.fecha).length} con fecha de siembra registrada`])}`;
     }
     if (g) return `<b>${g.t}</b><br>${g.d}`;
-    return `No entendí bien 🤔. Puedo responder sobre suertes (por número y hacienda), haciendas, zonas, labores en proceso, ruta de siembra, costos y tarifas, presupuesto 2027, el equipo, y explicar labores y obras.`;
+    return `No entendí bien 🤔. Puedo responder sobre suertes (por número y hacienda), haciendas, zonas, labores en proceso, ruta de siembra, costos y tarifas, presupuesto 2027 y el equipo. También explico conceptos de suelos, riego y drenaje, maquinaria, caña y obras civiles (concreto, vías, alcantarillas, muros…): pregunta "¿qué es…?".`;
   }
   return {responder, AYUDA, EJEMPLOS};
 })();
@@ -239,7 +312,7 @@ const IV = (() => {
   btn.innerHTML = '<span>👷</span><b>Inge Virtual</b>';
   const win = document.createElement('div');
   win.className = 'iv-win'; win.hidden = true;
-  win.innerHTML = `<div class="iv-h"><span class="iv-av">👷</span><div><b>Inge Virtual</b><small>Ingeniería Agrícola · Riopaila Agrícola</small></div><button type="button" class="iv-x" title="Cerrar">✕</button></div>
+  win.innerHTML = `<div class="iv-h"><span class="iv-av">👷</span><div><b>Inge Virtual</b><small>Ingeniería Agrícola · Riopaila Agrícola</small></div><button type="button" class="iv-borrar" title="Borrar la conversación">🗑 Borrar chat</button><button type="button" class="iv-x" title="Cerrar">✕</button></div>
     <div class="iv-msgs" id="iv-msgs"></div>
     <form class="iv-f" id="iv-f"><input id="iv-in" type="text" autocomplete="off" placeholder="Escribe tu pregunta…"><button type="submit">➤</button></form>`;
   document.body.append(btn, win);
@@ -260,6 +333,7 @@ const IV = (() => {
   }
   btn.addEventListener('click', () => abrir(win.hidden));
   win.querySelector('.iv-x').addEventListener('click', () => abrir(false));
+  win.querySelector('.iv-borrar').addEventListener('click', () => { msgs.innerHTML = ''; poner(IV.AYUDA + chips(), 'bot'); inp.value = ''; inp.focus(); });
   win.querySelector('#iv-f').addEventListener('submit', e => { e.preventDefault(); preguntar(inp.value); inp.value = ''; });
   msgs.addEventListener('click', e => {
     const p = e.target.closest('.iv-preg'); if (p) { e.preventDefault(); preguntar(p.dataset.q); return; }
