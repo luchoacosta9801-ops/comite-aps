@@ -39,4 +39,5 @@
 - Pendiente: llenar el organigrama (lo hace el usuario en pantalla) y cargar datos del Presupuesto 2027 cuando exista el archivo
 - Estructura cargada desde "Documents/ESTRUCTURA INGENIERIA AGRICOLA/...xlsx": SOLO nombre y cargo (nunca cédula, RH, ciudad, teléfono, estudio: la página es pública). DB.estructura.procesos = hoja "Procesos y Responsables I.A."
 - Presupuesto 2027 cargado de "Documents/PROTOCOLO LABORES/RENOVACION PPTO 2027 5 oct.xlsx", hoja Riopaila (DB.ppto2027.suertes)
+- Gestión Agronomía (#agronomia, vista 'agro'): filas = proceso con labor SURCADA + ruta de siembra; Sector/Suerte salen de partir el código "3501-050"; fecha de siembra, variedad y observación en DB.agronomia.filas["HACIENDA|suerte"] (se conservan aunque la suerte salga del proceso)
 - Pendiente: portada con video/GIF (MP4 <8 MB, sin sonido, en bucle) guardado como archivo aparte vía servidor.ps1 (no en datos.js); hoy la foto va en DB.portada.imagen (JPEG reducido)

@@ -535,6 +535,8 @@ body[data-vista="portal"] #btn-inicio{display:none}
 .ag-t td{vertical-align:middle}
 .ag-t input[type=date]{font-family:var(--mono)}
 .ag-t input[type=text]{min-width:110px}
+.ag-est{display:inline-block;font-size:9.5px;font-weight:800;color:var(--c);border:1px solid var(--c);border-radius:10px;padding:1px 7px;white-space:nowrap}
+#agronomia .sim-tw{max-height:70vh}
 @media(max-width:600px){.pt-grid{grid-template-columns:1fr}.pt-hero{padding:14px;gap:12px}.pt-logo{height:56px}.pt-h1{font-size:19px}}
 /* Encabezado de los módulos */
 .mod-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
