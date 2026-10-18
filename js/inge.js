@@ -154,7 +154,7 @@ const IV = (() => {
     if (Pa && P && norm(Pa.labor) !== norm(P.labor)) filas.push(`↩️ La semana anterior (${esc(DB.procesoAnterior.semana)}) estaba en ${esc(cap(Pa.labor))}`);
     if (R) filas.push(`🌱 En ruta de siembra · variedad ${esc(R.variedad || '—')} · semillero ${esc(R.semillero || '—')}${R.bandereo ? ` · bandereo ${R.bandereo} m` : ''} · ${esc(R.cont || '—')}`);
     if (S && S.total) filas.push(`💰 Costo proyectado ${moneyM(S.total)} (${money(S.proy)}/ha) vs ppto ${moneyM(S.pptoTotal)} → ${S.dif >= 0 ? 'ahorro' : 'sobrecosto'} ${money(Math.abs(S.dif))}/ha`);
-    A.filter(a => a.fecha || a.obs).forEach(a => filas.push(`📋 Agronomía: ${a.fecha ? 'siembra ' + fechaLarga(a.fecha) : 'sin fecha de siembra'}${a.obs ? ` · "${esc(a.obs)}"` : ''}`));
+    A.filter(a => a.fecha || a.obs || a.corte).forEach(a => filas.push(`📋 Agronomía: ${a.corte ? 'corte ' + fechaLarga(a.corte) + ' · ' : ''}${a.fecha ? 'siembra ' + fechaLarga(a.fecha) : 'sin fecha de siembra'}${a.lucro != null && a.lucro >= 0 ? ` · <b>${a.lucro} días de lucro cesante</b>` : ''}${a.obs ? ` · "${esc(a.obs)}"` : ''}`));
     if (Q) filas.push(`📅 Presupuesto 2027: renovación en <b>${MESES[Q.mes - 1] || '—'}</b> · ${esc(Q.vAct || '—')} → ${esc(Q.v1 || '—')}${Q.niv ? ` · nivelación ${Q.niv}` : ''}`);
     return {area, z, dias, L, P, R, Q, html:`<div class="iv-ficha"><div class="iv-ficha-t">Suerte <b>${esc(s)}</b> · ${esc(h)} · Z${z} · ${ha(area)}</div>${lista(filas)}
       <button type="button" class="iv-ir" data-iv-sue="${esc(s)}" data-iv-hac="${esc(h)}">Ver en el dashboard →</button></div>`};
