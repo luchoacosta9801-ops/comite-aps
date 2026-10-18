@@ -712,6 +712,18 @@ q('protocolos').addEventListener('click', e => {
 });
 
 const yfil = {tipo:'', anio:'', hac:''};
+// Cifras clave ("Etiqueta: valor" por línea) + presupuesto vs costo final
+function pyCifras(p){
+  const L = String(p.datos || '').split('\n').map(s => s.split(/:(.+)/)).filter(a => a[0].trim() && a[1]).map(([l, v]) => [l.trim(), v.trim()]);
+  const ppto = +p.ppto || 0, cost = +p.inversion || 0;
+  if (ppto && cost) L.push(['Presupuesto', money(ppto)], ['Costo final', money(cost)], ['Variación', `${cost - ppto >= 0 ? '+' : '−'}${money(Math.abs(cost - ppto))} (${((cost - ppto) / ppto * 100).toFixed(1)}%)`]);
+  return L.length ? `<div class="py-cifras">${L.map(([l, v]) => `<div><small>${esc(l)}</small><b>${esc(v)}</b></div>`).join('')}</div>` : '';
+}
+// Fotos del proyecto (archivos en img/proyectos/): miniaturas que abren la foto completa
+function pyFotos(p){
+  const F = (p.fotos || []).filter(f => /^img\/proyectos\/[\w.-]+\.(jpe?g|png|webp)$/i.test(f.src));
+  return F.length ? `<div class="py-fotos">${F.map(f => `<a href="${esc(f.src)}" target="_blank" rel="noopener" title="${esc(f.pie || '')}"><img src="${esc(f.src)}" alt="${esc(f.pie || p.nombre)}" loading="lazy"><span>${esc(f.pie || '')}</span></a>`).join('')}</div>` : '';
+}
 function renderProyectos(){
   const L = proyectos(), ed = MODO_EDICION;
   const V = L.filter(p => (!yfil.tipo || p.tipo === yfil.tipo) && (!yfil.anio || String(p.anio) === yfil.anio) && (!yfil.hac || p.hacienda === yfil.hac));
@@ -739,13 +751,19 @@ function renderProyectos(){
           <label>Estado${campoPf(p.id, 'estado', p.estado, 'select', ['Ejecutado', 'En ejecución'])}</label>
           <label>Hacienda / lugar${campoPf(p.id, 'hacienda', p.hacienda)}</label>
           <label>Año${campoPf(p.id, 'anio', p.anio, 'number')}</label>
-          <label>Inversión ($)${campoPf(p.id, 'inversion', p.inversion, 'number')}</label>
+          <label>Presupuesto ($)${campoPf(p.id, 'ppto', p.ppto, 'number')}</label>
+          <label>Costo final / inversión ($)${campoPf(p.id, 'inversion', p.inversion, 'number')}</label>
+          <label class="ancho">Cifras clave (una por línea: «Etiqueta: valor»)${campoPf(p.id, 'datos', p.datos, 'textarea', 5)}</label>
           <label>Cantidad (ej. 1.2 km, 15 ha)${campoPf(p.id, 'cantidad', p.cantidad)}</label>
           <label class="ancho">Descripción${campoPf(p.id, 'descripcion', p.descripcion, 'textarea', 3)}</label>
           <label class="ancho">Resultado / beneficio${campoPf(p.id, 'resultado', p.resultado, 'textarea', 2)}</label>
           <label class="ancho">Enlace (fotos, informe)${campoPf(p.id, 'enlace', p.enlace, 'url')}</label>
+          ${(p.fotos || []).length ? `<div class="ancho">${pyFotos(p)}</div>` : ''}
           <button type="button" class="x pr-borrar" data-py-borrar>🗑 Eliminar proyecto</button></div>`
-      : `<div class="py-det">${p.descripcion ? `<p>${esc(p.descripcion)}</p>` : ''}${p.resultado ? `<p><b>Resultado:</b> ${esc(p.resultado)}</p>` : ''}
+      : `<div class="py-det">${p.descripcion ? `<p>${esc(p.descripcion)}</p>` : ''}
+          ${pyCifras(p)}
+          ${p.resultado ? `<p><b>Resultado:</b> ${esc(p.resultado)}</p>` : ''}
+          ${pyFotos(p)}
           ${enlaceSeguro(p.enlace) ? `<a href="${esc(enlaceSeguro(p.enlace))}" target="_blank" rel="noopener">📷 Ver fotos / informe</a>` : ''}</div>`}
     </details>`).join('') || `<div class="nores">${L.length ? 'Ningún proyecto con esos filtros.' : ed ? 'Pulsa «+ Nuevo proyecto» para registrar el primero.' : 'Aún no hay proyectos registrados.'}</div>`}</div>`;
 }
