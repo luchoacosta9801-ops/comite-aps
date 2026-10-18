@@ -485,7 +485,7 @@ function agroFilas(){
     const g = guard[x.k] || {}, partes = String(x.s).split('-');
     return Object.assign(x, {sector:partes.length > 1 ? partes[0] : '', ste:partes.length > 1 ? partes.slice(1).join('-') : x.s,
       fecha:g.fecha || '', corte:g.corte || '', variedad:g.variedad !== undefined ? g.variedad : x.vBase, obs:g.obs || '',
-      lucro:diasEntre(g.corte, g.fecha)});
+      lucro:diasEntre(g.corte, g.fecha), mCorte:g.mCorte || '', mFecha:g.mFecha || '', mLucro:diasEntre(g.mCorte, g.mFecha)});
   }).sort((a, b) => a.h.localeCompare(b.h) || a.s.localeCompare(b.s));
 }
 function fechaLarga(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[3]} ${MESES[+m[2] - 1]} ${m[1]}` : ''; }
@@ -494,15 +494,19 @@ function diasEntre(desde, hasta){
   const a = Date.parse(desde || ''), b = Date.parse(hasta || '');
   return isNaN(a) || isNaN(b) ? null : Math.round((b - a) / 864e5);
 }
-function promedioLucro(A){
-  const L = A.filter(x => x.lucro != null && x.lucro >= 0), area = sum(L, x => x.a);
-  return {n:L.length, prom:L.length ? sum(L, x => x.lucro) / L.length : null, pond:area ? sum(L, x => x.lucro * x.a) / area : null};
+function promedioLucro(A, campo = 'lucro'){
+  const L = A.filter(x => x[campo] != null && x[campo] >= 0), area = sum(L, x => x.a);
+  return {n:L.length, prom:L.length ? sum(L, x => x[campo]) / L.length : null, pond:area ? sum(L, x => x[campo] * x.a) / area : null};
 }
 const af = {est:'', hac:'', cult:''};
 function renderAgronomia(){
   const Todas = agroFilas(), ed = MODO_EDICION;
   const A = Todas.filter(x => (!af.est || x.origen === af.est) && (!af.hac || x.h === af.hac) && (!af.cult || x.c === af.cult));
-  const hayFiltro = af.est || af.hac || af.cult, PL = promedioLucro(A);
+  const hayFiltro = af.est || af.hac || af.cult, PL = promedioLucro(A), PM = promedioLucro(A, 'mLucro');
+  const celLucro = (v, cls, l) => `<td class="n b ${cls}" data-l="${l}">${v == null ? '<span class="meta">—</span>' : v < 0
+    ? '<span style="color:var(--red)" title="La siembra quedó antes del corte: revisar fechas">⚠ revisar</span>'
+    : `<span style="color:${v > 120 ? 'var(--red)' : v > 60 ? 'var(--amber)' : 'var(--green)'}">${v}</span>`}</td>`;
+  const prom = P => P.prom != null ? Math.round(P.prom) + ' días' : '—';
   const sel = (id, val, ops, todas) => `<select id="${id}" class="fsel ${val ? 'on' : ''}"><option value="">${todas}</option>${ops.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
   const colorEst = {'Sembrada':'var(--green)', 'Surcada':'var(--cyan)', 'En ruta de siembra':'var(--amber)', 'Guardada':'var(--muted)'};
   const celda = (x, campo, tipo, ph) => ed
@@ -524,19 +528,25 @@ function renderAgronomia(){
       <div class="sim-kpi"><div class="l">Suertes${hayFiltro ? ' (filtro)' : ''}</div><div class="v">${A.length}</div><div class="s">${[...new Set(A.map(x => x.h))].length} haciendas</div></div>
       <div class="sim-kpi"><div class="l">Área</div><div class="v">${f2(sum(A, x => x.a))} ha</div><div class="s">Z1 ${f2(sum(A.filter(x => x.z === 1), x => x.a))} · Z2 ${f2(sum(A.filter(x => x.z === 2), x => x.a))}</div></div>
       <div class="sim-kpi"><div class="l">Con fecha de siembra</div><div class="v">${A.filter(x => x.fecha).length}</div><div class="s">${A.filter(x => !x.fecha).length} por definir · ${A.filter(x => x.corte).length} con fecha de corte</div></div>
-      <div class="sim-kpi"><div class="l">Lucro cesante promedio</div><div class="v">${PL.prom != null ? Math.round(PL.prom) + ' días' : '—'}</div><div class="s">${PL.n ? `${PL.n} suertes con corte y siembra · ponderado por área ${Math.round(PL.pond)} días` : 'Falta la fecha de corte (maestro) y la de siembra'}</div></div>
+      <div class="sim-kpi"><div class="l">Lucro cesante promedio · real</div><div class="v">${prom(PL)}</div><div class="s">${PL.n ? `${PL.n} suertes · ponderado por área ${Math.round(PL.pond)} días` : 'Falta fecha de corte y de siembra'}</div></div>
+      <div class="sim-kpi"><div class="l">Lucro cesante promedio · maestro</div><div class="v">${prom(PM)}</div><div class="s">${PM.n ? `${PM.n} suertes · ponderado por área ${Math.round(PM.pond)} días${PL.n ? ` · diferencia ${Math.round(PM.prom - PL.prom) >= 0 ? '+' : ''}${Math.round(PM.prom - PL.prom)} días` : ''}` : 'Pendiente cargar el maestro'}</div></div>
     </div>
     <div class="sim-card abierta"><div class="sim-tw"><table class="sim-t ag-t">
-      <thead><tr><th>Sector</th><th>Suerte</th><th>Hacienda</th><th class="n">Área (ha)</th><th>Cultivo</th><th>Estado</th><th>Fecha de corte</th><th>Fecha de siembra</th><th class="n" title="Días entre la fecha de corte y la fecha de siembra">Días lucro cesante</th><th>Variedad</th><th>Observación</th>${ed ? '<th></th>' : ''}</tr></thead>
+      <thead><tr><th rowspan="2">Sector</th><th rowspan="2">Suerte</th><th rowspan="2">Hacienda</th><th rowspan="2" class="n">Área (ha)</th><th rowspan="2">Cultivo</th><th rowspan="2">Estado</th>
+        <th colspan="3" class="ag-grp ag-grp-real">Real</th><th colspan="3" class="ag-grp ag-grp-mae">Maestro</th><th rowspan="2">Variedad</th><th rowspan="2">Observación</th>${ed ? '<th rowspan="2"></th>' : ''}</tr>
+        <tr><th class="ag-sub-real">Fecha de corte</th><th class="ag-sub-real">Fecha de siembra</th><th class="n ag-sub-real" title="Días entre la fecha de corte y la fecha de siembra">Días lucro cesante</th>
+        <th class="ag-sub-mae">Fecha de corte</th><th class="ag-sub-mae">Fecha de siembra</th><th class="n ag-sub-mae" title="Según las fechas del maestro">Días lucro cesante</th></tr></thead>
       <tbody>${A.length ? A.map(x => `<tr data-k="${esc(x.k)}">
         <td class="ag-sec" style="font-family:var(--mono)">${esc(x.sector) || '—'}</td><td class="lab ag-ste" style="font-family:var(--mono)">${esc(x.ste)}</td>
         <td class="ag-hac">${esc(x.h)} <span class="meta">Z${x.z}</span></td><td class="n b ag-a">${f2(x.a)}<span class="ag-u"> ha</span></td>
         <td class="ag-c">${esc(x.c)}</td><td class="ag-e"><span class="ag-est" style="--c:${colorEst[x.origen]}">${esc(x.origen)}</span></td>
         <td class="ag-co" data-l="Fecha de corte">${celda(x, 'corte', 'date', '')}</td><td class="ag-f" data-l="Fecha de siembra">${celda(x, 'fecha', 'date', '')}</td>
-        <td class="n b ag-l" data-l="Días lucro cesante">${x.lucro == null ? '<span class="meta">—</span>' : x.lucro < 0 ? '<span style="color:var(--red)" title="La siembra quedó antes del corte: revisar fechas">⚠ revisar</span>' : `<span style="color:${x.lucro > 120 ? 'var(--red)' : x.lucro > 60 ? 'var(--amber)' : 'var(--green)'}">${x.lucro}</span>`}</td><td class="ag-v" data-l="Variedad">${celda(x, 'variedad', 'text', 'Variedad')}</td><td class="ag-o" data-l="Observación" style="min-width:200px">${celda(x, 'obs', 'text', 'Observación')}</td>
+        ${celLucro(x.lucro, 'ag-l', 'Días lucro (real)')}
+        <td class="ag-mco ag-mae" data-l="Corte (maestro)">${celda(x, 'mCorte', 'date', '')}</td><td class="ag-mf ag-mae" data-l="Siembra (maestro)">${celda(x, 'mFecha', 'date', '')}</td>
+        ${celLucro(x.mLucro, 'ag-ml ag-mae', 'Días lucro (maestro)')}<td class="ag-v" data-l="Variedad">${celda(x, 'variedad', 'text', 'Variedad')}</td><td class="ag-o" data-l="Observación" style="min-width:200px">${celda(x, 'obs', 'text', 'Observación')}</td>
         ${ed ? `<td class="ag-x">${x.origen === 'Guardada' ? '<button type="button" class="x" data-ag-borrar title="Quitar de la lista">×</button>' : ''}</td>` : ''}</tr>`).join('')
-        : `<tr><td colspan="${ed ? 12 : 11}" class="nores">${hayFiltro ? 'Ninguna suerte con esos filtros.' : 'No hay suertes cerradas en el último comité.'}</td></tr>`}</tbody>
-      ${A.length ? `<tfoot><tr><td colspan="3">Total</td><td class="n b">${f2(sum(A, x => x.a))}</td><td colspan="4"></td><td class="n b" title="Promedio simple">${PL.prom != null ? 'Prom. ' + Math.round(PL.prom) : ''}</td><td colspan="${ed ? 3 : 2}"></td></tr></tfoot>` : ''}
+        : `<tr><td colspan="${ed ? 15 : 14}" class="nores">${hayFiltro ? 'Ninguna suerte con esos filtros.' : 'No hay suertes cerradas en el último comité.'}</td></tr>`}</tbody>
+      ${A.length ? `<tfoot><tr><td colspan="3">Total</td><td class="n b">${f2(sum(A, x => x.a))}</td><td colspan="4"></td><td class="n b" title="Promedio simple real">${PL.prom != null ? 'Prom. ' + Math.round(PL.prom) : ''}</td><td colspan="2"></td><td class="n b" title="Promedio simple maestro">${PM.prom != null ? 'Prom. ' + Math.round(PM.prom) : ''}</td><td colspan="${ed ? 3 : 2}"></td></tr></tfoot>` : ''}
     </table></div></div>
     <div class="meta" style="margin-top:8px">Si una suerte deja de aparecer en el comité, su fila se conserva aquí (estado «Guardada») cuando tiene datos escritos.</div>`;
 }

@@ -538,6 +538,12 @@ body[data-vista="portal"] #btn-inicio{display:none}
 .ag-est{display:inline-block;font-size:9.5px;font-weight:800;color:var(--c);border:1px solid var(--c);border-radius:10px;padding:1px 7px;white-space:nowrap}
 #agronomia .sim-tw{max-height:70vh}
 .ag-u{display:none}
+.ag-t th.ag-grp{text-align:center;font-size:10.5px;letter-spacing:1.2px;border-bottom:2px solid var(--gc);color:var(--gc)}
+.ag-grp-real,.ag-sub-real{--gc:var(--green)}
+.ag-grp-mae,.ag-sub-mae{--gc:var(--violet)}
+.ag-t th.ag-sub-mae,.ag-t td.ag-mae{background:rgba(109,40,217,.05)}
+.ag-t th.ag-sub-real:first-child,.ag-t th.ag-grp-mae{border-left:1px solid var(--bdr)}
+.ag-t td.ag-mco{border-left:1px solid var(--bdr)}
 /* Celular: cada suerte es una tarjeta y se ven todas (sin desplazamiento interno) */
 @media(max-width:760px){
   #agronomia .sim-tw{max-height:none;overflow:visible}
@@ -561,13 +567,19 @@ body[data-vista="portal"] #btn-inicio{display:none}
   #agronomia .ag-t .ag-f,#agronomia .ag-t .ag-v,#agronomia .ag-t .ag-o,#agronomia .ag-t .ag-co,#agronomia .ag-t .ag-l{display:flex;flex-direction:column;gap:2px;margin-top:6px}
   #agronomia .ag-t .ag-co{grid-column:1/3;grid-row:3;padding-right:6px}
   #agronomia .ag-t .ag-f{grid-column:3/5;grid-row:3;padding-left:6px}
-  #agronomia .ag-t .ag-l{grid-column:1/3;grid-row:4;padding-right:6px;text-align:left;font-size:15px}
-  #agronomia .ag-t .ag-v{grid-column:3/5;grid-row:4;padding-left:6px}
-  #agronomia .ag-t .ag-o{grid-column:1/-1;grid-row:5}
+  #agronomia .ag-t .ag-l{grid-column:1/3;grid-row:5;padding-right:6px;text-align:left;font-size:15px}
+  #agronomia .ag-t .ag-mco{grid-column:1/3;grid-row:4;padding-right:6px}
+  #agronomia .ag-t .ag-mf{grid-column:3/5;grid-row:4;padding-left:6px}
+  #agronomia .ag-t .ag-ml{grid-column:3/5;grid-row:5;padding-left:6px;text-align:left;font-size:15px}
+  #agronomia .ag-t .ag-mco,#agronomia .ag-t .ag-mf,#agronomia .ag-t .ag-ml{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+  #agronomia .ag-t .ag-mco::before,#agronomia .ag-t .ag-mf::before,#agronomia .ag-t .ag-ml::before{content:attr(data-l);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--violet)}
+  #agronomia .ag-t td.ag-mae{background:transparent}
+  #agronomia .ag-t .ag-v{grid-column:1/-1;grid-row:6}
+  #agronomia .ag-t .ag-o{grid-column:1/-1;grid-row:7}
   #agronomia .ag-t .ag-f::before,#agronomia .ag-t .ag-v::before,#agronomia .ag-t .ag-o::before,#agronomia .ag-t .ag-co::before,#agronomia .ag-t .ag-l::before{content:attr(data-l);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
   #agronomia .ag-t input[type=date],#agronomia .ag-t input[type=text]{width:100%!important;max-width:none;font-size:14px;padding:7px 9px;min-width:0;box-sizing:border-box}
   #agronomia .ag-t .ag-x:empty{display:none}
-  #agronomia .ag-t .ag-x{grid-column:1/-1;grid-row:6;text-align:right}
+  #agronomia .ag-t .ag-x{grid-column:1/-1;grid-row:8;text-align:right}
   #agronomia .ag-t tfoot{display:block}
   #agronomia .ag-t tfoot tr{display:flex;justify-content:space-between;padding:8px 12px;font-weight:800}
   #agronomia .ag-t tfoot td{border:0;padding:0}
