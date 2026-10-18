@@ -515,7 +515,8 @@ function renderAgronomia(){
   q('agronomia').innerHTML = `
     <div class="mod-top">
       <div><div class="sim-tit">🌱 Gestión Agronomía · Suertes cerradas</div>
-        <div class="sim-subt">Se traen solas del Dashboard APS (sembradas, surcadas y en ruta de siembra) · ${DB.meta.semana ? esc(DB.meta.semana) : ''}${ed ? ' · escribe y se guarda solo; luego 🚀 Publicar' : ' · solo lectura'}</div></div>
+        <div class="sim-subt">Se traen solas del Dashboard APS (sembradas, surcadas y en ruta de siembra) · ${DB.meta.semana ? esc(DB.meta.semana) : ''}${ed ? ' · escribe y se guarda solo; luego 🚀 Publicar' : ' · solo lectura'}${DB.agronomia && DB.agronomia.maestro ? ` · Maestro: ${esc(DB.agronomia.maestro)}` : ''}</div></div>
+      ${ed ? '<label class="mbtn mbtn-ghost pt-file">📥 Cargar maestro<input type="file" id="ag-maestro" accept=".xlsx,.xlsm,.xls" hidden></label>' : ''}
     </div>
     <div class="sim-bar pp-filtros">
       <label class="fchip"><span>Estado</span>${sel('ag-f-est', af.est, AGRO_ESTADOS.filter(e => Todas.some(x => x.origen === e)), 'Todos')}</label>
@@ -568,6 +569,56 @@ q('agronomia').addEventListener('click', e => {
   const tr = e.target.closest('[data-ag-borrar]') && e.target.closest('tr[data-k]');
   if (tr && confirm('¿Quitar esta suerte de la lista de agronomía?')) modCambio(() => { delete DB.agronomia.filas[tr.dataset.k]; });
 });
+q('agronomia').addEventListener('change', e => {
+  const f = e.target.id === 'ag-maestro' && e.target.files[0]; if (!f) return;
+  f.arrayBuffer().then(buf => cargarMaestro(buf, f.name)).catch(err => toast('⚠ ' + err.message));
+});
+
+// Maestro de suertes (hoja "MAESTRO"): por cada suerte de la tabla toma la fecha de siembra (col. S)
+// y la del último corte (col. T) para el bloque Maestro. El corte también llena el bloque Real si
+// está vacío; la siembra real queda para escribirla aquí (la del maestro no coincide).
+function leerMaestro(XLSX, buf){
+  const wb = XLSX.read(buf, {type:'array'});
+  const hoja = wb.SheetNames.find(n => norm(n) === 'MAESTRO');
+  if (!hoja) throw new Error('El archivo no tiene una hoja llamada «MAESTRO».');
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[hoja], {header:1, defval:'', raw:true});
+  const hi = rows.findIndex(r => norm(r[0]) === 'SUERTE');
+  const H = (rows[hi] || []).map(norm), col = (re, def) => { const i = H.findIndex(h => re.test(h)); return i >= 0 ? i : def; };
+  const cS = col(/^FECHA DE SIEMBRA/, 18), cT = col(/^FECHA DE ULTIMO CO/, 19), cF = col(/^FINCA$/, 8);
+  const iso = v => {
+    if (typeof v === 'number' && v > 0) { const d = XLSX.SSF.parse_date_code(v); return d ? `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}` : ''; }
+    const m = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/.exec(String(v).trim()); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
+  };
+  const M = new Map();
+  rows.slice(hi + 1).forEach(r => {
+    const s = String(r[0]).trim(); if (!/^\d{4}-\d{3}$/.test(s)) return;
+    (M.get(s) || M.set(s, []).get(s)).push({finca:norm(r[cF]), siembra:iso(r[cS]), corte:iso(r[cT])});
+  });
+  return M;
+}
+function cargarMaestro(buf, nombre){
+  return cargarXLSX().then(XLSX => {
+    const M = leerMaestro(XLSX, buf), A = agroFilas();
+    let ok = 0, varias = 0; const faltan = [];
+    const cambios = A.map(x => {
+      let L = M.get(x.s) || [];
+      if (L.length > 1) { const h = L.filter(m => m.finca.includes(norm(x.h)) || norm(x.h).includes(m.finca)); if (h.length) L = h; varias++; }
+      const m = L[0]; if (!m) { faltan.push(x.s); return null; }
+      ok++; return {x, m};
+    }).filter(Boolean);
+    if (!confirm(`Maestro «${nombre}»: encontré ${ok} de ${A.length} suertes${faltan.length ? ` (no están: ${faltan.join(', ')})` : ''}${varias ? `; ${varias} aparecen más de una vez` : ''}.\n\n¿Llenar el bloque Maestro (fecha de corte y de siembra) y la fecha de corte Real donde esté vacía?`)) return;
+    modCambio(() => {
+      DB.agronomia = DB.agronomia || {filas:{}};
+      DB.agronomia.maestro = nombre;
+      cambios.forEach(({x, m}) => {
+        const g = DB.agronomia.filas[x.k] = Object.assign({s:x.s, h:x.h, c:x.c, a:x.a, z:x.z}, DB.agronomia.filas[x.k]);
+        g.mCorte = m.corte; g.mFecha = m.siembra;
+        if (!g.corte) g.corte = m.corte;
+      });
+    });
+    toast(`✓ Maestro cargado en ${ok} suertes · recuerda 🚀 Publicar`);
+  });
+}
 
 // Arranque: abre el módulo que indique la dirección (sin dirección = portada)
 irA(vistaDeHash(location.hash), {historial:false});
