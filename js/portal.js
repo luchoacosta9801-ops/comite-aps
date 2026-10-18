@@ -10,6 +10,8 @@ const VISTAS = {
   estructura: {hash:'#estructura', titulo:'Estructura del área',      sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Estructura del área · Ingeniería Agrícola'},
   ppto:       {hash:'#ppto2027',   titulo:'Presupuesto APS 2027',     sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Presupuesto APS 2027 · Ingeniería Agrícola'},
   agro:       {hash:'#agronomia',  titulo:'Gestión Agronomía',        sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Gestión Agronomía · Ingeniería Agrícola'},
+  proto:      {hash:'#protocolos', titulo:'Protocolos de emergencia', sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Protocolos de emergencia · Ingeniería Agrícola'},
+  proy:       {hash:'#proyectos',  titulo:'Proyectos ejecutados',     sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Proyectos ejecutados · Ingeniería Agrícola'},
 };
 const vistaDeHash = h => (Object.entries(VISTAS).find(([, v]) => v.hash === h) || ['portal'])[0];
 let vistaActual = 'portal';
@@ -35,6 +37,8 @@ function renderVista(){
   else if (vistaActual === 'estructura') renderEstructura();
   else if (vistaActual === 'ppto') renderPpto2027();
   else if (vistaActual === 'agro') renderAgronomia();
+  else if (vistaActual === 'proto') renderProtocolos();
+  else if (vistaActual === 'proy') renderProyectos();
 }
 // El simulador ya traía su propio botón: ahora navega con el portal
 function modoSimulador(abrir){ irA(abrir ? 'simulador' : 'aps'); }
@@ -81,6 +85,10 @@ function renderPortal(){
         haP ? `<b>${f2(haP)} ha</b> · inversión <b>${moneyM(haP * pptoHa2027(P))}</b>` : 'Estructura lista · sin datos aún', 'var(--amber)')}
       ${(() => { const A = agroFilas(); return card('agro', '🌱', 'Gestión Agronomía', 'Suertes sembradas, surcadas y en ruta del Comité APS: fecha de siembra, variedad y observaciones.',
         A.length ? `<b>${A.length}</b> ${A.length === 1 ? 'suerte' : 'suertes'} · <b>${f2(sum(A, x => x.a))} ha</b> · ${A.filter(x => x.fecha).length} con fecha de siembra` : 'Sin suertes cerradas aún', '#15803d'); })()}
+      ${(() => { const L = protocolos(); return card('proto', '🚨', 'Protocolos de emergencia', 'Libros de reacción: qué hacer ante inundaciones, rotura de diques, incendios, derrames y accidentes.',
+        L.length ? `<b>${L.length}</b> ${L.length === 1 ? 'protocolo' : 'protocolos'} · ${L.filter(p => p.borrador).length} en borrador` : 'Por completar', 'var(--red)'); })()}
+      ${(() => { const L = proyectos(); return card('proy', '🏗️', 'Proyectos ejecutados', 'Obras y proyectos del área: drenajes, diques, vías, canales, nivelación y mejoras, con inversión y resultados.',
+        L.length ? `<b>${L.length}</b> ${L.length === 1 ? 'proyecto' : 'proyectos'} · inversión <b>${moneyM(sum(L, p => +p.inversion || 0))}</b>` : 'Por completar', '#0f766e'); })()}
     </div>
     <div class="pt-pie">Comité APS · Riopaila Agrícola · Elaborado por: <b>Luis Acosta</b> · Esp. de Ingeniería Agrícola</div>`;
 }
@@ -620,6 +628,140 @@ function cargarMaestro(buf, nombre){
   });
 }
 
+// ── Protocolos de emergencia y Proyectos ejecutados ──
+// Listas editables (solo editor) guardadas en DB.protocolos / DB.proyectos y publicadas en datos.js.
+// Los protocolos arrancan con borradores sugeridos que el área debe validar (SST / brigada).
+const idNuevo = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+const PROTO_TIPOS = ['Inundación / diques', 'Lluvias y crecientes', 'Incendio', 'Derrame', 'Accidente', 'Falla de infraestructura', 'Otro'];
+const PROTO_BASE = [
+  {id:'pr1', tipo:'Inundación / diques', titulo:'Rotura o desbordamiento de dique', borrador:true,
+    activa:'Filtración fuerte, grieta, desbordamiento o rotura de un dique; agua entrando a suertes, vías o viviendas.',
+    pasos:'Avisar de inmediato al jefe del área y a la línea de emergencias interna, indicando dique, hacienda y punto exacto.\nRetirar a las personas y la maquinaria de la zona baja; nadie se queda sobre el dique afectado.\nCerrar compuertas y suspender el riego que alimente el sector.\nCoordinar maquinaria amarilla (retro, bulldozer) y material (tierra, sacos) para el cierre provisional, solo cuando sea seguro.\nMarcar y señalizar el punto; vigilar el nivel del río cada hora.\nTerminada la emergencia: levantamiento del daño, fotos, informe y reparación definitiva en el plan de diques.',
+    responsable:'Ingeniería Agrícola', enlace:''},
+  {id:'pr2', tipo:'Lluvias y crecientes', titulo:'Alerta por lluvias intensas o creciente de río', borrador:true,
+    activa:'Pronóstico de lluvias fuertes, alerta de la autoridad ambiental o subida rápida del nivel del río.',
+    pasos:'Revisar el estado de diques críticos, compuertas y alcantarillas antes del evento.\nDejar limpios canales, zanjas y descoles para que el agua salga.\nUbicar maquinaria y material de reserva cerca de los puntos críticos.\nSuspender labores en zonas bajas y retirar equipos.\nRonda de vigilancia de diques durante y después de la lluvia; reportar novedades.\nRegistrar lluvia caída, niveles y daños para el informe.',
+    responsable:'Ingeniería Agrícola', enlace:''},
+  {id:'pr3', tipo:'Incendio', titulo:'Incendio en caña, residuos o área de trabajo', borrador:true,
+    activa:'Fuego o humo en una suerte, en residuos de cosecha, en maquinaria o en instalaciones.',
+    pasos:'Dar la alarma a la brigada y a la línea de emergencias interna; si es necesario, a bomberos.\nAlejar a las personas; nadie se pone a favor del viento ni de frente al fuego.\nRetirar maquinaria y vehículos del área si se puede hacer sin riesgo.\nApoyar a la brigada con cisternas, motobombas o maquinaria para hacer cortafuegos, solo bajo su indicación.\nNo volver a entrar hasta que la brigada declare el área segura.\nReportar área afectada y causa probable.',
+    responsable:'Brigada / SST', enlace:''},
+  {id:'pr4', tipo:'Derrame', titulo:'Derrame de combustible o aceite', borrador:true,
+    activa:'Fuga o derrame de ACPM, aceite o hidráulico de maquinaria o de tanques, sobre todo cerca de canales o drenajes.',
+    pasos:'Apagar el equipo y eliminar fuentes de ignición; no fumar.\nDetener la fuga si es seguro (cerrar válvula, tapar, poner bandeja).\nContener con el kit antiderrames, tierra o barreras; impedir que llegue a canales o zanjas.\nAvisar al jefe del área y al responsable ambiental.\nRecoger el material contaminado y entregarlo como residuo peligroso.\nRegistrar cantidad, causa y acción tomada.',
+    responsable:'Ingeniería Agrícola / Ambiental', enlace:''},
+  {id:'pr5', tipo:'Accidente', titulo:'Accidente con maquinaria o persona lesionada', borrador:true,
+    activa:'Persona herida, volcamiento, atrapamiento o choque de maquinaria o vehículo.',
+    pasos:'Detener la operación y apagar los equipos cercanos.\nLlamar a la línea de emergencias interna y al brigadista más cercano.\nNo mover al lesionado salvo peligro inminente; atenderlo solo si está capacitado.\nSeñalizar el sitio y no modificar la escena.\nAvisar al jefe inmediato y a SST para el reporte del accidente.\nAcompañar la investigación y aplicar las acciones de mejora.',
+    responsable:'SST', enlace:''},
+];
+const PROY_TIPOS = ['Drenaje', 'Diques', 'Vías', 'Canales y riego', 'Nivelación', 'Obras civiles', 'Infraestructura', 'Otro'];
+function protocolos(){ return (DB.protocolos && DB.protocolos.items) || PROTO_BASE; }
+function proyectos(){ return (DB.proyectos && DB.proyectos.items) || []; }
+function listaEditable(clave){
+  if (!DB[clave]) DB[clave] = {items: clave === 'protocolos' ? clone(PROTO_BASE) : []};
+  return DB[clave].items;
+}
+const campoPf = (id, f, val, tipo = 'text', extra = '') => tipo === 'textarea'
+  ? `<textarea data-pf="${f}" rows="${extra || 3}">${esc(val)}</textarea>`
+  : tipo === 'select' ? `<select data-pf="${f}">${extra.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`
+  : `<input type="${tipo}" data-pf="${f}" value="${esc(val)}" ${tipo === 'number' ? 'step="any" min="0"' : ''}>`;
+const enlaceSeguro = u => /^https?:\/\//i.test(u || '') ? u : '';
+
+const pfil = {tipo:'', txt:''};
+function renderProtocolos(){
+  const L = protocolos(), ed = MODO_EDICION, t = norm(pfil.txt);
+  const V = L.filter(p => (!pfil.tipo || p.tipo === pfil.tipo) && (!t || norm(`${p.titulo} ${p.activa} ${p.pasos}`).includes(t)));
+  const tipos = [...new Set(L.map(p => p.tipo))];
+  q('protocolos').innerHTML = `
+    <div class="mod-top"><div><div class="sim-tit">🚨 Protocolos de emergencia · Libros de reacción</div>
+      <div class="sim-subt">Qué hacer, en orden, ante cada emergencia del área${ed ? ' · edita y luego 🚀 Publicar' : ''}</div></div>
+      ${ed ? '<button type="button" class="mbtn mbtn-primary" data-pr-nuevo>+ Nuevo protocolo</button>' : ''}</div>
+    ${ed ? '<div class="pr-aviso">🔒 La página es pública: no escribas teléfonos personales ni datos privados; usa cargos y la línea de emergencias interna. Los marcados como <b>borrador</b> son sugerencias para validar con SST.</div>' : ''}
+    <div class="sim-bar pp-filtros">
+      <label class="fchip"><span>Tipo</span><select id="pr-f-tipo" class="fsel ${pfil.tipo ? 'on' : ''}"><option value="">Todos</option>${tipos.map(x => `<option ${x === pfil.tipo ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+      <input id="pr-f-txt" class="pr-buscar" placeholder="Buscar en los protocolos…" value="${esc(pfil.txt)}">
+    </div>
+    <div class="pr-grid">${V.map(p => `<details class="pr-card" data-id="${esc(p.id)}" ${V.length === 1 || ed ? '' : ''}>
+      <summary><span class="pr-tipo">${esc(p.tipo)}</span>${p.borrador ? '<span class="pr-borr">Borrador</span>' : ''}<b>${esc(p.titulo)}</b><small>${esc(p.activa)}</small></summary>
+      ${ed ? `<div class="pr-form">
+          <label>Título${campoPf(p.id, 'titulo', p.titulo)}</label>
+          <label>Tipo${campoPf(p.id, 'tipo', p.tipo, 'select', PROTO_TIPOS)}</label>
+          <label class="ancho">Cuándo se activa${campoPf(p.id, 'activa', p.activa, 'textarea', 2)}</label>
+          <label class="ancho">Pasos (uno por línea, en orden)${campoPf(p.id, 'pasos', p.pasos, 'textarea', 7)}</label>
+          <label>Responsable${campoPf(p.id, 'responsable', p.responsable)}</label>
+          <label>Enlace al documento (PDF, Drive…)${campoPf(p.id, 'enlace', p.enlace, 'url')}</label>
+          <label class="pr-chk"><input type="checkbox" data-pf="borrador" ${p.borrador ? 'checked' : ''}> Borrador (sin validar)</label>
+          <button type="button" class="x pr-borrar" data-pr-borrar>🗑 Eliminar protocolo</button></div>`
+      : `<ol class="pr-pasos">${String(p.pasos || '').split('\n').filter(s => s.trim()).map(s => `<li>${esc(s)}</li>`).join('')}</ol>
+        <div class="pr-pie">Responsable: <b>${esc(p.responsable || '—')}</b>${enlaceSeguro(p.enlace) ? ` · <a href="${esc(enlaceSeguro(p.enlace))}" target="_blank" rel="noopener">📄 Ver documento</a>` : ''}</div>`}
+    </details>`).join('') || '<div class="nores">Ningún protocolo con ese filtro.</div>'}</div>`;
+}
+q('protocolos').addEventListener('change', e => {
+  const el = e.target;
+  if (el.id === 'pr-f-tipo') { pfil.tipo = el.value; renderProtocolos(); return; }
+  const id = el.dataset.pf && el.closest('[data-id]') && el.closest('[data-id]').dataset.id; if (!id) return;
+  modCambio(() => { const p = listaEditable('protocolos').find(x => x.id === id); if (p) p[el.dataset.pf] = el.type === 'checkbox' ? el.checked : el.value.trim(); });
+  const d = q('protocolos').querySelector(`[data-id="${CSS.escape(id)}"]`); if (d) d.open = true;
+});
+q('protocolos').addEventListener('input', e => { if (e.target.id === 'pr-f-txt') { pfil.txt = e.target.value; const pos = e.target.selectionStart; renderProtocolos(); const i = q('pr-f-txt'); i.focus(); i.setSelectionRange(pos, pos); } });
+q('protocolos').addEventListener('click', e => {
+  if (e.target.closest('[data-pr-nuevo]')) { const id = idNuevo('pr'); modCambio(() => { listaEditable('protocolos').unshift({id, tipo:'Otro', titulo:'Nuevo protocolo', activa:'', pasos:'', responsable:'', enlace:'', borrador:true}); }); const d = q('protocolos').querySelector(`[data-id="${id}"]`); if (d) d.open = true; return; }
+  const b = e.target.closest('[data-pr-borrar]');
+  if (b && confirm('¿Eliminar este protocolo?')) { const id = b.closest('[data-id]').dataset.id; modCambio(() => { DB.protocolos.items = listaEditable('protocolos').filter(x => x.id !== id); }); }
+});
+
+const yfil = {tipo:'', anio:'', hac:''};
+function renderProyectos(){
+  const L = proyectos(), ed = MODO_EDICION;
+  const V = L.filter(p => (!yfil.tipo || p.tipo === yfil.tipo) && (!yfil.anio || String(p.anio) === yfil.anio) && (!yfil.hac || p.hacienda === yfil.hac));
+  const anios = [...new Set(L.map(p => String(p.anio || '')).filter(Boolean))].sort().reverse(), hacs = [...new Set(L.map(p => p.hacienda).filter(Boolean))].sort();
+  const porTipo = PROY_TIPOS.map(t => [t, V.filter(p => p.tipo === t)]).filter(([, a]) => a.length);
+  const sel = (id, val, ops) => `<select id="${id}" class="fsel ${val ? 'on' : ''}"><option value="">Todos</option>${ops.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  q('proyectos').innerHTML = `
+    <div class="mod-top"><div><div class="sim-tit">🏗️ Proyectos ejecutados</div>
+      <div class="sim-subt">Obras y proyectos del área de Ingeniería Agrícola${ed ? ' · edita y luego 🚀 Publicar' : ''}</div></div>
+      ${ed ? '<button type="button" class="mbtn mbtn-primary" data-py-nuevo>+ Nuevo proyecto</button>' : ''}</div>
+    ${L.length ? `<div class="sim-bar pp-filtros">
+      <label class="fchip"><span>Tipo</span>${sel('py-f-tipo', yfil.tipo, PROY_TIPOS.filter(t => L.some(p => p.tipo === t)))}</label>
+      <label class="fchip"><span>Año</span>${sel('py-f-anio', yfil.anio, anios)}</label>
+      <label class="fchip"><span>Hacienda</span>${sel('py-f-hac', yfil.hac, hacs)}</label></div>
+    <div class="sim-kpis">
+      <div class="sim-kpi"><div class="l">Proyectos</div><div class="v">${V.length}</div><div class="s">${V.filter(p => p.estado === 'En ejecución').length} en ejecución</div></div>
+      <div class="sim-kpi"><div class="l">Inversión</div><div class="v">${moneyM(sum(V, p => +p.inversion || 0))}</div><div class="s">${porTipo.map(([t, a]) => `${t} ${moneyM(sum(a, p => +p.inversion || 0))}`).slice(0, 3).join(' · ')}</div></div>
+    </div>` : ''}
+    <div class="pr-grid">${V.map(p => `<details class="pr-card py-card" data-id="${esc(p.id)}">
+      <summary><span class="pr-tipo py-tipo">${esc(p.tipo)}</span><span class="py-anio">${esc(p.anio || '')}${p.estado === 'En ejecución' ? ' · en ejecución' : ''}</span><b>${esc(p.nombre)}</b>
+        <small>${esc(p.hacienda || '')}${p.cantidad ? ' · ' + esc(p.cantidad) : ''}${+p.inversion ? ` · <b>${moneyM(+p.inversion)}</b>` : ''}</small></summary>
+      ${ed ? `<div class="pr-form">
+          <label class="ancho">Nombre${campoPf(p.id, 'nombre', p.nombre)}</label>
+          <label>Tipo${campoPf(p.id, 'tipo', p.tipo, 'select', PROY_TIPOS)}</label>
+          <label>Estado${campoPf(p.id, 'estado', p.estado, 'select', ['Ejecutado', 'En ejecución'])}</label>
+          <label>Hacienda / lugar${campoPf(p.id, 'hacienda', p.hacienda)}</label>
+          <label>Año${campoPf(p.id, 'anio', p.anio, 'number')}</label>
+          <label>Inversión ($)${campoPf(p.id, 'inversion', p.inversion, 'number')}</label>
+          <label>Cantidad (ej. 1.2 km, 15 ha)${campoPf(p.id, 'cantidad', p.cantidad)}</label>
+          <label class="ancho">Descripción${campoPf(p.id, 'descripcion', p.descripcion, 'textarea', 3)}</label>
+          <label class="ancho">Resultado / beneficio${campoPf(p.id, 'resultado', p.resultado, 'textarea', 2)}</label>
+          <label class="ancho">Enlace (fotos, informe)${campoPf(p.id, 'enlace', p.enlace, 'url')}</label>
+          <button type="button" class="x pr-borrar" data-py-borrar>🗑 Eliminar proyecto</button></div>`
+      : `<div class="py-det">${p.descripcion ? `<p>${esc(p.descripcion)}</p>` : ''}${p.resultado ? `<p><b>Resultado:</b> ${esc(p.resultado)}</p>` : ''}
+          ${enlaceSeguro(p.enlace) ? `<a href="${esc(enlaceSeguro(p.enlace))}" target="_blank" rel="noopener">📷 Ver fotos / informe</a>` : ''}</div>`}
+    </details>`).join('') || `<div class="nores">${L.length ? 'Ningún proyecto con esos filtros.' : ed ? 'Pulsa «+ Nuevo proyecto» para registrar el primero.' : 'Aún no hay proyectos registrados.'}</div>`}</div>`;
+}
+q('proyectos').addEventListener('change', e => {
+  const el = e.target, f = {'py-f-tipo':'tipo', 'py-f-anio':'anio', 'py-f-hac':'hac'}[el.id];
+  if (f) { yfil[f] = el.value; renderProyectos(); return; }
+  const id = el.dataset.pf && el.closest('[data-id]') && el.closest('[data-id]').dataset.id; if (!id) return;
+  modCambio(() => { const p = listaEditable('proyectos').find(x => x.id === id); if (p) p[el.dataset.pf] = el.type === 'number' ? (num(el.value) || 0) : el.value.trim(); });
+  const d = q('proyectos').querySelector(`[data-id="${CSS.escape(id)}"]`); if (d) d.open = true;
+});
+q('proyectos').addEventListener('click', e => {
+  if (e.target.closest('[data-py-nuevo]')) { const id = idNuevo('py'); yfil.tipo = yfil.anio = yfil.hac = ''; modCambio(() => { listaEditable('proyectos').unshift({id, nombre:'Nuevo proyecto', tipo:'Obras civiles', estado:'Ejecutado', hacienda:'', anio:new Date().getFullYear(), inversion:0, cantidad:'', descripcion:'', resultado:'', enlace:''}); }); const d = q('proyectos').querySelector(`[data-id="${id}"]`); if (d) d.open = true; return; }
+  const b = e.target.closest('[data-py-borrar]');
+  if (b && confirm('¿Eliminar este proyecto?')) { const id = b.closest('[data-id]').dataset.id; modCambio(() => { DB.proyectos.items = listaEditable('proyectos').filter(x => x.id !== id); }); }
+});
+
 // Arranque: abre el módulo que indique la dirección (sin dirección = portada)
 irA(vistaDeHash(location.hash), {historial:false});
 
@@ -630,6 +772,8 @@ const TEMAS = [
   {ir:'simulador', t:'Simulador de costos', d:'Costos por suerte, tarifas y contratistas', k:'simulador costos tarifas contratistas pases presupuesto labor'},
   {ir:'estructura', t:'Estructura del área', d:'Organigrama, cargos y procesos', k:'estructura organigrama cargos personas equipo procesos responsables'},
   {ir:'ppto', t:'Presupuesto APS 2027', d:'Programa de renovación 2027 por mes, zona y hacienda', k:'presupuesto 2027 programa renovacion meses zona hacienda nivelacion'},
+  {ir:'proto', t:'Protocolos de emergencia', d:'Libros de reacción ante emergencias', k:'protocolos emergencia libro reaccion inundacion dique incendio derrame accidente evacuacion'},
+  {ir:'proy', t:'Proyectos ejecutados', d:'Obras y proyectos realizados, inversión y resultados', k:'proyectos ejecutados obras drenaje dique vias canal nivelacion inversion'},
   {ir:'agro', t:'Gestión Agronomía', d:'Suertes surcadas: fecha de siembra, variedad y observaciones', k:'gestion agronomia surcadas siembra fecha variedad observacion sector'},
 ];
 busInput.addEventListener('input', () => {

@@ -86,7 +86,11 @@ const SEED = {
   // Presupuesto APS 2027: hectáreas por mes y zona, costo por labor
   ppto2027: ${J(d.ppto2027)},` : ''}${d.agronomia ? `
   // Gestión Agronomía: fecha de siembra, variedad y observación por suerte surcada
-  agronomia: ${J(d.agronomia)},` : ''}${d.portada ? `
+  agronomia: ${J(d.agronomia)},` : ''}${d.protocolos ? `
+  // Protocolos de emergencia (libros de reacción)
+  protocolos: ${J(d.protocolos)},` : ''}${d.proyectos ? `
+  // Proyectos ejecutados del área
+  proyectos: ${J(d.proyectos)},` : ''}${d.portada ? `
   // Imagen de la portada del portal (foto del equipo o del área)
   portada: ${J(d.portada)},` : ''}
   costos: ${lista(d.costos)},
