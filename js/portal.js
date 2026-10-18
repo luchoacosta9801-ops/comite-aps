@@ -742,7 +742,7 @@ function renderProyectos(){
       <div class="sim-kpi"><div class="l">Proyectos</div><div class="v">${V.length}</div><div class="s">${V.filter(p => p.estado === 'En ejecución').length} en ejecución</div></div>
       <div class="sim-kpi"><div class="l">Inversión</div><div class="v">${moneyM(sum(V, p => +p.inversion || 0))}</div><div class="s">${porTipo.map(([t, a]) => `${t} ${moneyM(sum(a, p => +p.inversion || 0))}`).slice(0, 3).join(' · ')}</div></div>
     </div>` : ''}
-    <div class="pr-grid">${V.map(p => `<details class="pr-card py-card" data-id="${esc(p.id)}">
+    <div class="pr-grid">${V.map(p => !ed ? pyTarjeta(p) : `<details class="pr-card py-card" data-id="${esc(p.id)}">
       <summary><span class="pr-tipo py-tipo">${esc(p.tipo)}</span><span class="py-anio">${esc(p.anio || '')}${p.estado === 'En ejecución' ? ' · en ejecución' : ''}</span><b>${esc(p.nombre)}</b>
         <small>${esc(p.hacienda || '')}${p.cantidad ? ' · ' + esc(p.cantidad) : ''}${+p.inversion ? ` · <b>${moneyM(+p.inversion)}</b>` : ''}</small></summary>
       ${ed ? `<div class="pr-form">
@@ -755,10 +755,14 @@ function renderProyectos(){
           <label>Costo final / inversión ($)${campoPf(p.id, 'inversion', p.inversion, 'number')}</label>
           <label class="ancho">Cifras clave (una por línea: «Etiqueta: valor»)${campoPf(p.id, 'datos', p.datos, 'textarea', 5)}</label>
           <label>Cantidad (ej. 1.2 km, 15 ha)${campoPf(p.id, 'cantidad', p.cantidad)}</label>
-          <label class="ancho">Descripción${campoPf(p.id, 'descripcion', p.descripcion, 'textarea', 3)}</label>
+          <label class="ancho">Descripción corta (portada)${campoPf(p.id, 'descripcion', p.descripcion, 'textarea', 2)}</label>
+          <label class="ancho">El problema / diagnóstico${campoPf(p.id, 'diagnostico', p.diagnostico, 'textarea', 3)}</label>
+          <label class="ancho">La solución${campoPf(p.id, 'solucion', p.solucion, 'textarea', 3)}</label>
+          <label class="ancho">Distribución de costos (una por línea: «Concepto: valor»)${campoPf(p.id, 'costos', p.costos, 'textarea', 3)}</label>
           <label class="ancho">Resultado / beneficio${campoPf(p.id, 'resultado', p.resultado, 'textarea', 2)}</label>
           <label class="ancho">Enlace (fotos, informe)${campoPf(p.id, 'enlace', p.enlace, 'url')}</label>
           ${(p.fotos || []).length ? `<div class="ancho">${pyFotos(p)}</div>` : ''}
+          <button type="button" class="mbtn mbtn-ghost" data-py-ver="${esc(p.id)}">▶ Ver presentación</button>
           <button type="button" class="x pr-borrar" data-py-borrar>🗑 Eliminar proyecto</button></div>`
       : `<div class="py-det">${p.descripcion ? `<p>${esc(p.descripcion)}</p>` : ''}
           ${pyCifras(p)}
@@ -775,10 +779,105 @@ q('proyectos').addEventListener('change', e => {
   const d = q('proyectos').querySelector(`[data-id="${CSS.escape(id)}"]`); if (d) d.open = true;
 });
 q('proyectos').addEventListener('click', e => {
+  const ver = e.target.closest('[data-py-ver]');
+  if (ver) { const p = proyectos().find(x => x.id === ver.dataset.pyVer); if (p) abrirPresentacion(p); return; }
   if (e.target.closest('[data-py-nuevo]')) { const id = idNuevo('py'); yfil.tipo = yfil.anio = yfil.hac = ''; modCambio(() => { listaEditable('proyectos').unshift({id, nombre:'Nuevo proyecto', tipo:'Obras civiles', estado:'Ejecutado', hacienda:'', anio:new Date().getFullYear(), inversion:0, cantidad:'', descripcion:'', resultado:'', enlace:''}); }); const d = q('proyectos').querySelector(`[data-id="${id}"]`); if (d) d.open = true; return; }
   const b = e.target.closest('[data-py-borrar]');
   if (b && confirm('¿Eliminar este proyecto?')) { const id = b.closest('[data-id]').dataset.id; modCambio(() => { DB.proyectos.items = listaEditable('proyectos').filter(x => x.id !== id); }); }
 });
+
+// ── Presentación de un proyecto (pantalla completa, diapositivas) ──
+const pyLineas = t => String(t || '').split('\n').map(s => s.split(/:(.+)/)).filter(a => a[0].trim() && a[1]).map(([l, v]) => [l.trim(), v.trim()]);
+const pyNum = v => +String(v).replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.') || 0;
+const pyFotosOk = p => (p.fotos || []).filter(f => /^img\/proyectos\/[\w.-]+\.(jpe?g|png|webp)$/i.test(f.src));
+const pyEsMapa = f => /mapa|diseño|diagn|isobata|plano/i.test(f.pie || '');
+function pyPortada(p){
+  const F = pyFotosOk(p);
+  return F[+p.portada] || F.filter(f => !pyEsMapa(f)).pop() || F[0] || null;
+}
+function pyTarjeta(p){
+  const f = pyPortada(p), C = pyLineas(p.datos).slice(0, 3);
+  return `<button type="button" class="py-tarj" data-py-ver="${esc(p.id)}">
+    <div class="py-tarj-img" ${f ? `style="background-image:url('${esc(f.src)}')"` : ''}><span class="pr-tipo py-tipo">${esc(p.tipo)}</span><span class="py-play">▶ Ver presentación</span></div>
+    <div class="py-tarj-c"><span class="py-anio">${esc(p.anio || '')} · ${esc(p.hacienda || '')}${p.estado === 'En ejecución' ? ' · en ejecución' : ''}</span>
+      <b>${esc(p.nombre)}</b>
+      <div class="py-tarj-k">${C.map(([l, v]) => `<span><small>${esc(l)}</small>${esc(v)}</span>`).join('')}${+p.inversion ? `<span><small>Inversión</small>${moneyM(+p.inversion)}</span>` : ''}</div></div>
+  </button>`;
+}
+function pyDiapositivas(p){
+  const F = pyFotosOk(p), mapas = F.filter(pyEsMapa), obra = F.filter(f => !pyEsMapa(f)), D = pyLineas(p.datos), C = pyLineas(p.costos);
+  const port = pyPortada(p), ppto = +p.ppto || 0, cost = +p.inversion || 0, S = [];
+  const img = (f, cls = '') => f ? `<figure class="pz-fig ${cls}"><img src="${esc(f.src)}" alt="${esc(f.pie || '')}"><figcaption>${esc(f.pie || '')}</figcaption></figure>` : '';
+  // 1. Portada
+  S.push({cls:'pz-portada', bg:port && port.src, html:`<div class="pz-port-c">
+    <span class="pz-chip">${esc(p.tipo)} · ${esc(p.estado || 'Ejecutado')} · ${esc(p.anio || '')}</span>
+    <h1>${esc(p.nombre)}</h1><p class="pz-lugar">📍 ${esc(p.hacienda || '')}${p.cantidad ? ' · ' + esc(p.cantidad) : ''}</p>
+    ${p.descripcion && !p.diagnostico ? '' : p.descripcion ? `<p class="pz-lead">${esc(p.descripcion)}</p>` : ''}
+    <div class="pz-port-k">${D.slice(0, 2).map(([l, v]) => `<div><b>${esc(v)}</b><small>${esc(l)}</small></div>`).join('')}${cost ? `<div><b>${moneyM(cost)}</b><small>Inversión</small></div>` : ''}</div>
+    <p class="pz-firma">Ingeniería Agrícola · Riopaila Agrícola</p></div>`});
+  // 2. Problema
+  const diag = p.diagnostico || (!p.solucion && p.descripcion);
+  if (diag) S.push({titulo:'El problema', ico:'💧', html:`<div class="pz-dos"><div class="pz-txt"><p>${esc(diag)}</p></div>${img(mapas[0] || obra[0])}</div>`});
+  // 3. Solución
+  if (p.solucion) S.push({titulo:'La solución', ico:'🛠️', html:`<div class="pz-dos">${img(mapas[1] || mapas[0])}<div class="pz-txt"><p>${esc(p.solucion)}</p>
+    ${D.filter(([l]) => /profund|pendiente|diametro|diámetro|ancho/i.test(l)).map(([l, v]) => `<div class="pz-mini"><small>${esc(l)}</small><b>${esc(v)}</b></div>`).join('')}</div></div>`});
+  // 4. Proceso de obra (fotos en orden)
+  if (obra.length) S.push({titulo:'Así se hizo', ico:'🚜', html:`<div class="pz-pasos">${obra.map((f, i) => `<figure class="pz-paso" style="--i:${i}"><img src="${esc(f.src)}" alt="${esc(f.pie || '')}"><figcaption><b>${i + 1}</b>${esc(f.pie || '')}</figcaption></figure>`).join('')}</div>`});
+  // 5. Cifras
+  // (sin costos ni las medidas que ya salen en "La solución"); número grande y unidad aparte
+  const cif = D.filter(([l]) => !/^(materiales|retro|volqueta|mano de obra)/i.test(l) && !(p.solucion && /profund|pendiente|diametro|diámetro|ancho/i.test(l)));
+  const numUni = v => { const m = /^([$]?[\d.,]+)\s*(.*)$/.exec(v); return m ? `${esc(m[1])}<em>${esc(m[2])}</em>` : esc(v); };
+  if (cif.length) S.push({titulo:'En cifras', ico:'📊', html:`<div class="pz-cifras">${cif.map(([l, v], i) => `<div style="--i:${i}"><b>${numUni(v)}</b><small>${esc(l)}</small></div>`).join('')}</div>`});
+  // 6. Inversión
+  if (ppto || cost || C.length) {
+    const mx = Math.max(ppto, cost, 1), tot = sum(C, ([, v]) => pyNum(v)) || 1, dif = cost - ppto;
+    const col = ['#0f766e', '#0077aa', '#b45309', '#6d28d9', '#c0392b'];
+    S.push({titulo:'Inversión', ico:'💰', html:`<div class="pz-dos pz-inv">
+      ${ppto && cost ? `<div class="pz-barras">
+        <div class="pz-barra"><small>Presupuesto</small><div><i style="--w:${ppto / mx * 100}%;background:#94a3b8"></i></div><b>${money(ppto)}</b></div>
+        <div class="pz-barra"><small>Ejecutado</small><div><i style="--w:${cost / mx * 100}%;background:#0f766e"></i></div><b>${money(cost)}</b></div>
+        <div class="pz-var ${Math.abs(dif / ppto) <= .05 ? 'ok' : 'mal'}">${dif >= 0 ? '+' : '−'}${money(Math.abs(dif))} · ${(dif / ppto * 100).toFixed(1)}%<small>${Math.abs(dif / ppto) <= .05 ? (dif > 0 ? 'Prácticamente igual a lo presupuestado' : 'Por debajo de lo presupuestado') : dif > 0 ? 'Por encima de lo presupuestado' : 'Por debajo de lo presupuestado'}</small></div></div>` : ''}
+      ${C.length ? `<div class="pz-dist"><small class="pz-sub">¿En qué se invirtió?</small>${C.map(([l, v], i) => { const n = pyNum(v); return `<div class="pz-dist-f"><span><i style="background:${col[i % col.length]}"></i>${esc(l)}</span><b>${money(n)} · ${Math.round(n / tot * 100)}%</b><div><i style="--w:${n / tot * 100}%;background:${col[i % col.length]}"></i></div></div>`; }).join('')}</div>` : ''}
+    </div>`});
+  }
+  // 7. Resultado
+  if (p.resultado) S.push({cls:'pz-final', bg:port && port.src, html:`<div class="pz-port-c"><span class="pz-chip">Resultado</span><h2>${esc(p.resultado)}</h2>
+    ${enlaceSeguro(p.enlace) ? `<a class="pz-link" href="${esc(enlaceSeguro(p.enlace))}" target="_blank" rel="noopener">📄 Ver informe completo</a>` : ''}
+    <p class="pz-firma">Elaborado por: Luis Acosta · Esp. de Ingeniería Agrícola</p></div>`});
+  return S;
+}
+function abrirPresentacion(p){
+  const S = pyDiapositivas(p); let i = 0;
+  const o = document.createElement('div'); o.className = 'pz'; o.tabIndex = -1;
+  o.innerHTML = `<div class="pz-top"><span>🏗️ ${esc(p.nombre)}</span><button type="button" class="pz-x" title="Cerrar (Esc)">✕</button></div>
+    <div class="pz-pista">${S.map((s, k) => `<section class="pz-dia ${s.cls || ''}" ${s.bg ? `style="--bg:url('${esc(new URL(s.bg, document.baseURI).href)}')"` : ''} aria-hidden="${k ? 'true' : 'false'}">
+      ${s.titulo ? `<h2 class="pz-h"><span>${s.ico || ''}</span>${esc(s.titulo)}<small>${k + 1} / ${S.length}</small></h2>` : ''}<div class="pz-cuerpo">${s.html}</div></section>`).join('')}</div>
+    <button type="button" class="pz-nav pz-ant" title="Anterior (←)">‹</button><button type="button" class="pz-nav pz-sig" title="Siguiente (→)">›</button>
+    <div class="pz-puntos">${S.map((s, k) => `<button type="button" data-k="${k}" title="${esc(s.titulo || (k ? 'Resultado' : 'Portada'))}"></button>`).join('')}</div>`;
+  document.body.appendChild(o); document.body.classList.add('pz-abierta');
+  const dias = o.querySelectorAll('.pz-dia'), puntos = o.querySelectorAll('.pz-puntos button');
+  const ir = k => {
+    i = Math.max(0, Math.min(S.length - 1, k));
+    dias.forEach((d, n) => { d.classList.toggle('on', n === i); d.classList.toggle('antes', n < i); d.setAttribute('aria-hidden', n !== i); });
+    puntos.forEach((b, n) => b.classList.toggle('on', n === i));
+    o.querySelector('.pz-ant').disabled = i === 0; o.querySelector('.pz-sig').disabled = i === S.length - 1;
+  };
+  const cerrar = () => { o.remove(); document.body.classList.remove('pz-abierta'); document.removeEventListener('keydown', tecla); };
+  const tecla = e => { if (e.key === 'Escape') cerrar(); else if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); ir(i + 1); } else if (e.key === 'ArrowLeft') ir(i - 1); };
+  document.addEventListener('keydown', tecla);
+  o.addEventListener('click', e => {
+    if (e.target.closest('.pz-x')) cerrar();
+    else if (e.target.closest('.pz-ant')) ir(i - 1);
+    else if (e.target.closest('.pz-sig')) ir(i + 1);
+    else if (e.target.closest('.pz-puntos button')) ir(+e.target.dataset.k);
+    else if (e.target.closest('.pz-fig img, .pz-paso img')) window.open(e.target.src, '_blank', 'noopener');
+  });
+  // Deslizar con el dedo en el celular
+  let x0 = null;
+  o.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, {passive:true});
+  o.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 50) ir(i + (dx < 0 ? 1 : -1)); x0 = null; });
+  requestAnimationFrame(() => { ir(0); o.focus(); });
+}
 
 // Arranque: abre el módulo que indique la dirección (sin dirección = portada)
 irA(vistaDeHash(location.hash), {historial:false});
