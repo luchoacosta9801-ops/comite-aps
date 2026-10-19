@@ -700,7 +700,7 @@ function renderProtocolos(){
       <label class="fchip"><span>Tipo</span><select id="pr-f-tipo" class="fsel ${pfil.tipo ? 'on' : ''}"><option value="">Todos</option>${tipos.map(x => `<option ${x === pfil.tipo ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
       <input id="pr-f-txt" class="pr-buscar" placeholder="Buscar en los protocolos…" value="${esc(pfil.txt)}">
     </div>
-    <div class="pr-grid">${V.map(p => `<details class="pr-card" data-id="${esc(p.id)}" ${V.length === 1 || ed ? '' : ''}>
+    <div class="pr-grid">${V.map(p => !ed ? prTarjeta(p) : `<details class="pr-card" data-id="${esc(p.id)}">
       <summary><span class="pr-tipo">${esc(p.tipo)}</span>${p.borrador ? '<span class="pr-borr">Borrador</span>' : ''}<b>${esc(p.titulo)}</b><small>${esc(p.activa)}</small></summary>
       ${ed ? `<div class="pr-form">
           <label>Título${campoPf(p.id, 'titulo', p.titulo)}</label>
@@ -717,6 +717,7 @@ function renderProtocolos(){
           <label>Responsable${campoPf(p.id, 'responsable', p.responsable)}</label>
           <label>Enlace al documento (PDF, Drive…)${campoPf(p.id, 'enlace', p.enlace, 'url')}</label>
           <label class="pr-chk"><input type="checkbox" data-pf="borrador" ${p.borrador ? 'checked' : ''}> Borrador (sin validar)</label>
+          <button type="button" class="mbtn mbtn-ghost" data-pr-ver="${esc(p.id)}">▶ Ver presentación</button>
           <button type="button" class="x pr-borrar" data-pr-borrar>🗑 Eliminar protocolo</button></div>`
       : prDetalle(p)}
     </details>`).join('') || '<div class="nores">Ningún protocolo con ese filtro.</div>'}</div>`;
@@ -735,6 +736,8 @@ q('protocolos').addEventListener('change', e => {
 });
 q('protocolos').addEventListener('input', e => { if (e.target.id === 'pr-f-txt') { pfil.txt = e.target.value; const pos = e.target.selectionStart; renderProtocolos(); const i = q('pr-f-txt'); i.focus(); i.setSelectionRange(pos, pos); } });
 q('protocolos').addEventListener('click', e => {
+  const ver = e.target.closest('[data-pr-ver]');
+  if (ver) { const p = protocolos().find(x => x.id === ver.dataset.prVer); if (p) abrirPresentacion(p, prDiapositivas(p), '🚨 ' + p.titulo); return; }
   if (e.target.closest('[data-pr-nuevo]')) { const id = idNuevo('pr'); modCambio(() => { listaEditable('protocolos').unshift({id, tipo:'Otro', titulo:'Nuevo protocolo', activa:'', pasos:'', responsable:'', enlace:'', borrador:true}); }); const d = q('protocolos').querySelector(`[data-id="${id}"]`); if (d) d.open = true; return; }
   const da = e.target.closest('[data-dir-agregar]'), db = e.target.closest('[data-dir-borrar]');
   if (da || db) {
@@ -884,10 +887,45 @@ function pyDiapositivas(p){
     <p class="pz-firma">Elaborado por: Luis Acosta · Esp. de Ingeniería Agrícola</p></div>`});
   return S;
 }
-function abrirPresentacion(p){
-  const S = pyDiapositivas(p); let i = 0;
+// Diapositivas de un protocolo de emergencia: portada, pasos, insumos, datos, directorio y un mapa por lámina
+function prDiapositivas(p){
+  const lineas = t => String(t || '').split('\n').map(s => s.trim()).filter(Boolean), S = [];
+  const pasos = lineas(p.pasos).map(s => s.split('|').map(x => x.trim()));
+  const D = lineas(p.datos).map(s => s.split(/:(.+)/)).filter(a => a[1]).map(([l, v]) => [l.trim(), v.trim()]);
+  const F = (p.figuras || []).filter(f => /^img\/protocolos\/[\w.-]+\.(jpe?g|png|webp)$/i.test(f.src));
+  const dir = (p.directorio || []).filter(c => c.nombre || c.cargo);
+  const fondo = (/^img\/protocolos\/[\w.-]+\.(jpe?g|png|webp)$/i.test(p.fondo || '') && {src:p.fondo}) || F.find(f => /foto|obra/i.test(f.pie || '')) || null;
+  S.push({cls:'pz-portada pz-alerta', bg:fondo && fondo.src, html:`<div class="pz-port-c">
+    <span class="pz-chip pz-chip-r">🚨 ${esc(p.tipo)}${p.borrador ? ' · borrador' : ''}</span>
+    <h1>${esc(p.titulo)}</h1>
+    ${p.activa ? `<div class="pz-activa"><small>Se activa cuando</small>${esc(p.activa)}</div>` : ''}
+    <div class="pz-port-k">${pasos.length ? `<div><b>${pasos.length}</b><small>acciones</small></div>` : ''}${dir.length ? `<div><b>${dir.length}</b><small>contactos</small></div>` : ''}${F.length ? `<div><b>${F.length}</b><small>mapas</small></div>` : ''}</div>
+    <p class="pz-firma">${p.fuente ? esc(p.fuente) + ' · ' : ''}Ingeniería Agrícola · Riopaila Agrícola</p></div>`});
+  if (pasos.length) S.push({titulo:'Qué hacer, en orden', ico:'✅', html:`<div class="pz-acc ${pasos.length > 6 ? 'dos' : ''}">${pasos.map(([a, r], i) =>
+    `<div class="pz-acc-i" style="--i:${i}"><b>${i + 1}</b><div>${esc(a)}${r ? `<span>${esc(r)}</span>` : ''}</div></div>`).join('')}</div>`});
+  if (lineas(p.insumos).length || D.length) S.push({titulo:lineas(p.insumos).length ? 'Insumos y datos clave' : 'Datos clave', ico:'🧰', html:`
+    ${lineas(p.insumos).length ? `<small class="pz-sub">Tener listo</small><div class="pz-insumos">${lineas(p.insumos).map((s, i) => `<span style="--i:${i}">${esc(s)}</span>`).join('')}</div>` : ''}
+    ${D.length ? `<div class="pz-cifras" style="margin-top:22px">${D.map(([l, v], i) => `<div style="--i:${i}"><b style="font-size:clamp(20px,2.4vw,30px)">${esc(v)}</b><small>${esc(l)}</small></div>`).join('')}</div>` : ''}`});
+  if (dir.length) S.push({titulo:'Directorio de contactos', ico:'📞', html:`<div class="pz-dir">${dir.map((c, i) => `<div style="--i:${i}"><b>${esc(c.nombre || '—')}</b><small>${esc(c.cargo || '')}</small>${c.tel ? `<a href="tel:${esc(String(c.tel).replace(/[^\d+]/g, ''))}">📞 ${esc(c.tel)}</a>` : ''}</div>`).join('')}</div>`});
+  F.forEach(f => S.push({titulo:f.pie || 'Mapa', ico:'🗺️', html:`<figure class="pz-mapa"><img src="${esc(f.src)}" alt="${esc(f.pie || '')}"></figure>`}));
+  S.push({cls:'pz-final pz-alerta', bg:fondo && fondo.src, html:`<div class="pz-port-c"><span class="pz-chip pz-chip-r">Responsable</span>
+    <h2>${esc(p.responsable || 'Ingeniería Agrícola')}</h2>
+    ${enlaceSeguro(p.enlace) ? `<a class="pz-link" href="${esc(enlaceSeguro(p.enlace))}" target="_blank" rel="noopener">📄 Ver documento completo</a>` : ''}
+    <p class="pz-firma">Ante cualquier novedad, avisar de inmediato al jefe del área y a la sala de radios.</p></div>`});
+  return S;
+}
+function prTarjeta(p){
+  const n = String(p.pasos || '').split('\n').filter(s => s.trim()).length, f = (p.figuras || [])[0];
+  return `<button type="button" class="pr-tarj" data-pr-ver="${esc(p.id)}">
+    <span class="pr-tipo">${esc(p.tipo)}</span>${p.borrador ? '<span class="pr-borr">Borrador</span>' : ''}
+    <b>${esc(p.titulo)}</b><small>${esc(p.activa)}</small>
+    <span class="pr-tarj-pie">${n} acciones${(p.directorio || []).length ? ` · ${p.directorio.length} contactos` : ''}${(p.figuras || []).length ? ` · ${p.figuras.length} mapas` : ''}<span class="pr-play">▶ Ver presentación</span></span>
+  </button>`;
+}
+function abrirPresentacion(p, S = pyDiapositivas(p), cab = '🏗️ ' + p.nombre){
+  let i = 0;
   const o = document.createElement('div'); o.className = 'pz'; o.tabIndex = -1;
-  o.innerHTML = `<div class="pz-top"><span>🏗️ ${esc(p.nombre)}</span><button type="button" class="pz-x" title="Cerrar (Esc)">✕</button></div>
+  o.innerHTML = `<div class="pz-top"><span>${esc(cab)}</span><button type="button" class="pz-x" title="Cerrar (Esc)">✕</button></div>
     <div class="pz-pista">${S.map((s, k) => `<section class="pz-dia ${s.cls || ''}" ${s.bg ? `style="--bg:url('${esc(new URL(s.bg, document.baseURI).href)}')"` : ''} aria-hidden="${k ? 'true' : 'false'}">
       ${s.titulo ? `<h2 class="pz-h"><span>${s.ico || ''}</span>${esc(s.titulo)}<small>${k + 1} / ${S.length}</small></h2>` : ''}<div class="pz-cuerpo">${s.html}</div></section>`).join('')}</div>
     <button type="button" class="pz-nav pz-ant" title="Anterior (←)">‹</button><button type="button" class="pz-nav pz-sig" title="Siguiente (→)">›</button>
@@ -908,13 +946,13 @@ function abrirPresentacion(p){
     else if (e.target.closest('.pz-ant')) ir(i - 1);
     else if (e.target.closest('.pz-sig')) ir(i + 1);
     else if (e.target.closest('.pz-puntos button')) ir(+e.target.dataset.k);
-    else if (e.target.closest('.pz-fig img, .pz-paso img')) window.open(e.target.src, '_blank', 'noopener');
+    else if (e.target.closest('.pz-fig img, .pz-paso img, .pz-mapa img')) window.open(e.target.src, '_blank', 'noopener');
   });
   // Deslizar con el dedo en el celular
   let x0 = null;
   o.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, {passive:true});
   o.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 50) ir(i + (dx < 0 ? 1 : -1)); x0 = null; });
-  requestAnimationFrame(() => { ir(0); o.focus(); });
+  ir(0); setTimeout(() => o.focus(), 30);
 }
 
 // Arranque: abre el módulo que indique la dirección (sin dirección = portada)

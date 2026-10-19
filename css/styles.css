@@ -916,3 +916,39 @@ body.pz-abierta{overflow:hidden}
 .pr-dir input{width:100%}
 .pr-dir-ed .link{margin-top:6px;background:none;border:0;color:var(--cyan);font-weight:700;cursor:pointer;font-size:11.5px;padding:0}
 @media(max-width:600px){.pr-dir thead{display:none}.pr-dir tr{display:grid;grid-template-columns:1fr 1fr auto;gap:4px;margin-bottom:8px}.pr-dir td:nth-child(3){grid-column:1/3}}
+/* Tarjeta de protocolo (visitantes) y su presentación */
+.pr-tarj{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;text-align:left;padding:14px 16px;background:#fff;border:1px solid var(--bdr);border-left:4px solid var(--red);border-radius:12px;box-shadow:var(--shadow);cursor:pointer;font-family:var(--sans);transition:transform .18s,box-shadow .18s}
+.pr-tarj:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,.12)}
+.pr-tarj b{flex:1 1 100%;font-size:14px;color:var(--text);line-height:1.3}
+.pr-tarj small{flex:1 1 100%;color:var(--dim);font-size:11.5px;line-height:1.45}
+.pr-tarj-pie{flex:1 1 100%;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;font-size:11px;color:var(--muted);font-weight:700}
+.pr-play{color:#fff;background:var(--red);border-radius:16px;padding:5px 12px;font-size:11.5px;font-weight:800;white-space:nowrap;transition:transform .18s}
+.pr-tarj:hover .pr-play{transform:scale(1.06)}
+.pz-alerta.pz-portada{background:linear-gradient(90deg,rgba(40,10,10,.95) 0%,rgba(40,10,10,.8) 50%,rgba(40,10,10,.35) 100%),var(--bg,none) center/cover no-repeat}
+.pz-alerta.pz-final{background:linear-gradient(180deg,rgba(40,10,10,.65),rgba(40,10,10,.94)),var(--bg,none) center/cover no-repeat}
+.pz-chip-r{background:#f87171;color:#2a0606}
+.pz-activa{margin-top:14px;background:rgba(255,255,255,.08);border-left:4px solid #f87171;border-radius:10px;padding:12px 16px;font-size:clamp(14px,1.5vw,18px);line-height:1.5;max-width:640px}
+.pz-activa small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#fca5a5;font-weight:800;margin-bottom:4px}
+.pz-alerta .pz-port-k b{color:#fca5a5}
+/* Pasos */
+.pz-acc{display:grid;gap:10px}
+.pz-acc.dos{grid-template-columns:1fr 1fr}
+.pz-acc-i{display:flex;gap:14px;align-items:flex-start;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px 16px}
+.pz-dia.on .pz-acc-i{animation:pzSube .5s ease both;animation-delay:calc(var(--i) * .06s)}
+.pz-acc-i>b{flex-shrink:0;width:34px;height:34px;border-radius:50%;background:#f87171;color:#2a0606;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900}
+.pz-acc-i>div{font-size:clamp(13px,1.25vw,16px);line-height:1.45;color:rgba(255,255,255,.92)}
+.pz-acc-i span{display:inline-block;margin-top:6px;font-size:10.5px;font-weight:800;letter-spacing:.6px;color:#5eead4;background:rgba(20,184,166,.15);border-radius:10px;padding:2px 9px}
+/* Insumos */
+.pz-insumos{display:flex;flex-wrap:wrap;gap:10px}
+.pz-insumos span{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:24px;padding:10px 18px;font-size:clamp(14px,1.4vw,18px);font-weight:700}
+.pz-dia.on .pz-insumos span{animation:pzSube .5s ease both;animation-delay:calc(var(--i) * .05s)}
+/* Directorio */
+.pz-dir{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.pz-dir div{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.pz-dia.on .pz-dir div{animation:pzSube .5s ease both;animation-delay:calc(var(--i) * .03s)}
+.pz-dir b{font-size:14px}.pz-dir small{font-size:12px;color:rgba(255,255,255,.7)}
+.pz-dir a{margin-top:6px;align-self:flex-start;color:#04211f;background:#5eead4;border-radius:16px;padding:4px 12px;font-weight:800;font-size:13px;text-decoration:none;font-family:var(--mono)}
+/* Mapa a pantalla */
+.pz-mapa{margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.45);max-width:100%}
+.pz-mapa img{display:block;max-width:100%;max-height:68vh;object-fit:contain;cursor:zoom-in}
+@media(max-width:760px){.pz-acc.dos{grid-template-columns:1fr}.pz-alerta.pz-portada{background:linear-gradient(180deg,rgba(40,10,10,.4) 0%,rgba(40,10,10,.9) 50%,rgba(40,10,10,.98) 100%),var(--bg,none) center/cover no-repeat}}
