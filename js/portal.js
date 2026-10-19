@@ -672,6 +672,21 @@ const campoPf = (id, f, val, tipo = 'text', extra = '') => tipo === 'textarea'
 const enlaceSeguro = u => /^https?:\/\//i.test(u || '') ? u : '';
 
 const pfil = {tipo:'', txt:''};
+// Vista del protocolo: pasos con responsable, insumos, datos clave, directorio y mapas
+function prDetalle(p){
+  const lineas = t => String(t || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const pasos = lineas(p.pasos).map(s => { const [a, r] = s.split('|').map(x => x.trim()); return `<li>${esc(a)}${r ? `<span class="pr-resp">${esc(r)}</span>` : ''}</li>`; }).join('');
+  const D = lineas(p.datos).map(s => s.split(/:(.+)/)).filter(a => a[1]);
+  const dir = (p.directorio || []).filter(c => c.nombre || c.cargo);
+  const F = (p.figuras || []).filter(f => /^img\/protocolos\/[\w.-]+\.(jpe?g|png|webp)$/i.test(f.src));
+  return `<div class="pr-det">
+    <div class="pr-sec">✅ Qué hacer</div><ol class="pr-pasos">${pasos}</ol>
+    ${lineas(p.insumos).length ? `<div class="pr-sec">🧰 Insumos y equipos</div><div class="pr-chips">${lineas(p.insumos).map(s => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
+    ${D.length ? `<div class="pr-sec">📊 Datos clave</div><div class="py-cifras">${D.map(([l, v]) => `<div><small>${esc(l.trim())}</small><b>${esc(v.trim())}</b></div>`).join('')}</div>` : ''}
+    ${dir.length ? `<div class="pr-sec">📞 Directorio de contactos</div><div class="pr-dir-v">${dir.map(c => `<div><b>${esc(c.nombre || '—')}</b><small>${esc(c.cargo || '')}</small>${c.tel ? `<a href="tel:${esc(String(c.tel).replace(/[^\d+]/g, ''))}">📞 ${esc(c.tel)}</a>` : ''}</div>`).join('')}</div>` : ''}
+    ${F.length ? `<div class="pr-sec">🗺️ Mapas y apoyo</div><div class="py-fotos pr-mapas">${F.map(f => `<a href="${esc(f.src)}" target="_blank" rel="noopener"><img src="${esc(f.src)}" alt="${esc(f.pie || '')}" loading="lazy"><span>${esc(f.pie || '')}</span></a>`).join('')}</div>` : ''}
+    <div class="pr-pie">Responsable: <b>${esc(p.responsable || '—')}</b>${p.fuente ? ` · Fuente: ${esc(p.fuente)}` : ''}${enlaceSeguro(p.enlace) ? ` · <a href="${esc(enlaceSeguro(p.enlace))}" target="_blank" rel="noopener">📄 Ver documento</a>` : ''}</div></div>`;
+}
 function renderProtocolos(){
   const L = protocolos(), ed = MODO_EDICION, t = norm(pfil.txt);
   const V = L.filter(p => (!pfil.tipo || p.tipo === pfil.tipo) && (!t || norm(`${p.titulo} ${p.activa} ${p.pasos}`).includes(t)));
@@ -691,18 +706,29 @@ function renderProtocolos(){
           <label>Título${campoPf(p.id, 'titulo', p.titulo)}</label>
           <label>Tipo${campoPf(p.id, 'tipo', p.tipo, 'select', PROTO_TIPOS)}</label>
           <label class="ancho">Cuándo se activa${campoPf(p.id, 'activa', p.activa, 'textarea', 2)}</label>
-          <label class="ancho">Pasos (uno por línea, en orden)${campoPf(p.id, 'pasos', p.pasos, 'textarea', 7)}</label>
+          <label class="ancho">Pasos (uno por línea, en orden; responsable al final con «|», ej. «Revisar diques | JEFE DE ZONA»)${campoPf(p.id, 'pasos', p.pasos, 'textarea', 8)}</label>
+          <label class="ancho">Insumos y equipos (uno por línea)${campoPf(p.id, 'insumos', p.insumos, 'textarea', 3)}</label>
+          <label class="ancho">Datos clave (una por línea: «Etiqueta: valor»)${campoPf(p.id, 'datos', p.datos, 'textarea', 3)}</label>
+          <div class="ancho pr-dir-ed"><div class="pr-sec">📞 Directorio de contactos</div>
+            <div class="pr-aviso" style="margin:4px 0 8px">🔒 Lo que escribas aquí lo verá cualquiera que tenga el link. Pon teléfonos solo si las personas están de acuerdo; si no, deja el cargo y la línea de la sala de radios.</div>
+            <table class="pr-dir"><thead><tr><th>Nombre</th><th>Cargo</th><th>Teléfono</th><th></th></tr></thead><tbody>
+            ${(p.directorio || []).map((c, i) => `<tr data-dir="${i}"><td><input data-dk="nombre" value="${esc(c.nombre)}"></td><td><input data-dk="cargo" value="${esc(c.cargo)}"></td><td><input data-dk="tel" value="${esc(c.tel)}" inputmode="tel" placeholder="—"></td><td><button type="button" class="x" data-dir-borrar title="Quitar">×</button></td></tr>`).join('')}
+            </tbody></table><button type="button" class="link" data-dir-agregar>+ Agregar contacto</button></div>
           <label>Responsable${campoPf(p.id, 'responsable', p.responsable)}</label>
           <label>Enlace al documento (PDF, Drive…)${campoPf(p.id, 'enlace', p.enlace, 'url')}</label>
           <label class="pr-chk"><input type="checkbox" data-pf="borrador" ${p.borrador ? 'checked' : ''}> Borrador (sin validar)</label>
           <button type="button" class="x pr-borrar" data-pr-borrar>🗑 Eliminar protocolo</button></div>`
-      : `<ol class="pr-pasos">${String(p.pasos || '').split('\n').filter(s => s.trim()).map(s => `<li>${esc(s)}</li>`).join('')}</ol>
-        <div class="pr-pie">Responsable: <b>${esc(p.responsable || '—')}</b>${enlaceSeguro(p.enlace) ? ` · <a href="${esc(enlaceSeguro(p.enlace))}" target="_blank" rel="noopener">📄 Ver documento</a>` : ''}</div>`}
+      : prDetalle(p)}
     </details>`).join('') || '<div class="nores">Ningún protocolo con ese filtro.</div>'}</div>`;
 }
 q('protocolos').addEventListener('change', e => {
   const el = e.target;
   if (el.id === 'pr-f-tipo') { pfil.tipo = el.value; renderProtocolos(); return; }
+  if (el.dataset.dk) {   // directorio de contactos
+    const id = el.closest('[data-id]').dataset.id, i = +el.closest('[data-dir]').dataset.dir;
+    modCambio(() => { const p = listaEditable('protocolos').find(x => x.id === id); p.directorio[i][el.dataset.dk] = el.value.trim(); });
+    const d = q('protocolos').querySelector(`[data-id="${CSS.escape(id)}"]`); if (d) d.open = true; return;
+  }
   const id = el.dataset.pf && el.closest('[data-id]') && el.closest('[data-id]').dataset.id; if (!id) return;
   modCambio(() => { const p = listaEditable('protocolos').find(x => x.id === id); if (p) p[el.dataset.pf] = el.type === 'checkbox' ? el.checked : el.value.trim(); });
   const d = q('protocolos').querySelector(`[data-id="${CSS.escape(id)}"]`); if (d) d.open = true;
@@ -710,6 +736,13 @@ q('protocolos').addEventListener('change', e => {
 q('protocolos').addEventListener('input', e => { if (e.target.id === 'pr-f-txt') { pfil.txt = e.target.value; const pos = e.target.selectionStart; renderProtocolos(); const i = q('pr-f-txt'); i.focus(); i.setSelectionRange(pos, pos); } });
 q('protocolos').addEventListener('click', e => {
   if (e.target.closest('[data-pr-nuevo]')) { const id = idNuevo('pr'); modCambio(() => { listaEditable('protocolos').unshift({id, tipo:'Otro', titulo:'Nuevo protocolo', activa:'', pasos:'', responsable:'', enlace:'', borrador:true}); }); const d = q('protocolos').querySelector(`[data-id="${id}"]`); if (d) d.open = true; return; }
+  const da = e.target.closest('[data-dir-agregar]'), db = e.target.closest('[data-dir-borrar]');
+  if (da || db) {
+    const id = e.target.closest('[data-id]').dataset.id;
+    modCambio(() => { const p = listaEditable('protocolos').find(x => x.id === id); p.directorio = p.directorio || [];
+      if (da) p.directorio.push({nombre:'', cargo:'', tel:''}); else p.directorio.splice(+db.closest('[data-dir]').dataset.dir, 1); });
+    const d = q('protocolos').querySelector(`[data-id="${CSS.escape(id)}"]`); if (d) d.open = true; return;
+  }
   const b = e.target.closest('[data-pr-borrar]');
   if (b && confirm('¿Eliminar este protocolo?')) { const id = b.closest('[data-id]').dataset.id; modCambio(() => { DB.protocolos.items = listaEditable('protocolos').filter(x => x.id !== id); }); }
 });
