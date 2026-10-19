@@ -593,6 +593,7 @@ function leerMaestro(XLSX, buf){
   const hi = rows.findIndex(r => norm(r[0]) === 'SUERTE');
   const H = (rows[hi] || []).map(norm), col = (re, def) => { const i = H.findIndex(h => re.test(h)); return i >= 0 ? i : def; };
   const cS = col(/^FECHA DE SIEMBRA/, 18), cT = col(/^FECHA DE ULTIMO CO/, 19), cF = col(/^FINCA$/, 8);
+  const cZ = col(/^ZONA$/, 5), cU = col(/^USO DE LA SUERTE/, 16), cV = col(/^VARIEDAD$/, 23), cA = col(/^AREA NETA/, 25);
   const iso = v => {
     if (typeof v === 'number' && v > 0) { const d = XLSX.SSF.parse_date_code(v); return d ? `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}` : ''; }
     const m = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/.exec(String(v).trim()); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
@@ -600,13 +601,15 @@ function leerMaestro(XLSX, buf){
   const M = new Map();
   rows.slice(hi + 1).forEach(r => {
     const s = String(r[0]).trim(); if (!/^\d{4}-\d{3}$/.test(s)) return;
-    (M.get(s) || M.set(s, []).get(s)).push({finca:norm(r[cF]), siembra:iso(r[cS]), corte:iso(r[cT])});
+    (M.get(s) || M.set(s, []).get(s)).push({finca:norm(r[cF]), siembra:iso(r[cS]), corte:iso(r[cT]),
+      zona:parseInt(r[cZ], 10) || null, uso:String(r[cU] || '').trim().toUpperCase(), variedad:String(r[cV] || '').trim().toUpperCase(), area:num(r[cA]) || 0});
   });
   return M;
 }
 function cargarMaestro(buf, nombre){
   return cargarXLSX().then(XLSX => {
     const M = leerMaestro(XLSX, buf), A = agroFilas();
+    guardarMaestroLocal(M, nombre);
     let ok = 0, varias = 0; const faltan = [];
     const cambios = A.map(x => {
       let L = M.get(x.s) || [];

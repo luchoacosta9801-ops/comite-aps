@@ -893,3 +893,5 @@ body.pz-abierta{overflow:hidden}
 }
 @media print{.pz{display:none}}
 .pz-cifras b em{font-style:normal;font-size:.5em;margin-left:6px;color:rgba(255,255,255,.85);letter-spacing:0}
+.maestro-barra{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:rgba(0,119,170,.06);border:1px solid rgba(0,119,170,.2);border-radius:10px;padding:8px 12px;font-size:11px;color:var(--dim);margin-bottom:12px}
+.maestro-info{font-size:11px;color:var(--dim);line-height:1.5;align-self:end;padding-bottom:4px}

@@ -50,21 +50,69 @@ function renderHome(){
   modalFooter.innerHTML='';
 }
 
+// ── Maestro de suertes (solo en este navegador, no se publica) ──
+// Índice compacto de la hoja MAESTRO para autocompletar: suerte → hacienda, zona, uso, variedad,
+// área neta, fecha de siembra y de último corte. Se guarda al cargar el maestro (aquí o en Agronomía).
+const MAESTRO_KEY='comite-aps:maestro';
+let maestroCache;
+function guardarMaestroLocal(M,nombre){
+  const s={};M.forEach((L,k)=>{s[k]=L.map(m=>[m.finca,m.zona,m.uso,m.variedad,+(+m.area||0).toFixed(2),m.siembra,m.corte]);});
+  maestroCache={nombre,cargado:new Date().toISOString(),s};
+  try{localStorage.setItem(MAESTRO_KEY,JSON.stringify(maestroCache));}catch(e){toast('⚠ No se pudo guardar el maestro en este navegador');}
+}
+function maestroLocal(){
+  if(maestroCache===undefined){try{maestroCache=JSON.parse(localStorage.getItem(MAESTRO_KEY)||'null');}catch(e){maestroCache=null;}}
+  return maestroCache;
+}
+// Hacienda del comité que corresponde a la finca del maestro
+function hacDeFinca(finca){
+  const f=norm(finca),H=hacsActuales();
+  return H.find(h=>norm(h)===f)||H.find(h=>f.includes(norm(h))||norm(h).includes(f))||String(finca||'').trim().toUpperCase();
+}
+function diasDesde(iso){const t=Date.parse(iso||'');return isNaN(t)?null:Math.max(0,Math.floor((Date.now()-t)/864e5));}
+// Normaliza lo que se escribe: "3113070", "3113 070" o "3113-70" → "3113-070"
+function codigoSuerte(t){const m=/^\s*(\d{4})\s*[-\s]?\s*(\d{1,3})\s*$/.exec(t||'');return m?`${m[1]}-${m[2].padStart(3,'0')}`:String(t||'').trim().toUpperCase();}
+function buscarMaestro(cod,hac){
+  const M=maestroLocal();if(!M)return null;
+  const L=(M.s[codigoSuerte(cod)]||[]).map(r=>({h:hacDeFinca(r[0]),z:r[1],uso:r[2],v:r[3],a:r[4],siembra:r[5],corte:r[6]}));
+  return (hac&&L.find(x=>x.h===hac))||L[0]||null;
+}
+function cargarMaestroArchivo(file,despues){
+  return cargarXLSX().then(XLSX=>file.arrayBuffer().then(buf=>{
+    const M=leerMaestro(XLSX,buf);guardarMaestroLocal(M,file.name);
+    toast(`✓ Maestro listo: ${M.size} suertes`);if(despues)despues();
+  })).catch(err=>toast('⚠ '+err.message));
+}
+// Si el servidor del PC está abierto, toma solo la copia _privado/maestro.xlsx (no hace falta elegir el archivo)
+function maestroDesdeServidor(){
+  if(maestroLocal())return Promise.resolve(true);
+  return fetch(API_BASE+'_privado/maestro.xlsx',{cache:'no-store'}).then(r=>r.ok?r.arrayBuffer():null)
+    .then(buf=>buf?cargarXLSX().then(XLSX=>{guardarMaestroLocal(leerMaestro(XLSX,buf),'maestro.xlsx (copia del PC)');return true;}):false).catch(()=>false);
+}
+function barraMaestro(alVolver){
+  const M=maestroLocal();
+  return`<div class="maestro-barra"><span>${M?`📚 Maestro: <b>${esc(M.nombre)}</b> · ${Object.keys(M.s).length} suertes · se usa para llenar datos solos`:'📚 Sin maestro cargado: elige el archivo para que los datos se llenen solos'}</span>
+    <label class="mbtn mbtn-ghost" style="padding:4px 10px;font-size:10.5px;cursor:pointer">${M?'Cambiar':'📥 Cargar maestro'}<input type="file" accept=".xlsx,.xlsm,.xls" hidden onchange="this.files[0]&&cargarMaestroArchivo(this.files[0],${alVolver})"></label></div>`;
+}
+
 // ── Agregar suerte ──
 function renderAddLote(){
-  setHeader('➕','Agregar suerte nueva','Completa los datos de la nueva suerte');
-  modalBody.innerHTML=`
+  setHeader('➕','Agregar suerte nueva','Escribe el sector-suerte y los datos se llenan solos desde el maestro (puedes cambiarlos)');
+  const M=maestroLocal();
+  modalBody.innerHTML=barraMaestro('renderAddLote')+`
+    <div class="mrow" style="grid-template-columns:1fr 1fr">
+      <div><label class="mlabel">Sector-Suerte *</label><input id="f-sue" class="minput" placeholder="ej: 3110-050" autocomplete="off" list="dl-maestro" style="font-family:var(--mono);font-size:13px;font-weight:700">
+        ${M?`<datalist id="dl-maestro">${Object.keys(M.s).sort().map(k=>`<option value="${k}">${esc(M.s[k][0][0])}</option>`).join('')}</datalist>`:''}</div>
+      <div id="f-maestro-info" class="maestro-info">${M?'Escribe la suerte…':''}</div>
+    </div>
     <div class="mrow" style="grid-template-columns:1fr 1fr">
       <div><label class="mlabel">Hacienda *</label><select id="f-hac" class="mselect" onchange="q('f-zona').value=zonaDe(this.value)">${opts(hacsActuales())}</select></div>
       <div><label class="mlabel">Zona *</label><select id="f-zona" class="mselect"><option value="1">Zona 1</option><option value="2">Zona 2</option></select></div>
     </div>
-    <div class="mrow" style="grid-template-columns:1fr 1fr">
-      <div><label class="mlabel">Sector-Suerte *</label><input id="f-sue" class="minput" placeholder="ej: 3110-050" autocomplete="off"></div>
+    <div class="mrow" style="grid-template-columns:1fr 1fr 1fr">
       <div><label class="mlabel">Área APS (ha) *</label><input id="f-area" class="minput" type="number" step="0.01" min="0" placeholder="ej: 12.50"></div>
-    </div>
-    <div class="mrow" style="grid-template-columns:1fr 1fr">
       <div><label class="mlabel">Cultivo *</label><select id="f-cult" class="mselect"><option value="CAÑA">Caña</option><option value="ARROZ">Arroz</option></select></div>
-      <div><label class="mlabel">Días de lucro *</label><input id="f-dias" class="minput" type="number" min="0" placeholder="ej: 280"></div>
+      <div><label class="mlabel">Días de lucro *</label><input id="f-dias" class="minput" type="number" min="0" placeholder="ej: 280" title="Días desde el último corte (maestro) hasta hoy"></div>
     </div>
     <div class="mrow" style="grid-template-columns:1fr 1fr">
       <div><label class="mlabel">Estado *</label><select id="f-est" class="mselect"><option value="PENDIENTE">Pendiente</option><option value="SEMBRADA">Sembrada</option></select></div>
@@ -80,12 +128,34 @@ function renderAddLote(){
     </div>
     <div id="add-error" class="err" hidden></div>`;
   q('f-zona').value=zonaDe(q('f-hac').value);
+  const fs=q('f-sue');
+  fs.addEventListener('input',autocompletarLote);
+  fs.addEventListener('change',()=>{fs.value=codigoSuerte(fs.value);autocompletarLote();});
   modalFooter.innerHTML=`${volver}<button class="mbtn mbtn-primary" onclick="saveLote()">➕ Agregar suerte</button>`;
+  if(!M)maestroDesdeServidor().then(ok=>{if(ok&&q('f-sue')&&!q('f-sue').value)renderAddLote();});
+  setTimeout(()=>fs.focus(),50);
+}
+// Llena hacienda, zona, área, cultivo, variedad y días de lucro con lo del maestro (todo queda editable)
+function autocompletarLote(){
+  const info=q('f-maestro-info'),cod=codigoSuerte(q('f-sue').value);
+  if(!/^\d{4}-\d{3}$/.test(cod)){if(info&&maestroLocal())info.innerHTML='Escribe la suerte completa (ej. 3113-070)…';return;}
+  const m=buscarMaestro(cod);
+  if(!m){if(info)info.innerHTML=maestroLocal()?`<span style="color:var(--amber)">⚠ ${cod} no está en el maestro: llena los datos a mano</span>`:'';return;}
+  const sel=q('f-hac');if(![...sel.options].some(o=>o.value===m.h))sel.insertAdjacentHTML('beforeend',`<option value="${esc(m.h)}">${esc(m.h)}</option>`);
+  sel.value=m.h;q('f-zona').value=m.z||zonaDe(m.h);
+  if(m.a)q('f-area').value=m.a;
+  if(/ARROZ/.test(m.uso))q('f-cult').value='ARROZ';else if(/CA[NÑ]A/.test(m.uso))q('f-cult').value='CAÑA';
+  const dv=q('f-var');if(m.v){if(![...dv.options].some(o=>o.value===m.v))dv.insertAdjacentHTML('afterbegin',`<option value="${esc(m.v)}">${esc(m.v)}</option>`);dv.value=m.v;}
+  const d=diasDesde(m.corte);if(d!=null)q('f-dias').value=d;
+  const ya=DB.lotes.filter(l=>l.s===cod);
+  info.innerHTML=`<span style="color:var(--green)">✓ Encontrada en el maestro</span> · ${esc(m.h)} · ${f2(m.a)} ha · ${esc(m.v||'—')}<br>
+    Último corte: <b>${m.corte?fechaLarga(m.corte):'—'}</b>${d!=null?` → ${d} días de lucro <span style="color:var(--amber)">(revísalo: en suertes ya en renovación el maestro puede traer un corte más reciente)</span>`:''} · siembra maestro: ${m.siembra?fechaLarga(m.siembra):'—'}
+    ${ya.length?`<br><span style="color:var(--amber)">⚠ Ya está en el comité (${ya.map(l=>l.c+' '+l.e.toLowerCase()).join(', ')})</span>`:''}`;
 }
 
 function saveLote(){
   const g=id=>q(id).value.trim();
-  const sue=g('f-sue').toUpperCase(),area=parseFloat(g('f-area')),dias=parseInt(g('f-dias'),10);
+  const sue=codigoSuerte(g('f-sue')),area=parseFloat(g('f-area')),dias=parseInt(g('f-dias'),10);
   const hac=g('f-hac'),zona=parseInt(g('f-zona'),10),est=g('f-est'),labor=g('f-labor');
   const err=q('add-error'),fail=m=>{err.hidden=false;err.textContent=m;};
   if(!sue)return fail('El campo Sector-Suerte es obligatorio.');
@@ -127,6 +197,7 @@ function renderEditLotes(){
   const b=q('edit-buscar');
   b.addEventListener('input',()=>{editFiltro=b.value;renderEditLotes();const nb=q('edit-buscar');nb.focus();nb.setSelectionRange(nb.value.length,nb.value.length);});
   modalFooter.innerHTML=`${volver}<button class="mbtn mbtn-primary" onclick="showView('add')">➕ Agregar suerte</button>`;
+  modalBody.insertAdjacentHTML('afterbegin',barraMaestro('renderEditLotes'));
 }
 function setLote(i,k,v){
   if((k==='a'&&!(v>0))||(k==='d'&&!(v>=0))){toast('⚠ Valor no válido');renderEditLotes();return;}
