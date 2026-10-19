@@ -872,7 +872,9 @@ function pyDiapositivas(p){
       ${ppto && cost ? `<div class="pz-barras">
         <div class="pz-barra"><small>Presupuesto</small><div><i style="--w:${ppto / mx * 100}%;background:#94a3b8"></i></div><b>${money(ppto)}</b></div>
         <div class="pz-barra"><small>Ejecutado</small><div><i style="--w:${cost / mx * 100}%;background:#0f766e"></i></div><b>${money(cost)}</b></div>
-        <div class="pz-var ${Math.abs(dif / ppto) <= .05 ? 'ok' : 'mal'}">${dif >= 0 ? '+' : '−'}${money(Math.abs(dif))} · ${(dif / ppto * 100).toFixed(1)}%<small>${Math.abs(dif / ppto) <= .05 ? (dif > 0 ? 'Prácticamente igual a lo presupuestado' : 'Por debajo de lo presupuestado') : dif > 0 ? 'Por encima de lo presupuestado' : 'Por debajo de lo presupuestado'}</small></div></div>` : ''}
+        <div class="pz-var ${Math.abs(dif / ppto) <= .05 ? 'ok' : 'mal'}">${dif >= 0 ? '+' : '−'}${money(Math.abs(dif))} · ${(dif / ppto * 100).toFixed(1)}%<small>${Math.abs(dif / ppto) <= .05 ? (dif > 0 ? 'Prácticamente igual a lo presupuestado' : 'Por debajo de lo presupuestado') : dif > 0 ? 'Por encima de lo presupuestado' : 'Por debajo de lo presupuestado'}</small></div></div>`
+      : ppto ? `<div class="pz-barras"><div class="pz-var ok">${moneyM(ppto)}<small>Presupuesto aprobado</small></div>
+        ${C.length ? `<div class="pz-barra" style="margin-top:18px"><small>Registrado / cotizado</small><div><i style="--w:${Math.min(100, tot / ppto * 100)}%;background:#0f766e"></i></div><b>${money(tot)} · ${Math.round(tot / ppto * 100)}%</b></div>` : ''}</div>` : ''}
       ${C.length ? `<div class="pz-dist"><small class="pz-sub">¿En qué se invirtió?</small>${C.map(([l, v], i) => { const n = pyNum(v); return `<div class="pz-dist-f"><span><i style="background:${col[i % col.length]}"></i>${esc(l)}</span><b>${money(n)} · ${Math.round(n / tot * 100)}%</b><div><i style="--w:${n / tot * 100}%;background:${col[i % col.length]}"></i></div></div>`; }).join('')}</div>` : ''}
     </div>`});
   }
