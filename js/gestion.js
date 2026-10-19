@@ -83,11 +83,18 @@ function cargarMaestroArchivo(file,despues){
     toast(`✓ Maestro listo: ${M.size} suertes`);if(despues)despues();
   })).catch(err=>toast('⚠ '+err.message));
 }
-// Si el servidor del PC está abierto, toma solo la copia _privado/maestro.xlsx (no hace falta elegir el archivo)
+// Con el servidor del PC abierto, trae solo el maestro más reciente de Documents\COMITE APS\MAESTRO
+// (una vez por sesión; si es el mismo archivo que ya se tenía, no lo vuelve a leer)
+let maestroPromesa=null;
 function maestroDesdeServidor(){
-  if(maestroLocal())return Promise.resolve(true);
-  return fetch(API_BASE+'_privado/maestro.xlsx',{cache:'no-store'}).then(r=>r.ok?r.arrayBuffer():null)
-    .then(buf=>buf?cargarXLSX().then(XLSX=>{guardarMaestroLocal(leerMaestro(XLSX,buf),'maestro.xlsx (copia del PC)');return true;}):false).catch(()=>false);
+  return maestroPromesa=maestroPromesa||fetch(API_BASE+'api/maestro',{cache:'no-store',headers:{'X-Comite':'1'}})
+    .then(r=>{
+      if(!r.ok)return false;
+      const nombre=decodeURIComponent(r.headers.get('X-Archivo')||'maestro.xlsx'),fecha=r.headers.get('X-Fecha')||'',M=maestroLocal();
+      if(M&&M.nombre===nombre&&M.fecha===fecha)return true;
+      return r.arrayBuffer().then(buf=>cargarXLSX().then(XLSX=>{guardarMaestroLocal(leerMaestro(XLSX,buf),nombre);maestroCache.fecha=fecha;
+        try{localStorage.setItem(MAESTRO_KEY,JSON.stringify(maestroCache));}catch(e){}toast(`📚 Maestro actualizado: ${nombre}`);return true;}));
+    }).catch(()=>{maestroPromesa=null;return false;});
 }
 function barraMaestro(alVolver){
   const M=maestroLocal();
@@ -132,7 +139,14 @@ function renderAddLote(){
   fs.addEventListener('input',autocompletarLote);
   fs.addEventListener('change',()=>{fs.value=codigoSuerte(fs.value);autocompletarLote();});
   modalFooter.innerHTML=`${volver}<button class="mbtn mbtn-primary" onclick="saveLote()">➕ Agregar suerte</button>`;
-  if(!M)maestroDesdeServidor().then(ok=>{if(ok&&q('f-sue')&&!q('f-sue').value)renderAddLote();});
+  if(!M&&q('f-maestro-info'))q('f-maestro-info').innerHTML='⏳ Buscando el maestro en tu PC…';
+  maestroDesdeServidor().then(ok=>{
+    if(!q('f-sue'))return;
+    const b=document.querySelector('.maestro-barra');if(b)b.outerHTML=barraMaestro('renderAddLote');
+    if(ok){if(!q('dl-maestro')){const M2=maestroLocal();q('f-sue').insertAdjacentHTML('afterend',`<datalist id="dl-maestro">${Object.keys(M2.s).sort().map(k=>`<option value="${k}">${esc(M2.s[k][0][0])}</option>`).join('')}</datalist>`);}
+      if(q('f-sue').value)autocompletarLote();else q('f-maestro-info').innerHTML='Escribe la suerte…';}
+    else if(!maestroLocal())q('f-maestro-info').innerHTML='<span style="color:var(--amber)">No encontré el maestro: abre el servidor de tu PC o pulsa «📥 Cargar maestro»</span>';
+  });
   setTimeout(()=>fs.focus(),50);
 }
 // Llena hacienda, zona, área, cultivo, variedad y días de lucro con lo del maestro (todo queda editable)
@@ -145,11 +159,13 @@ function autocompletarLote(){
   sel.value=m.h;q('f-zona').value=m.z||zonaDe(m.h);
   if(m.a)q('f-area').value=m.a;
   if(/ARROZ/.test(m.uso))q('f-cult').value='ARROZ';else if(/CA[NÑ]A/.test(m.uso))q('f-cult').value='CAÑA';
-  const dv=q('f-var');if(m.v){if(![...dv.options].some(o=>o.value===m.v))dv.insertAdjacentHTML('afterbegin',`<option value="${esc(m.v)}">${esc(m.v)}</option>`);dv.value=m.v;}
-  const d=diasDesde(m.corte);if(d!=null)q('f-dias').value=d;
-  const ya=DB.lotes.filter(l=>l.s===cod);
+  // Si la suerte ya está en el comité, sus días y variedad mandan (el maestro trae "RENOVACION" y un corte reciente)
+  const ya=DB.lotes.filter(l=>l.s===cod),prev=ya.find(l=>l.e==='PENDIENTE')||ya[0];
+  const v=prev&&prev.v?prev.v:(/^(RENOVACION|VARIAS)?$/.test(m.v||'')?'':m.v);
+  const dv=q('f-var');if(v){if(![...dv.options].some(o=>o.value===v))dv.insertAdjacentHTML('afterbegin',`<option value="${esc(v)}">${esc(v)}</option>`);dv.value=v;}
+  const d=prev?prev.d:diasDesde(m.corte);if(d!=null)q('f-dias').value=d;
   info.innerHTML=`<span style="color:var(--green)">✓ Encontrada en el maestro</span> · ${esc(m.h)} · ${f2(m.a)} ha · ${esc(m.v||'—')}<br>
-    Último corte: <b>${m.corte?fechaLarga(m.corte):'—'}</b>${d!=null?` → ${d} días de lucro <span style="color:var(--amber)">(revísalo: en suertes ya en renovación el maestro puede traer un corte más reciente)</span>`:''} · siembra maestro: ${m.siembra?fechaLarga(m.siembra):'—'}
+    Último corte: <b>${m.corte?fechaLarga(m.corte):'—'}</b>${d!=null?(prev?` · días de lucro del comité: <b>${d}</b>`:` → ${d} días de lucro <span style="color:var(--amber)">(revísalo: si ya está en renovación el maestro puede traer un corte más reciente)</span>`):''} · siembra maestro: ${m.siembra?fechaLarga(m.siembra):'—'}
     ${ya.length?`<br><span style="color:var(--amber)">⚠ Ya está en el comité (${ya.map(l=>l.c+' '+l.e.toLowerCase()).join(', ')})</span>`:''}`;
 }
 

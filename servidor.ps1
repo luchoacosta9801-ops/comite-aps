@@ -57,6 +57,30 @@ function Publicar($ctx) {
   Responder $ctx.Response ($(if ($ok) { 200 } else { 500 })) @{ ok = $ok; salida = $salida }
 }
 
+# GET /api/maestro: el maestro de suertes más reciente de Documents\COMITE APS\MAESTRO (para autocompletar
+# al agregar suertes). Solo para la app (X-Comite + origen permitido); el archivo nunca se sube a GitHub.
+$carpetaMaestro = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'COMITE APS\MAESTRO'
+function Maestro($ctx) {
+  $req = $ctx.Request; $res = $ctx.Response
+  $origen = $req.Headers['Origin']
+  if ($req.Headers['X-Comite'] -ne '1' -or ($origen -and $permitidos -notcontains $origen)) {
+    return Responder $res 403 @{ ok = $false; error = 'Origen no permitido' }
+  }
+  $f = Get-ChildItem -Path $carpetaMaestro -Filter '*.xls*' -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -notlike '~$*' -and $_.Name -match 'maestro' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if (-not $f) { $f = Get-Item (Join-Path $raiz '_privado\maestro.xlsx') -ErrorAction SilentlyContinue }
+  if (-not $f) { return Responder $res 404 @{ ok = $false; error = 'No encontré el maestro' } }
+  # Copia temporal por si el Excel está abierto
+  $tmp = [IO.Path]::GetTempFileName(); Copy-Item $f.FullName $tmp -Force
+  $bytes = [IO.File]::ReadAllBytes($tmp); Remove-Item $tmp -ErrorAction SilentlyContinue
+  $res.ContentType = 'application/octet-stream'
+  $res.Headers.Add('X-Archivo', [Uri]::EscapeDataString($f.Name))
+  $res.Headers.Add('X-Fecha', $f.LastWriteTime.ToString('s'))
+  $res.Headers.Add('Access-Control-Expose-Headers', 'X-Archivo, X-Fecha')
+  $res.Headers.Add('Cache-Control', 'no-store')
+  $res.OutputStream.Write($bytes, 0, $bytes.Length)
+}
+
 $http = New-Object System.Net.HttpListener
 $http.Prefixes.Add("http://localhost:$Puerto/")
 $http.Start()
@@ -73,6 +97,8 @@ while ($http.IsListening) {
       $res.StatusCode = 204
     } elseif ($ruta -eq 'api/estado') {
       Responder $res 200 @{ ok = $true; edicion = $true }
+    } elseif ($ruta -eq 'api/maestro') {
+      Maestro $ctx
     } elseif ($ruta -eq 'api/publicar' -and $ctx.Request.HttpMethod -eq 'POST') {
       Publicar $ctx
     } else {
