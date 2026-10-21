@@ -993,3 +993,4 @@ body.pz-abierta{overflow:hidden}
   .pd-t tbody td:nth-child(n+7){grid-column:1/-1;color:var(--dim)}
   .pd-t tfoot{display:none}
 }
+.kpi-det{float:right;margin-top:-2px;padding:2px 8px;font-size:9px;text-transform:none;letter-spacing:0}

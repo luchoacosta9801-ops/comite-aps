@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Comité APS · Dashboard Ejecutivo</title>
 <meta name="theme-color" content="#0077aa">
-<meta name="app-version" content="75">
+<meta name="app-version" content="76">
 <link rel="icon" href="img/icono-192.png" type="image/png">
 <link rel="apple-touch-icon" href="img/icono-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="css/styles.css?v=75">
+<link rel="stylesheet" href="css/styles.css?v=76">
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -126,7 +126,7 @@
       <div class="kpi" style="--ka:var(--cyan);--kc:var(--cyan)"><div class="klbl">Área APS (ha)</div><div class="kval" id="k-area"></div><div class="ksub">hectáreas</div></div>
       <div class="kpi" style="--ka:var(--green);--kc:var(--green)"><div class="klbl">Sembradas (ha)</div><div class="kval" id="k-semb"></div><div class="ksub" id="k-semb-s"></div><div class="kbar"><div class="kbarf" id="k-semb-b"></div></div></div>
       <div class="kpi" style="--ka:var(--amber);--kc:var(--amber)"><div class="klbl">Pendientes (ha)</div><div class="kval" id="k-pend"></div><div class="ksub" id="k-pend-s"></div></div>
-      <div class="kpi" style="--ka:var(--amber);--kc:var(--amber)"><div class="klbl">% vs Presupuesto</div><div class="kval" id="k-av"></div><div class="ksub" id="k-av-s"></div><div class="kbar"><div class="kbarf" id="k-av-b"></div></div></div>
+      <div class="kpi" style="--ka:var(--amber);--kc:var(--amber)"><div class="klbl">% vs Presupuesto <button type="button" class="btn-detalle kpi-det" data-ver-ppto title="Ver qué se ha hecho y qué falta del presupuesto 2026">🔎 Ver detalle</button></div><div class="kval" id="k-av"></div><div class="ksub" id="k-av-s"></div><div class="kbar"><div class="kbarf" id="k-av-b"></div></div></div>
       <div class="kpi" style="--ka:var(--cyan);--kc:var(--cyan)"><div class="klbl">Días lucro prom.</div><div class="kval" id="k-dias"></div><div class="ksub" id="k-dias-s">promedio filtrado</div></div>
       <div class="kpi" style="--ka:var(--green);--kc:var(--green)"><div class="klbl">Caña / Arroz</div><div class="kval" id="k-cult" style="font-size:15px"></div><div class="ksub">ha sembradas</div></div>
       <div class="kpi" style="--ka:var(--amber);--kc:var(--amber)"><div class="klbl">En / Fuera ppto</div><div class="kval" id="k-ppto" style="font-size:15px"></div><div class="ksub">ha (SI / NO)</div></div>
@@ -283,17 +283,17 @@
   <div style="text-align:center;padding:12px 0;font-size:9px;color:var(--muted);border-top:1px solid var(--bdr)" id="footer"></div>
 </main>
 
-<script src="js/datos.js?v=75"></script>
-<script src="js/data.js?v=75"></script>
-<script src="js/store.js?v=75"></script>
-<script src="js/importer.js?v=75"></script>
-<script src="js/app.js?v=75"></script>
-<script src="js/exportar.js?v=75"></script>
-<script src="js/gestion.js?v=75"></script>
-<script src="js/sim-datos.js?v=75"></script>
-<script src="js/simulador.js?v=75"></script>
-<script src="js/portal.js?v=75"></script>
-<script src="js/inge.js?v=75"></script>
+<script src="js/datos.js?v=76"></script>
+<script src="js/data.js?v=76"></script>
+<script src="js/store.js?v=76"></script>
+<script src="js/importer.js?v=76"></script>
+<script src="js/app.js?v=76"></script>
+<script src="js/exportar.js?v=76"></script>
+<script src="js/gestion.js?v=76"></script>
+<script src="js/sim-datos.js?v=76"></script>
+<script src="js/simulador.js?v=76"></script>
+<script src="js/portal.js?v=76"></script>
+<script src="js/inge.js?v=76"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

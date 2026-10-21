@@ -1065,6 +1065,7 @@ q('pptodet').addEventListener('change', e => {
 q('pptodet').addEventListener('input', e => { if (e.target.id === 'pd-txt') { pdf.txt = e.target.value; const p = e.target.selectionStart; renderPptoDetalle(); const i = q('pd-txt'); i.focus(); i.setSelectionRange(p, p); } });
 // Botón "Ver detalle" del panel de presupuesto del dashboard (sin plegar el panel)
 q('btn-ppto-det').addEventListener('click', e => { e.stopPropagation(); irA('pptodet'); });
+document.addEventListener('click', e => { if (e.target.closest('[data-ver-ppto]')) { e.stopPropagation(); irA('pptodet'); } }, true);
 
 // Arranque: abre el módulo que indique la dirección (sin dirección = portada)
 irA(vistaDeHash(location.hash), {historial:false});
