@@ -10,6 +10,7 @@ const VISTAS = {
   estructura: {hash:'#estructura', titulo:'Estructura del área',      sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Estructura del área · Ingeniería Agrícola'},
   ppto:       {hash:'#ppto2027',   titulo:'Presupuesto APS 2027',     sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Presupuesto APS 2027 · Ingeniería Agrícola'},
   agro:       {hash:'#agronomia',  titulo:'Gestión Agronomía',        sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Gestión Agronomía · Ingeniería Agrícola'},
+  pptodet:    {hash:'#ppto2026',   titulo:'Presupuesto 2026 · Detalle', sub:'Comité APS · Riopaila Agrícola',          doc:'Presupuesto 2026 vs ejecutado · Comité APS'},
   proto:      {hash:'#protocolos', titulo:'Protocolos de emergencia', sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Protocolos de emergencia · Ingeniería Agrícola'},
   proy:       {hash:'#proyectos',  titulo:'Proyectos ejecutados',     sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Proyectos ejecutados · Ingeniería Agrícola'},
 };
@@ -39,6 +40,7 @@ function renderVista(){
   else if (vistaActual === 'agro') renderAgronomia();
   else if (vistaActual === 'proto') renderProtocolos();
   else if (vistaActual === 'proy') renderProyectos();
+  else if (vistaActual === 'pptodet') renderPptoDetalle();
 }
 // El simulador ya traía su propio botón: ahora navega con el portal
 function modoSimulador(abrir){ irA(abrir ? 'simulador' : 'aps'); }
@@ -968,6 +970,101 @@ function abrirPresentacion(p, S = pyDiapositivas(p), cab = '🏗️ ' + p.nombre
   o.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 50) ir(i + (dx < 0 ? 1 : -1)); x0 = null; });
   ir(0); setTimeout(() => o.focus(), 30);
 }
+
+// ── Presupuesto 2026 · Detalle: cruce del presupuesto por suerte con lo sembrado y en proceso ──
+const PD_ESTADOS = [
+  ['Sembrada', 'var(--green)', 'Sembrada en caña según el comité'],
+  ['En proceso', 'var(--cyan)', 'Con labor de preparación en curso'],
+  ['En ruta de siembra', '#0f766e', 'Lista para sembrar'],
+  ['En arroz', 'var(--violet)', 'Rotación con arroz; la caña aún no se siembra'],
+  ['Pendiente en comité', 'var(--amber)', 'En el comité pero sin labor esta semana'],
+  ['Sin iniciar', 'var(--red)', 'No aparece en el comité APS'],
+];
+const pdf = {zona:'', est:'', mes:0, txt:''};
+// Hacienda de una suerte: la del comité, la del presupuesto 2027 o la del maestro (por sector)
+function hacDeSuerte(s){
+  const l = DB.lotes.find(x => x.s === s); if (l) return l.h;
+  const p = (DB.ppto2027 && DB.ppto2027.suertes || []).find(x => x.s === s); if (p) return p.h;
+  const k = Object.keys((DB.maestro && DB.maestro.lotes) || {}).find(k => k.endsWith('|' + s)); if (k) return k.split('|')[0];
+  const sec = s.slice(0, 4), m = DB.lotes.find(x => x.s.slice(0, 4) === sec) || (DB.ppto2027 && DB.ppto2027.suertes || []).find(x => x.s.slice(0, 4) === sec);
+  return m ? m.h : '';
+}
+function pptoCruce(){
+  const P = (DB.ppto2026 && DB.ppto2026.suertes) || [];
+  const enPpto = new Set(P.map(p => p.s));
+  const filas = P.map(p => {
+    const L = DB.lotes.filter(l => l.s === p.s), cana = L.find(l => l.c === 'CAÑA'), pr = DB.proceso.find(r => r.sue === p.s), ru = DB.ruta.find(r => r.s === p.s);
+    const est = cana && cana.e === 'SEMBRADA' ? 'Sembrada' : pr ? 'En proceso' : ru ? 'En ruta de siembra'
+      : L.some(l => l.c === 'ARROZ' && l.e === 'SEMBRADA') ? 'En arroz' : L.length ? 'Pendiente en comité' : 'Sin iniciar';
+    const m = ((DB.maestro && DB.maestro.lotes) || {})[`${(L[0] || {}).h || hacDeSuerte(p.s)}|${p.s}`];
+    return Object.assign({}, p, {h:(L[0] || {}).h || hacDeSuerte(p.s), est, labor:pr ? pr.labor : '', aCom:cana ? cana.a : (L[0] || {}).a || 0,
+      siembra:est === 'Sembrada' && m ? m[1] : '', dias:cana ? dl(cana) : null});
+  });
+  const fuera = DB.lotes.filter(l => l.c === 'CAÑA' && l.e === 'SEMBRADA' && !enPpto.has(l.s));
+  return {filas, fuera};
+}
+function renderPptoDetalle(){
+  const {filas, fuera} = pptoCruce(), t = norm(pdf.txt);
+  if (!filas.length) { q('pptodet').innerHTML = `<div class="mod-top"><div class="sim-tit">📋 Presupuesto 2026 · Detalle</div></div><div class="nores">Aún no se ha cargado la hoja «PPTO 2026». Se carga sola al importar el Excel del comité.</div>`; return; }
+  const F = filas.filter(f => (!pdf.zona || f.z === +pdf.zona) && (!pdf.est || f.est === pdf.est) && (!pdf.mes || f.mes === pdf.mes) && (!t || norm(`${f.s} ${f.h}`).includes(t)));
+  const base = filas.filter(f => (!pdf.zona || f.z === +pdf.zona) && (!pdf.mes || f.mes === pdf.mes));
+  const ha = e => sum(base.filter(f => !e || f.est === e), f => f.a), tot = ha() || 1;
+  const hecho = ha('Sembrada'), curso = ha('En proceso') + ha('En ruta de siembra');
+  const col = Object.fromEntries(PD_ESTADOS.map(([e, c]) => [e, c]));
+  // Cumplimiento por mes: lo presupuestado para cada mes y cuánto de eso ya está sembrado
+  const meses = MESES.map((m, i) => { const B = filas.filter(f => f.mes === i + 1 && (!pdf.zona || f.z === +pdf.zona)); return {m, i:i + 1, p:sum(B, f => f.a), s:sum(B.filter(f => f.est === 'Sembrada'), f => f.a), n:B.length}; });
+  const mx = Math.max(1, ...meses.map(x => x.p));
+  const sel = (id, val, ops, todos) => `<select id="${id}" class="fsel ${val ? 'on' : ''}"><option value="">${todos}</option>${ops.map(([v, l]) => `<option value="${v}" ${String(v) === String(val) ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+  q('pptodet').innerHTML = `
+    <div class="mod-top"><div><div class="sim-tit">📋 Presupuesto 2026 · ¿Qué se ha hecho y qué falta?</div>
+      <div class="sim-subt">Cruce de la hoja «PPTO 2026» (${filas.length} suertes) con el Comité APS ${esc(DB.meta.semana)} · ${esc(DB.ppto2026.fuente || '')}</div></div>
+      <button type="button" class="mbtn mbtn-ghost" data-ir-aps>← Volver al dashboard</button></div>
+    <div class="sim-kpis">
+      <div class="sim-kpi"><div class="l">Presupuestado</div><div class="v">${f2(tot)} ha</div><div class="s">${base.length} suertes</div></div>
+      <div class="sim-kpi ok"><div class="l">Sembrado</div><div class="v" style="color:var(--green)">${f2(hecho)} ha</div><div class="s">${(hecho / tot * 100).toFixed(1)}% · ${base.filter(f => f.est === 'Sembrada').length} suertes</div></div>
+      <div class="sim-kpi"><div class="l">En proceso / ruta</div><div class="v" style="color:var(--cyan)">${f2(curso)} ha</div><div class="s">${(curso / tot * 100).toFixed(1)}%</div></div>
+      <div class="sim-kpi bad"><div class="l">Falta</div><div class="v" style="color:var(--red)">${f2(tot - hecho - curso)} ha</div><div class="s">${((tot - hecho - curso) / tot * 100).toFixed(1)}% · sin iniciar ${f2(ha('Sin iniciar'))} ha</div></div>
+    </div>
+    <div class="pd-barra">${PD_ESTADOS.map(([e, c]) => { const v = ha(e); return v ? `<div style="flex:${v};background:${c}" title="${e}: ${f2(v)} ha (${(v / tot * 100).toFixed(1)}%)"><span>${v / tot > .06 ? `${e} ${(v / tot * 100).toFixed(0)}%` : ''}</span></div>` : ''; }).join('')}</div>
+    <div class="pd-ley">${PD_ESTADOS.map(([e, c, d]) => `<button type="button" class="pd-chip ${pdf.est === e ? 'on' : ''}" data-pd-est="${e}" style="--c:${c}" title="${d}"><i></i>${e} <b>${f2(ha(e))} ha</b></button>`).join('')}</div>
+    <div class="sim-card abierta" style="margin-top:12px"><div class="sim-card-h" style="cursor:default"><b>Cumplimiento por mes de renovación</b> <span class="meta">· barra = presupuestado, verde = ya sembrado · clic para filtrar</span></div>
+      <div class="pd-meses">${meses.map(x => `<button type="button" class="pd-mes ${pdf.mes === x.i ? 'on' : ''}" data-pd-mes="${x.i}" title="${x.m}: ${f2(x.s)} de ${f2(x.p)} ha sembradas">
+        <div class="pd-col"><div class="pd-p" style="height:${x.p / mx * 100}%"><div class="pd-s" style="height:${x.p ? x.s / x.p * 100 : 0}%"></div></div></div>
+        <b>${x.p ? Math.round(x.s / x.p * 100) + '%' : '—'}</b><small>${x.m}</small></button>`).join('')}</div></div>
+    <div class="sim-bar pp-filtros" style="margin-top:12px">
+      <label class="fchip"><span>Zona</span>${sel('pd-zona', pdf.zona, [['1', 'Zona 1'], ['2', 'Zona 2']], 'Todas')}</label>
+      <label class="fchip"><span>Estado</span>${sel('pd-est', pdf.est, PD_ESTADOS.map(([e]) => [e, e]), 'Todos')}</label>
+      <label class="fchip"><span>Mes ppto</span>${sel('pd-mes', pdf.mes || '', MESES.map((m, i) => [i + 1, m]), 'Todos')}</label>
+      <input id="pd-txt" class="pr-buscar" placeholder="Buscar suerte o hacienda…" value="${esc(pdf.txt)}">
+      ${pdf.zona || pdf.est || pdf.mes || pdf.txt ? '<button type="button" class="plegar-todo" data-pd-limpiar>✕ Quitar filtros</button>' : ''}
+    </div>
+    <div class="sim-card abierta"><div class="sim-tw" style="max-height:62vh"><table class="sim-t pd-t">
+      <thead><tr><th>Suerte</th><th>Hacienda</th><th>Zona</th><th class="n">Área ppto (ha)</th><th>Mes ppto</th><th>Estado</th><th>Labor / detalle</th><th class="n">Días lucro</th><th>Motivo no renovación</th></tr></thead>
+      <tbody>${F.sort((a, b) => PD_ESTADOS.findIndex(x => x[0] === a.est) - PD_ESTADOS.findIndex(x => x[0] === b.est) || a.mes - b.mes || a.s.localeCompare(b.s)).map(f => `<tr>
+        <td class="lab" style="font-family:var(--mono)">${esc(f.s)}</td><td>${esc(f.h || '—')}</td><td>Z${f.z || '—'}</td><td class="n b">${f2(f.a)}</td>
+        <td>${MESES[f.mes - 1] || '—'}${f.mes && f.est !== 'Sembrada' && f.mes < new Date().getMonth() + 1 ? ' <span class="pd-atraso" title="Su mes de presupuesto ya pasó">atrasada</span>' : ''}</td>
+        <td><span class="ag-est" style="--c:${col[f.est]}">${esc(f.est)}</span></td>
+        <td>${f.labor ? esc(cap1(f.labor)) : f.siembra ? 'Siembra ' + fechaLarga(f.siembra) : f.realizado ? 'Realizado ' + fechaLarga(f.realizado) : '<span class="meta">—</span>'}</td>
+        <td class="n">${f.dias != null ? f.dias : '<span class="meta">—</span>'}</td><td>${esc(f.motivo) || '<span class="meta">—</span>'}</td></tr>`).join('') || '<tr><td colspan="9" class="nores">Ninguna suerte con esos filtros.</td></tr>'}</tbody>
+      <tfoot><tr><td colspan="3">Total (${F.length})</td><td class="n b">${f2(sum(F, f => f.a))}</td><td colspan="5"></td></tr></tfoot></table></div></div>
+    ${fuera.length ? `<details class="sim-param" style="margin-top:12px"><summary>➕ Sembradas fuera del presupuesto 2026 (${fuera.length} suertes · ${f2(sum(fuera, l => l.a))} ha)</summary>
+      <div class="sim-tw" style="margin-top:8px"><table class="sim-t"><thead><tr><th>Suerte</th><th>Hacienda</th><th>Zona</th><th class="n">Área (ha)</th><th>Variedad</th></tr></thead>
+      <tbody>${fuera.map(l => `<tr><td class="lab" style="font-family:var(--mono)">${esc(l.s)}</td><td>${esc(l.h)}</td><td>Z${l.z}</td><td class="n">${f2(l.a)}</td><td>${esc(l.v || '—')}</td></tr>`).join('')}</tbody></table></div></details>` : ''}`;
+}
+const cap1 = s => String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1).toLowerCase();
+q('pptodet').addEventListener('click', e => {
+  if (e.target.closest('[data-ir-aps]')) { irA('aps'); return; }
+  const c = e.target.closest('[data-pd-est]'); if (c) { pdf.est = pdf.est === c.dataset.pdEst ? '' : c.dataset.pdEst; renderPptoDetalle(); return; }
+  const m = e.target.closest('[data-pd-mes]'); if (m) { pdf.mes = pdf.mes === +m.dataset.pdMes ? 0 : +m.dataset.pdMes; renderPptoDetalle(); return; }
+  if (e.target.closest('[data-pd-limpiar]')) { pdf.zona = pdf.est = pdf.txt = ''; pdf.mes = 0; renderPptoDetalle(); }
+});
+q('pptodet').addEventListener('change', e => {
+  const k = {'pd-zona':'zona', 'pd-est':'est', 'pd-mes':'mes'}[e.target.id]; if (!k) return;
+  pdf[k] = k === 'mes' ? +e.target.value || 0 : e.target.value; renderPptoDetalle();
+});
+q('pptodet').addEventListener('input', e => { if (e.target.id === 'pd-txt') { pdf.txt = e.target.value; const p = e.target.selectionStart; renderPptoDetalle(); const i = q('pd-txt'); i.focus(); i.setSelectionRange(p, p); } });
+// Botón "Ver detalle" del panel de presupuesto del dashboard (sin plegar el panel)
+q('btn-ppto-det').addEventListener('click', e => { e.stopPropagation(); irA('pptodet'); });
 
 // Arranque: abre el módulo que indique la dirección (sin dirección = portada)
 irA(vistaDeHash(location.hash), {historial:false});

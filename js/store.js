@@ -92,7 +92,9 @@ const SEED = {
   // Proyectos ejecutados del área
   proyectos: ${J(d.proyectos)},` : ''}${d.maestro ? `
   // Maestro de suertes: fechas de corte y siembra de las suertes del comité (días de lucro)
-  maestro: ${J(d.maestro)},` : ''}${d.portada ? `
+  maestro: ${J(d.maestro)},` : ''}${d.ppto2026 ? `
+  // Presupuesto 2026 por suerte (hoja PPTO 2026 del comité), para "Ver detalle" del presupuesto
+  ppto2026: ${J(d.ppto2026)},` : ''}${d.portada ? `
   // Imagen de la portada del portal (foto del equipo o del área)
   portada: ${J(d.portada)},` : ''}
   costos: ${lista(d.costos)},

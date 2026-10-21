@@ -206,6 +206,21 @@ function fechaDeNombre(nombre){
   return { fecha: `${d.getUTCDate()} ${MES_CORTO[d.getUTCMonth()]} ${d.getUTCFullYear()}`, semana: 'Semana ' + semanaISO(d) };
 }
 
+// Hoja "PPTO 2026": una fila por suerte presupuestada (SECT-SUE, zona, área, mes de renovación,
+// fecha REALIZADO y motivo de no renovación). Se cruza con el comité en "Ver detalle" del presupuesto.
+function leerPpto2026(XLSX, wb){
+  const n = wb.SheetNames.find(s => /^PPTO\s*20\d\d$/.test(norm(s))); if (!n) return null;
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[n], { header:1, defval:'', raw:true });
+  const hi = rows.findIndex(r => r.some(v => norm(v) === 'SECT SUE')); if (hi < 0) return null;
+  const H = rows[hi].map(norm), col = re => H.findIndex(h => re.test(h));
+  const c = { tipo:col(/^TIPO DE FINCA/), z:col(/^ZONA$/), s:col(/^SECT SUE$/), real:col(/^REALIZADO/), a:col(/^AREA$/), mes:col(/^MES RENOVACION/), motivo:col(/^MOTIVO/) };
+  const fecha = v => { const s = +v; if (!(s > 40000)) return ''; const d = new Date(Date.UTC(1899, 11, 30) + s * 864e5); return d.toISOString().slice(0, 10); };
+  const suertes = rows.slice(hi + 1).filter(r => /^\d{4}-\d{3}$/.test(String(r[c.s]).trim())).map(r => ({
+    s:String(r[c.s]).trim(), z:+r[c.z] || null, tipo:txt(r[c.tipo]) || '', a:+(num(r[c.a]) || 0).toFixed(2),
+    mes:Math.round(num(r[c.mes]) || 0), realizado:fecha(r[c.real]), motivo:txt(r[c.motivo]) || '' }));
+  return suertes.length ? { hoja:n, suertes } : null;
+}
+
 let IMPORT_PENDIENTE = null;
 
 function leerLibro(file){
@@ -219,6 +234,7 @@ function leerLibro(file){
       proceso: leerHoja(XLSX, wb, 'proceso'),
       resumen: Object.assign(leerResumen(XLSX, wb), fechaDeNombre(file.name) || {}),
       costos: leerCostos(XLSX, wb),
+      ppto2026: leerPpto2026(XLSX, wb),
     };
   }));
 }
@@ -234,6 +250,7 @@ function aplicarImport(opts){
   });
   if (opts.costos && imp.costos) DB.costos = imp.costos;
   if (opts.costos && imp.resumen.pptoTotal) DB.meta.pptoTotal = imp.resumen.pptoTotal;
+  if (imp.ppto2026) DB.ppto2026 = Object.assign({ fuente: imp.archivo }, imp.ppto2026);
   if (opts.fecha) DB.meta.fecha = opts.fecha;
   if (opts.semana) DB.meta.semana = opts.semana;
   IMPORT_PENDIENTE = null;

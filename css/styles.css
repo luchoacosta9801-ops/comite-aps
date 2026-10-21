@@ -506,9 +506,9 @@ body.modo-sim .fbtn-sim{background:var(--green);color:#fff}
 /* ── Portal de Ingeniería: un módulo visible a la vez según body[data-vista] ── */
 .modulo{display:none}
 body[data-vista]:not([data-vista="aps"]) .main>*{display:none}
-body[data-vista="portal"] #portal,body[data-vista="estructura"] #estructura,body[data-vista="ppto"] #ppto2027,body[data-vista="simulador"] #simulador,body[data-vista="agro"] #agronomia,body[data-vista="proto"] #protocolos,body[data-vista="proy"] #proyectos{display:block}
+body[data-vista="portal"] #portal,body[data-vista="estructura"] #estructura,body[data-vista="ppto"] #ppto2027,body[data-vista="simulador"] #simulador,body[data-vista="agro"] #agronomia,body[data-vista="proto"] #protocolos,body[data-vista="proy"] #proyectos,body[data-vista="pptodet"] #pptodet{display:block}
 body:not([data-vista="aps"]) .ffiltros,body:not([data-vista="aps"]) .fbtn-filtros,body:not([data-vista="aps"]) #btn-reset{display:none!important}
-body:is([data-vista="portal"],[data-vista="estructura"],[data-vista="ppto"],[data-vista="agro"],[data-vista="proto"],[data-vista="proy"]) :is(#btn-excel,#btn-sim,#btn-gestionar,#chip-sem,#results-pill){display:none!important}
+body:is([data-vista="portal"],[data-vista="estructura"],[data-vista="ppto"],[data-vista="agro"],[data-vista="proto"],[data-vista="proy"],[data-vista="pptodet"]) :is(#btn-excel,#btn-sim,#btn-gestionar,#chip-sem,#results-pill){display:none!important}
 body[data-vista="portal"] #btn-inicio{display:none}
 .fbtn-inicio{padding:0 12px;border-radius:20px;border:1px solid var(--bdr);background:var(--card2);color:var(--text);font-size:10.5px;font-weight:800;cursor:pointer;font-family:var(--sans)}
 .fbtn-inicio:hover{border-color:var(--bdr2);background:var(--bg)}
@@ -960,3 +960,36 @@ body.pz-abierta{overflow:hidden}
 .kd2{display:flex;align-items:flex-end;gap:18px}
 .kd2>span{display:flex;flex-direction:column;line-height:1}
 .kd2 small{font-family:var(--sans);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-top:4px}
+/* Botón "Ver detalle" del panel de presupuesto y vista de cruce Presupuesto 2026 vs ejecutado */
+.btn-detalle{border:1px solid rgba(0,119,170,.35);background:rgba(0,119,170,.08);color:var(--cyan);border-radius:14px;padding:3px 11px;font-size:10px;font-weight:800;cursor:pointer;font-family:var(--sans);white-space:nowrap}
+.btn-detalle:hover{background:rgba(0,119,170,.16)}
+.pd-barra{display:flex;height:30px;border-radius:10px;overflow:hidden;margin-top:12px;box-shadow:var(--shadow)}
+.pd-barra div{display:flex;align-items:center;justify-content:center;min-width:2px;transition:flex .4s}
+.pd-barra span{color:#fff;font-size:10.5px;font-weight:800;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.pd-ley{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pd-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bdr);background:#fff;border-radius:14px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:var(--sans);color:var(--dim)}
+.pd-chip i{width:10px;height:10px;border-radius:3px;background:var(--c)}
+.pd-chip b{color:var(--text);font-family:var(--mono)}
+.pd-chip.on{border-color:var(--c);box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 25%,transparent)}
+.pd-meses{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;padding:12px 14px 10px;overflow-x:auto}
+.pd-mes{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid transparent;background:none;border-radius:8px;padding:4px 2px;cursor:pointer;font-family:var(--sans);min-width:34px}
+.pd-mes:hover,.pd-mes.on{border-color:var(--bdr);background:var(--card2)}
+.pd-col{height:90px;width:22px;display:flex;align-items:flex-end}
+.pd-p{width:100%;background:rgba(0,119,170,.18);border-radius:5px 5px 2px 2px;display:flex;align-items:flex-end;overflow:hidden}
+.pd-s{width:100%;background:var(--green)}
+.pd-mes b{font-size:10.5px;font-family:var(--mono);color:var(--text)}
+.pd-mes small{font-size:9px;color:var(--muted);font-weight:700}
+.pd-atraso{font-size:9px;font-weight:800;color:var(--red);border:1px solid rgba(192,57,43,.35);border-radius:8px;padding:0 5px;margin-left:3px}
+.pd-t td{vertical-align:middle}
+@media(max-width:760px){
+  .pd-meses{grid-template-columns:repeat(12,40px)}
+  .pd-t thead{display:none}
+  .pd-t,.pd-t tbody{display:block}
+  .pd-t tbody tr{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:10px 12px;border-bottom:1px solid var(--bdr)}
+  .pd-t tbody td{padding:0;border:0;white-space:normal;font-size:11.5px}
+  .pd-t tbody td:nth-child(1){font-size:13px}
+  .pd-t tbody td:nth-child(6){grid-column:2;grid-row:1;justify-self:end}
+  .pd-t tbody td:nth-child(4){grid-column:2;text-align:right}
+  .pd-t tbody td:nth-child(n+7){grid-column:1/-1;color:var(--dim)}
+  .pd-t tfoot{display:none}
+}
