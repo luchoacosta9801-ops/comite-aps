@@ -1,7 +1,7 @@
 // Datos publicados del Comité APS. Archivo generado por la app ("Publicar para todos");
 // cambiar meta.corte hace que los navegadores descarten lo guardado y tomen estos datos.
 const SEED = {
-  meta: {"fecha":"19 Oct 2026","semana":"Semana 43","corte":"2026-10-21T15:29:00.047Z","pptoTotal":620.24},
+  meta: {"fecha":"19 Oct 2026","semana":"Semana 43","corte":"2026-10-21T18:04:48.197Z","pptoTotal":620.24},
   lotes: [
     {"s":"3110-050","h":"NORMANDIA","z":2,"a":8.33,"c":"CAÑA","d":278,"e":"SEMBRADA","p":"SI","v":"CC 01-1940"},
     {"s":"3501-050","h":"RIOPAILA","z":1,"a":8.62,"c":"CAÑA","d":314,"e":"SEMBRADA","p":"SI","v":"CC 01-1940"},
@@ -50,8 +50,8 @@ const SEED = {
     {"s":"3418-030","h":"LA PAILA","z":1,"a":16.59,"c":"CAÑA","d":406,"e":"SEMBRADA","p":"NO","v":"CC 11-600"},
     {"s":"3106-361","h":"LA LUISA","z":1,"a":6.25,"c":"CAÑA","d":360,"e":"SEMBRADA","p":"NO","v":"CC 97-7170"},
     {"s":"3426-020","h":"MEDIA LUNA","z":2,"a":10.26,"c":"CAÑA","d":320,"e":"SEMBRADA","p":"NO","v":"CC 01-1940"},
-    {"s":"3111-050","h":"PERALONSO","z":2,"a":10.21,"c":"CAÑA","d":374,"e":"PENDIENTE","p":"SI","v":"CC 11-595"},
-    {"s":"3111-290","h":"PERALONSO","z":2,"a":3.09,"c":"CAÑA","d":363,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
+    {"s":"3111-050","h":"PERALONSO","z":2,"a":10.21,"c":"ARROZ","d":374,"e":"PENDIENTE","p":"SI","v":"CC 11-595"},
+    {"s":"3111-290","h":"PERALONSO","z":2,"a":3.09,"c":"ARROZ","d":363,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"},
     {"s":"3106-100","h":"LA LUISA","z":1,"a":17.11,"c":"CAÑA","d":385,"e":"PENDIENTE","p":"SI","v":"CC 01-1940"}
   ],
   ruta: [
