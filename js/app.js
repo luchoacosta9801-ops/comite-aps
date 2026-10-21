@@ -107,6 +107,9 @@ function render(){
   q('k-av').textContent=(avPpto*100).toFixed(1)+'%';q('k-av').style.color=avPptoC;
   q('k-av-s').textContent=`${f2(semb)} / ${f2(PPTO_TOTAL)} ha ppto`;
   q('k-dias').textContent=dias;
+  // Lucro según el maestro de suertes (corte → siembra) de las sembradas filtradas, cargado en Agronomía
+  const fil=(DB.agronomia&&DB.agronomia.filas)||{},dm=sembL.map(l=>{const g=fil[`${l.h}|${l.s}|${l.c}`]||{},a=Date.parse(g.mCorte||''),b=Date.parse(g.mFecha||'');return isNaN(a)||isNaN(b)?null:Math.round((b-a)/864e5);}).filter(v=>v!=null&&v>=0);
+  q('k-dias-s').innerHTML=dm.length?`comité · <b style="color:var(--violet)">${Math.round(sum(dm)/dm.length)} días</b> según maestro (${dm.length} sembradas)`:'promedio filtrado';
   // Caña/Arroz: solo área sembrada
   const canaS=sum(sembL.filter(l=>l.c==='CAÑA'),l=>l.a),arrozS=sum(sembL.filter(l=>l.c==='ARROZ'),l=>l.a);
   q('k-cult').innerHTML=`${canaS.toFixed(0)} <span style="color:var(--cyan)">/${arrozS.toFixed(0)}</span>`;
