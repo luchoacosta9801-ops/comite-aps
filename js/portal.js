@@ -67,11 +67,16 @@ function renderPortal(){
       <span class="pt-dato">${dato}</span>
       <span class="pt-ir">Abrir →</span>
     </button>`;
+  // Fondo de la portada: video en bucle (archivo en img/) con la foto como respaldo mientras carga
+  const imgPortada = DB.portada && DB.portada.imagen ? DB.portada.imagen : 'img/portada.svg';
+  const vid = DB.portada && /^img\/[\w.-]+\.(mp4|webm)$/i.test(DB.portada.video || '') ? DB.portada.video : '';
   q('portal').innerHTML = `
-    <div class="pt-banner">
-      <img src="${DB.portada && DB.portada.imagen ? DB.portada.imagen : 'img/portada.svg'}" alt="Ingeniería Agrícola · Riopaila Agrícola">
+    <div class="pt-banner ${vid ? 'con-video' : ''}">
+      <img src="${imgPortada}" alt="Ingeniería Agrícola · Riopaila Agrícola">
+      ${vid ? `<video src="${esc(vid)}" poster="${imgPortada}" autoplay muted loop playsinline preload="auto" aria-label="Video de labores en campo"></video>` : ''}
       ${MODO_EDICION ? `<div class="pt-banner-acc">
         <label class="pt-cambiar">📷 Cambiar imagen<input type="file" id="pt-foto" accept="image/*" hidden></label>
+        ${vid ? '<button type="button" class="pt-cambiar" id="pt-sin-video">⏹ Quitar video</button>' : ''}
         ${DB.portada ? '<button type="button" class="pt-cambiar" id="pt-quitar">↺ Imagen original</button>' : ''}</div>` : ''}
     </div>
     <div class="pt-grid">
@@ -95,6 +100,7 @@ function renderPortal(){
 q('portal').addEventListener('click', e => {
   const b = e.target.closest('[data-ir]'); if (b) { irA(b.dataset.ir); return; }
   if (e.target.closest('#pt-quitar')) { modCambio(() => { delete DB.portada; }); toast('Imagen original restaurada'); }
+  if (e.target.closest('#pt-sin-video')) { modCambio(() => { delete DB.portada.video; }); toast('Video quitado · queda la imagen'); }
 });
 // Foto de portada (equipo o área): se reduce a máx. 1600 px y JPEG para que la página siga liviana
 q('portal').addEventListener('change', e => {
