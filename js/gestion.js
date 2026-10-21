@@ -99,13 +99,16 @@ if(MODO_EDICION)setTimeout(()=>maestroDesdeServidor().then(ok=>{if((ok||maestroL
 // (una vez por sesión; si es el mismo archivo que ya se tenía, no lo vuelve a leer)
 let maestroPromesa=null;
 function maestroDesdeServidor(){
-  return maestroPromesa=maestroPromesa||fetch(API_BASE+'api/maestro',{cache:'no-store',headers:{'X-Comite':'1'}})
-    .then(r=>{
-      if(!r.ok)return false;
-      const nombre=decodeURIComponent(r.headers.get('X-Archivo')||'maestro.xlsx'),fecha=r.headers.get('X-Fecha')||'',M=maestroLocal();
-      if(M&&M.nombre===nombre&&M.fecha===fecha)return true;
-      return r.arrayBuffer().then(buf=>cargarXLSX().then(XLSX=>{guardarMaestroLocal(leerMaestro(XLSX,buf),nombre);maestroCache.fecha=fecha;
-        try{localStorage.setItem(MAESTRO_KEY,JSON.stringify(maestroCache));}catch(e){}toast(`📚 Maestro actualizado: ${nombre}`);return true;}));
+  // Primero solo nombre y fecha; el archivo (≈4 MB) se descarga completo únicamente si es otro
+  const H={cache:'no-store',headers:{'X-Comite':'1'}};
+  return maestroPromesa=maestroPromesa||fetch(API_BASE+'api/maestro?info=1',H).then(r=>r.ok?r.json():null)
+    .then(info=>{
+      if(!info||!info.ok)return false;
+      const M=maestroLocal();
+      if(M&&M.nombre===info.archivo&&M.fecha===info.fecha)return true;
+      return fetch(API_BASE+'api/maestro',H).then(r=>r.ok?r.arrayBuffer():null).then(buf=>buf&&cargarXLSX().then(XLSX=>{
+        guardarMaestroLocal(leerMaestro(XLSX,buf),info.archivo);maestroCache.fecha=info.fecha;
+        try{localStorage.setItem(MAESTRO_KEY,JSON.stringify(maestroCache));}catch(e){}toast(`📚 Maestro actualizado: ${info.archivo}`);return true;}));
     }).catch(()=>{maestroPromesa=null;return false;});
 }
 function barraMaestro(alVolver){

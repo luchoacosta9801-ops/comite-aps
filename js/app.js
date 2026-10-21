@@ -116,9 +116,11 @@ function render(){
   q('k-pend-s').textContent=`${pendL.length} lotes por sembrar`;
   q('k-av').textContent=(avPpto*100).toFixed(1)+'%';q('k-av').style.color=avPptoC;
   q('k-av-s').textContent=`${f2(semb)} / ${f2(PPTO_TOTAL)} ha ppto`;
-  q('k-dias').textContent=dias;
+  // Dos datos: promedio de todas las suertes y de las pendientes (corte del maestro → hoy, porque aún no se siembran)
+  const diasP=pendL.length?Math.round(sum(pendL,dl)/pendL.length):null;
+  q('k-dias').innerHTML=`<span class="kd2"><span>${dias}<small>todas · ${data.length}</small></span>${diasP!=null?`<span style="color:var(--amber)">${diasP}<small>pendientes · ${pendL.length}</small></span>`:''}</span>`;
   const nM=data.filter(l=>dlMaestro(l)!=null).length,dCom=data.length?Math.round(sum(data,l=>l.d)/data.length):0;
-  q('k-dias-s').innerHTML=nM?`según maestro${DB.maestro&&DB.maestro.fecha?` <span title="${esc(DB.maestro.nombre)}">(${esc(DB.maestro.fecha)})</span>`:''} · ${nM} de ${data.length} suertes · comité: ${dCom}`:'promedio filtrado (comité)';
+  q('k-dias-s').innerHTML=nM?`según maestro${DB.maestro&&DB.maestro.fecha?` <span title="${esc(DB.maestro.nombre)}">(${esc(DB.maestro.fecha)})</span>`:''} · pendientes: corte → hoy · comité: ${dCom}`:'promedio filtrado (comité)';
   // Caña/Arroz: solo área sembrada
   const canaS=sum(sembL.filter(l=>l.c==='CAÑA'),l=>l.a),arrozS=sum(sembL.filter(l=>l.c==='ARROZ'),l=>l.a);
   q('k-cult').innerHTML=`${canaS.toFixed(0)} <span style="color:var(--cyan)">/${arrozS.toFixed(0)}</span>`;

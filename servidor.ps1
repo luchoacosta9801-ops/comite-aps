@@ -52,8 +52,21 @@ function Publicar($ctx) {
   if (-not $datos.publicar) { return Responder $ctx.Response 200 @{ ok = $true; salida = 'Guardado en js/datos.js' } }
 
   $mensaje = if ($datos.mensaje) { [string]$datos.mensaje } else { 'Actualizar datos' }
-  $salida = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $raiz 'publicar.ps1') $mensaje 2>&1 | Out-String
-  $ok = $LASTEXITCODE -eq 0
+  # publicar.ps1 en un proceso aparte con límite de tiempo: si git se queda esperando (red, credenciales),
+  # se corta y el servidor sigue atendiendo (antes se quedaba trabado).
+  $psi = New-Object Diagnostics.ProcessStartInfo 'powershell.exe'
+  $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $raiz 'publicar.ps1') + '" "' + $mensaje.Replace('"', "'") + '"'
+  $psi.UseShellExecute = $false; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true; $psi.CreateNoWindow = $true
+  $psi.WorkingDirectory = $raiz
+  $psi.EnvironmentVariables['GIT_TERMINAL_PROMPT'] = '0'
+  $p = [Diagnostics.Process]::Start($psi)
+  $out = $p.StandardOutput.ReadToEndAsync(); $err = $p.StandardError.ReadToEndAsync()
+  if (-not $p.WaitForExit(150000)) {
+    & taskkill /T /F /PID $p.Id 2>$null | Out-Null
+    return Responder $ctx.Response 504 @{ ok = $false; error = 'GitHub no respondió a tiempo (¿sin internet?). Los datos quedaron guardados en tu PC; vuelve a intentar Publicar en un momento.' }
+  }
+  $salida = $out.Result + $err.Result
+  $ok = $p.ExitCode -eq 0
   Responder $ctx.Response ($(if ($ok) { 200 } else { 500 })) @{ ok = $ok; salida = $salida }
 }
 
@@ -70,6 +83,8 @@ function Maestro($ctx) {
     Where-Object { $_.Name -notlike '~$*' -and $_.Name -match 'maestro' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
   if (-not $f) { $f = Get-Item (Join-Path $raiz '_privado\maestro.xlsx') -ErrorAction SilentlyContinue }
   if (-not $f) { return Responder $res 404 @{ ok = $false; error = 'No encontré el maestro' } }
+  # ?info=1: solo nombre y fecha (para no descargar 4 MB si ya se tiene ese mismo archivo)
+  if ($req.QueryString['info']) { return Responder $res 200 @{ ok = $true; archivo = $f.Name; fecha = $f.LastWriteTime.ToString('s') } }
   # Copia temporal por si el Excel está abierto
   $tmp = [IO.Path]::GetTempFileName(); Copy-Item $f.FullName $tmp -Force
   $bytes = [IO.File]::ReadAllBytes($tmp); Remove-Item $tmp -ErrorAction SilentlyContinue
@@ -84,6 +99,12 @@ function Maestro($ctx) {
 $http = New-Object System.Net.HttpListener
 $http.Prefixes.Add("http://localhost:$Puerto/")
 $http.Start()
+# Que una conexión detenida (pestaña que no termina de recibir) no deje trabado el servidor
+try {
+  $http.TimeoutManager.IdleConnection = [TimeSpan]::FromSeconds(30)
+  $http.TimeoutManager.EntityBody = [TimeSpan]::FromSeconds(30)
+  $http.TimeoutManager.MinSendBytesPerSecond = 20000
+} catch {}
 Write-Host "Comité APS disponible en http://localhost:$Puerto  (Ctrl+C para detener)"
 if (-not $env:NO_ABRIR) { Start-Process "http://localhost:$Puerto/" }
 
