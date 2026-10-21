@@ -113,7 +113,17 @@ const IV = (() => {
     return mejor && Object.assign({largo}, mejor);
   }
 
-  // ── Datos ──
+  // ── Utilidades ──
+  const MESL = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const mesEn = t => { const i = MESL.findIndex(m => new RegExp('\\b' + m + '\\b').test(t)); return i >= 0 ? i + 1 : 0; };
+  const zonaEn = t => { const m = t.match(/\bzona\s*([12])\b/); return m ? +m[1] : 0; };
+  const fn = (nombre) => typeof window[nombre] === 'function' || typeof globalThis[nombre] === 'function';
+  const ir = (vista, txt) => `<button type="button" class="iv-ir" data-iv-mod="${vista}">${txt || 'Abrir'} →</button>`;
+  const STOP = new Set('que cual cuales cuanto cuanta cuantos cuantas como donde cuando quien quienes por para de del la las el los un una unos unas y o a en es son esta estan hay me mi se lo le les al con sin sobre mas menos muy ya tiene tienen tengo dime dame saber quiero ver favor porfa porfavor puedes podrias sabes hacer hace hizo va van fue ser esto eso este ese esa'.split(' '));
+  const palabras = t => t.split(' ').filter(w => w.length > 2 && !STOP.has(w));
+  const raiz = w => w.length > 5 ? w.slice(0, w.length > 7 ? 6 : 5) : w;
+
+  // ── Datos del comité ──
   const haciendas = () => [...new Set([...HACS_BASE, ...DB.lotes.map(l => l.h), ...DB.proceso.map(r => r.hac), ...DB.ruta.map(r => r.h),
     ...((typeof ppto2027 === 'function' && ppto2027().suertes) || []).map(s => s.h)])].filter(Boolean);
   function hacEn(t){
@@ -125,14 +135,15 @@ const IV = (() => {
     const S = new Map(), add = (s, h) => { if (s && h) S.set(h + '|' + s, {s, h}); };
     DB.lotes.forEach(l => add(l.s, l.h)); DB.proceso.forEach(r => add(r.sue, r.hac)); DB.ruta.forEach(r => add(r.s, r.h));
     ((typeof ppto2027 === 'function' && ppto2027().suertes) || []).forEach(x => add(x.s, x.h));
+    ((DB.ppto2026 && DB.ppto2026.suertes) || []).forEach(x => add(x.s, typeof hacDeSuerte === 'function' ? hacDeSuerte(x.s) : ''));
     return [...S.values()];
   };
   function suertesEn(t, hac){
     const S = todasSuertes();
     const full = t.match(/\b(\d{4})\s*-?\s*(\d{3})\b/);
     if (full) return S.filter(x => x.s === `${full[1]}-${full[2]}` && (!hac || x.h === hac));
-    // Número de suerte suelto ("la 050", "suerte 50"), sin confundir con zona, semana, año o cantidades
-    const limpio = t.replace(/\b(zona|semana|sem|top|mes|ano|año|las|los)\s+\d+/g, ' ').replace(/\b\d+\s*(ha|has|hectareas|dias|m3|km)\b/g, ' ');
+    if (!/\b(suerte|ste|la|el)\s+\d{1,3}\b|\b\d{3}\b/.test(t)) return [];
+    const limpio = t.replace(/\b(zona|semana|sem|top|mes|ano|año|las|los|primeras|primeros)\s+\d+/g, ' ').replace(/\b\d+\s*(ha|has|hectareas|dias|m3|km|m|millones|mm|hp|kva|l s|%)\b/g, ' ').replace(/\b20\d\d\b/g, ' ');
     const nums = [...limpio.matchAll(/\b(\d{1,3})\b/g)].map(m => m[1].padStart(3, '0'));
     if (!nums.length) return [];
     return S.filter(x => nums.includes(x.s.split('-')[1]) && (!hac || x.h === hac));
@@ -143,30 +154,36 @@ const IV = (() => {
     const Pa = DB.procesoAnterior && DB.procesoAnterior.items.find(r => r.sue === s && r.hac === h);
     const R = DB.ruta.find(r => r.s === s && r.h === h);
     const Q = ((typeof ppto2027 === 'function' && ppto2027().suertes) || []).find(x => x.s === s && x.h === h);
+    const P26 = ((DB.ppto2026 && DB.ppto2026.suertes) || []).find(x => x.s === s);
     const A = typeof agroFilas === 'function' ? agroFilas().filter(x => x.s === s && x.h === h) : [];
+    const M = ((DB.maestro && DB.maestro.lotes) || {})[h + '|' + s];
     const S = P && typeof simSuerte === 'function' ? simSuerte(P) : null;
-    const area = (L[0] && L[0].a) || (P && P.area) || (R && R.a) || (Q && Q.a) || 0;
-    const z = (L[0] && L[0].z) || (P && P.z) || (Q && Q.z) || zonaDe(h);
-    const dias = (P && P.dias) || (L.find(l => l.e !== 'SEMBRADA') || L[0] || {}).d || (R && R.d);
+    const area = (L[0] && L[0].a) || (P && P.area) || (R && R.a) || (Q && Q.a) || (P26 && P26.a) || 0;
+    const z = (L[0] && L[0].z) || (P && P.z) || (Q && Q.z) || (P26 && P26.z) || zonaDe(h);
+    const lp = L.find(l => l.e !== 'SEMBRADA') || L[0];
+    const dias = lp ? dl(lp) : P ? P.dias : R ? R.d : null;
     const filas = [];
-    L.forEach(l => filas.push(`<b>${l.e === 'SEMBRADA' ? '✅ Sembrada' : '⏳ Pendiente de siembra'}</b> · ${esc(cap(l.c))} · ${l.d} días de lucro · variedad ${esc(l.v || '—')}${pp(l) === 'NO' ? ' · <i>fuera del presupuesto</i>' : ''}`));
-    if (P) filas.push(`🚜 En proceso: labor <b>${esc(cap(P.labor))}</b> · contratista ${esc(P.cont || '—')}${P.obs ? ` · "${esc(P.obs)}"` : ''}`);
+    L.forEach(l => filas.push(`<b>${l.e === 'SEMBRADA' ? '✅ Sembrada' : '⏳ Pendiente de siembra'}</b> · ${esc(cap(l.c))} · <b>${dl(l)} días de lucro</b>${dlMaestro(l) == null ? ' (comité)' : ' (maestro)'} · variedad ${esc(l.v || '—')}`));
+    if (P) filas.push(`🚜 En proceso: labor <b>${esc(cap(P.labor))}</b>${P.cont && P.cont !== '—' ? ' · contratista ' + esc(P.cont) : ''}${P.obs ? ` · "${esc(P.obs)}"` : ''}`);
     if (Pa && P && norm(Pa.labor) !== norm(P.labor)) filas.push(`↩️ La semana anterior (${esc(DB.procesoAnterior.semana)}) estaba en ${esc(cap(Pa.labor))}`);
-    if (R) filas.push(`🌱 En ruta de siembra · variedad ${esc(R.variedad || '—')} · semillero ${esc(R.semillero || '—')}${R.bandereo ? ` · bandereo ${R.bandereo} m` : ''} · ${esc(R.cont || '—')}`);
+    if (R) filas.push(`🌱 En ruta de siembra · variedad ${esc(R.variedad || '—')} · semillero ${esc(R.semillero || '—')}${R.bandereo ? ` · bandereo ${R.bandereo} m` : ''}${R.cont ? ' · ' + esc(R.cont) : ''}`);
+    if (M) filas.push(`📚 Maestro: corte <b>${fechaLarga(M[0]) || '—'}</b> · siembra ${fechaLarga(M[1]) || '—'}`);
+    if (P26) filas.push(`📋 Presupuesto 2026: <b>sí</b> · ${f2(P26.a)} ha · mes ${MESES[P26.mes - 1] || '—'}${P26.motivo ? ` · ${esc(P26.motivo)}` : ''}`);
+    else if (L.length) filas.push(`📋 Presupuesto 2026: <b>no está</b> en la lista`);
     if (S && S.total) filas.push(`💰 Costo proyectado ${moneyM(S.total)} (${money(S.proy)}/ha) vs ppto ${moneyM(S.pptoTotal)} → ${S.dif >= 0 ? 'ahorro' : 'sobrecosto'} ${money(Math.abs(S.dif))}/ha`);
-    A.filter(a => a.fecha || a.obs || a.corte).forEach(a => filas.push(`📋 Agronomía: ${a.corte ? 'corte ' + fechaLarga(a.corte) + ' · ' : ''}${a.fecha ? 'siembra ' + fechaLarga(a.fecha) : 'sin fecha de siembra'}${a.lucro != null && a.lucro >= 0 ? ` · <b>${a.lucro} días de lucro cesante</b>` : ''}${a.obs ? ` · "${esc(a.obs)}"` : ''}`));
+    A.filter(a => a.fecha || a.obs).forEach(a => filas.push(`🌱 Agronomía: ${a.fecha ? 'siembra real ' + fechaLarga(a.fecha) : 'sin fecha de siembra real'}${a.lucro != null && a.lucro >= 0 ? ` · ${a.lucro} días de lucro real` : ''}${a.obs ? ` · "${esc(a.obs)}"` : ''}`));
     if (Q) filas.push(`📅 Presupuesto 2027: renovación en <b>${MESES[Q.mes - 1] || '—'}</b> · ${esc(Q.vAct || '—')} → ${esc(Q.v1 || '—')}${Q.niv ? ` · nivelación ${Q.niv}` : ''}`);
-    return {area, z, dias, L, P, R, Q, html:`<div class="iv-ficha"><div class="iv-ficha-t">Suerte <b>${esc(s)}</b> · ${esc(h)} · Z${z} · ${ha(area)}</div>${lista(filas)}
-      <button type="button" class="iv-ir" data-iv-sue="${esc(s)}" data-iv-hac="${esc(h)}">Ver en el dashboard →</button></div>`};
+    return {area, z, dias, L, P, R, Q, M, P26, html:`<div class="iv-ficha"><div class="iv-ficha-t">Suerte <b>${esc(s)}</b> · ${esc(h)} · Z${z} · ${ha(area)}</div>${lista(filas)}
+      ${L.length ? `<button type="button" class="iv-ir" data-iv-sue="${esc(s)}" data-iv-hac="${esc(h)}">Ver en el dashboard →</button>` : ''}</div>`};
   }
 
-  function resumenHacienda(h){
+  function resumenHacienda(h, t){
     const L = DB.lotes.filter(l => l.h === h), sem = L.filter(l => l.e === 'SEMBRADA'), pen = L.filter(l => l.e !== 'SEMBRADA');
     const P = DB.proceso.filter(r => r.hac === h), R = DB.ruta.filter(r => r.h === h);
     const Q = ((typeof ppto2027 === 'function' && ppto2027().suertes) || []).filter(x => x.h === h);
     const it = [];
-    if (L.length) it.push(`Comité ${esc(DB.meta.semana)}: <b>${sem.length}</b> sembradas (${ha(sum(sem, l => l.a))}) y <b>${pen.length}</b> pendientes (${ha(sum(pen, l => l.a))})`);
-    if (P.length) it.push(`En proceso: ${P.map(r => `${esc(r.sue)} (${esc(cap(r.labor))}, ${r.dias} días)`).join(', ')}`);
+    if (L.length) it.push(`Comité ${esc(DB.meta.semana)}: <b>${L.length}</b> suertes · <b>${sem.length}</b> sembradas (${ha(sum(sem, l => l.a))}) y <b>${pen.length}</b> pendientes (${ha(sum(pen, l => l.a))})`);
+    if (P.length) it.push(`En proceso: ${P.map(r => `${esc(r.sue)} (${esc(cap(r.labor))}${r.cont && r.cont !== '—' ? ', ' + esc(r.cont) : ''})`).join(', ')}`);
     if (R.length) it.push(`En ruta de siembra: ${R.map(r => esc(r.s)).join(', ')}`);
     if (Q.length) it.push(`Presupuesto 2027: ${Q.length} suertes · ${ha(sum(Q, x => x.a))}`);
     if (!it.length) return `No encontré datos de <b>${esc(h)}</b> en el comité ni en el presupuesto 2027.`;
@@ -176,131 +193,309 @@ const IV = (() => {
   function totales(z){
     const L = DB.lotes.filter(l => !z || l.z === z), sem = L.filter(l => l.e === 'SEMBRADA'), pen = L.filter(l => l.e !== 'SEMBRADA');
     const hs = sum(sem, l => l.a), pptoZ = z ? sum(DB.pptoMensual['z' + z]) : DB.meta.pptoTotal;
-    return `<b>${z ? 'Zona ' + z : 'Total'} · ${esc(DB.meta.semana)} (${esc(DB.meta.fecha)})</b>${lista([
+    const dT = L.length ? Math.round(sum(L, dl) / L.length) : 0, dP = pen.length ? Math.round(sum(pen, dl) / pen.length) : null;
+    return `<b>${z ? 'Zona ' + z : 'Resumen'} · ${esc(DB.meta.semana)} (${esc(DB.meta.fecha)})</b>${lista([
       `Sembradas: <b>${ha(hs)}</b> en ${sem.length} suertes (caña ${ha(sum(sem.filter(l => l.c === 'CAÑA'), l => l.a))} · arroz ${ha(sum(sem.filter(l => l.c === 'ARROZ'), l => l.a))})`,
       `Pendientes: <b>${ha(sum(pen, l => l.a))}</b> en ${pen.length} suertes`,
       pptoZ ? `Avance vs presupuesto (${ha(pptoZ)}): <b>${(hs / pptoZ * 100).toFixed(1)}%</b> · faltan ${ha(Math.max(0, pptoZ - hs))}` : '',
+      `Días de lucro promedio: <b>${dT}</b> (todas)${dP != null ? ` · <b>${dP}</b> (pendientes)` : ''}`,
       `En proceso: ${DB.proceso.filter(r => !z || r.z === z).length} suertes · en ruta de siembra: ${DB.ruta.filter(r => !z || zonaDe(r.h) === z).length}`,
-    ].filter(Boolean))}`;
+    ].filter(Boolean))}${ir('aps', 'Ver el dashboard')}`;
   }
 
   function porLaborTxt(lab){
     const P = DB.proceso.filter(r => !lab || norm(r.labor).includes(norm(lab)));
     if (lab && !P.length) return `Ninguna suerte está hoy en <b>${esc(cap(lab))}</b> (${esc(DB.meta.semana)}).`;
+    if (!P.length) return `No hay suertes en proceso en ${esc(DB.meta.semana)}.`;
     const g = {}; P.forEach(r => (g[cap(r.labor)] = g[cap(r.labor)] || []).push(r));
-    return `<b>Suertes en proceso · ${esc(DB.meta.semana)}</b>${lista(Object.entries(g).map(([k, v]) => `<b>${esc(k)}</b> (${ha(sum(v, r => r.area))}): ${v.map(r => `${esc(r.sue)} ${esc(r.hac)} · ${esc(r.cont || '—')}`).join('; ')}`))}`;
+    return `<b>Suertes en proceso · ${esc(DB.meta.semana)}</b>${lista(Object.entries(g).map(([k, v]) => `<b>${esc(k)}</b> (${ha(sum(v, r => r.area))}): ${v.map(r => `${esc(r.sue)} ${esc(r.hac)}${r.cont && r.cont !== '—' ? ' · ' + esc(r.cont) : ''}`).join('; ')}`))}`;
+  }
+  function comparativoTxt(){
+    const A = DB.procesoAnterior; if (!A || !A.items) return 'No tengo la semana anterior cargada.';
+    const cambios = DB.proceso.map(r => { const a = A.items.find(x => x.sue === r.sue && x.hac === r.hac); return !a ? `${esc(r.sue)} ${esc(r.hac)}: <b>nueva</b> en ${esc(cap(r.labor))}` : norm(a.labor) !== norm(r.labor) ? `${esc(r.sue)} ${esc(r.hac)}: ${esc(cap(a.labor))} → <b>${esc(cap(r.labor))}</b>` : null; }).filter(Boolean);
+    const salieron = A.items.filter(a => !DB.proceso.some(r => r.sue === a.sue && r.hac === a.hac)).map(a => `${esc(a.sue)} ${esc(a.hac)}: salió de proceso (estaba en ${esc(cap(a.labor))})`);
+    const todo = [...cambios, ...salieron];
+    return `<b>${esc(A.semana)} → ${esc(DB.meta.semana)}</b>${todo.length ? lista(todo) : '<br>Sin cambios de labor entre las dos semanas.'}`;
   }
 
-  const contratistasTodos = () => [...new Set([...(typeof contratistas === 'function' ? contratistas() : []), ...DB.proceso.map(r => r.cont),
-    ...((DB.sim && DB.sim.tarifas) || (typeof simData === 'function' && simData().tarifas) || []).map(t => t.contratista)].filter(Boolean))];
+  // Contratistas: nombres reales (se ignoran "—" y vacíos, que antes coincidían con todo)
+  const contratistasTodos = () => [...new Set([...(typeof contratistas === 'function' ? contratistas() : []), ...DB.proceso.map(r => r.cont), ...DB.ruta.map(r => r.cont),
+    ...((DB.sim && DB.sim.tarifas) || (typeof simData === 'function' && simData().tarifas) || []).map(t => t.contratista)])].filter(c => c && n(c).length >= 3);
   const tarifas = () => (typeof simData === 'function' ? simData().tarifas : (DB.sim && DB.sim.tarifas)) || [];
   function contratistaEn(t){
+    const T = ' ' + t + ' ';
     return contratistasTodos().map(c => [c, n(c)]).sort((a, b) => b[1].length - a[1].length)
-      .find(([, c]) => t.includes(c) || (c.split(' ')[0].length > 4 && t.includes(c.split(' ')[0])));
+      .find(([, c]) => T.includes(' ' + c + ' ') || (c.split(' ')[0].length > 4 && T.includes(' ' + c.split(' ')[0] + ' ')));
   }
-
   function buscarTarifas(t, cont){
     const ign = new Set('cuanto cuesta vale valor precio tarifa tarifas costo de la el del por en a que y una un con los las pase ha hectarea'.split(' '));
-    const pal = t.split(' ').filter(w => w.length > 3 && !ign.has(w));
+    const pal = t.split(' ').filter(w => w.length > 3 && !ign.has(w) && !(cont && n(cont).includes(w)));
     const T = tarifas().filter(x => (!cont || x.contratista === cont) && (!pal.length || pal.some(w => n(x.desc).includes(w.slice(0, 5)))));
     if (!T.length) return null;
-    return `<b>Tarifas${cont ? ' de ' + esc(cont) : ''}</b> (simulador)${lista(T.slice(0, 10).map(x => `${esc(x.desc)} · <b>${money(x.costo)}</b>/${esc(x.unidad)} · ${esc(x.contratista)}`))}${T.length > 10 ? `<small>…y ${T.length - 10} más en el 💰 Simulador.</small>` : ''}`;
+    return `<b>Tarifas${cont ? ' de ' + esc(cont) : ''}</b> (simulador)${lista(T.slice(0, 10).map(x => `${esc(x.desc)} · <b>${money(x.costo)}</b>/${esc(x.unidad)} · ${esc(x.contratista)}`))}${T.length > 10 ? `<small>…y ${T.length - 10} más en el 💰 Simulador.</small>` : ''}${ir('simulador', 'Abrir el simulador')}`;
   }
 
-  function personas(t){
+  // ── Personas: estructura del área + directorios de los protocolos ──
+  function gente(){
+    const G = [];
+    if (typeof estructura === 'function') estructura().personas.forEach(p => { if (p.nombre || p.cargo) G.push({nombre:p.nombre || 'Por asignar', cargo:p.cargo, extra:p.equipo, tel:'', fuente:'Estructura del área'}); });
+    if (typeof protocolos === 'function') protocolos().forEach(pr => (pr.directorio || []).forEach(c => { if (c.nombre || c.cargo) G.push({nombre:c.nombre, cargo:c.cargo, extra:'', tel:c.tel || '', fuente:'Directorio · ' + pr.titulo.split('·')[0].trim()}); }));
+    return G;
+  }
+  function personasTxt(t){
+    const W = palabras(t).filter(w => !['telefono','celular','numero','contacto','cargo','persona','jefe','coordinador','coordinadora','analista','quien','quienes'].includes(w));
+    const quiereTel = tiene(t, 'telefono', 'celular', 'numero', 'contacto', 'llamar');
+    const G = gente(); if (!G.length) return null;
+    const puntua = p => { const N = n(p.nombre), C = n(p.cargo); let s = 0;
+      W.forEach(w => { if ((' ' + N + ' ').includes(' ' + w)) s += 3; else if (C.includes(raiz(w))) s += 2; });
+      const z = t.match(/zona\s*([12])/); if (z && C.includes('zona ' + z[1])) s += 3;
+      if (tiene(t, 'jefe') && C.includes('jefe')) s += 1; if (tiene(t, 'coordinador', 'coordinadora') && C.includes('coordinador')) s += 1; if (tiene(t, 'analista') && C.includes('analista')) s += 1;
+      return s; };
+    const R = G.map(p => [puntua(p), p]).filter(([s]) => s >= 2).sort((a, b) => b[0] - a[0]);
+    if (!R.length) return null;
+    const top = R[0][0], vistos = new Set();
+    const lineas = R.filter(([s]) => s >= top - 1).map(([, p]) => p).filter(p => { const k = n(p.nombre + p.cargo); if (vistos.has(k)) return false; vistos.add(k); return true; }).slice(0, 6)
+      .map(p => `<b>${esc(p.nombre)}</b> · ${esc(p.cargo || '')}${p.tel ? ` · <a href="tel:${esc(p.tel.replace(/[^\d+]/g, ''))}">📞 ${esc(p.tel)}</a>` : quiereTel ? ' · <i>sin teléfono registrado</i>' : ''}<br><small>${esc(p.fuente)}</small>`);
+    return `<b>Personas</b>${lista(lineas)}${quiereTel && !R.some(([, p]) => p.tel) ? '<small>Los teléfonos se agregan en el directorio del protocolo (modo editor).</small><br>' : ''}${ir('estructura', 'Ver la estructura del área')}`;
+  }
+  function procesosTxt(t){
     if (typeof estructura !== 'function') return null;
-    const E = estructura(), res = [];
-    E.personas.forEach(p => { if (p.nombre && n(p.nombre).split(' ').some(w => w.length > 3 && t.includes(w))) res.push(`<b>${esc(p.nombre)}</b> · ${esc(p.cargo)}${p.equipo ? ' · ' + esc(p.equipo) : ''}`); });
-    if (tiene(t, 'responsable', 'quien', 'encargado', 'a cargo')) {
-      (E.procesos || []).forEach(p => { const k = n(p.especifico + ' ' + p.general); if (t.split(' ').some(w => w.length > 4 && !['responsable', 'encargado', 'quien'].includes(w) && k.includes(w.slice(0, 6)))) res.push(`${esc(p.especifico)} → <b>${esc(p.responsable)}</b>`); });
+    const W = palabras(t).filter(w => !['responsable','encargado','quien','proceso','procesos','cargo'].includes(w));
+    const R = (estructura().procesos || []).map(p => [W.filter(w => n(p.especifico + ' ' + p.general).includes(raiz(w))).length, p]).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0]);
+    return R.length ? `<b>Procesos y responsables</b>${lista(R.slice(0, 8).map(([, p]) => `${esc(p.especifico)} → <b>${esc(p.responsable)}</b> <small>(${esc(p.general)})</small>`))}${ir('estructura', 'Ver procesos')}` : null;
+  }
+
+  // ── Protocolos y proyectos ──
+  function protocoloEn(t){
+    if (typeof protocolos !== 'function') return null;
+    const W = palabras(t);
+    const R = protocolos().map(p => { const k = n(`${p.titulo} ${p.tipo} ${p.activa}`); return [W.filter(w => k.includes(raiz(w))).length + (k.includes('dique') && tiene(t, 'dique', 'rompe', 'ruptura', 'inunda') ? 2 : 0) + (p.datos && tiene(t, '2017', 'hectarea', 'cuantas', 'simulacion', 'afectad', 'invierno', 'invernal') ? 3 : 0), p]; })
+      .filter(([s]) => s > 0).sort((a, b) => b[0] - a[0]);
+    return R.length ? R[0][1] : null;
+  }
+  function protocoloTxt(p, t){
+    const pasos = String(p.pasos || '').split('\n').filter(s => s.trim()).map(s => { const [a, r] = s.split('|').map(x => x.trim()); return `${esc(a)}${r ? ` <small>(${esc(r)})</small>` : ''}`; });
+    const datos = tiene(t, 'dato', 'cifra', 'hectarea', 'area', '2017', 'inund', 'simulacion', 'cuantas', 'afectad');
+    const D = String(p.datos || '').split('\n').filter(s => s.includes(':'));
+    return `<b>🚨 ${esc(p.titulo)}</b>${p.borrador ? ' <small>(borrador)</small>' : ''}<br><small>Se activa: ${esc(p.activa || '—')}</small>
+      ${datos && D.length ? lista(D.map(esc)) : `<ol class="iv-ol">${pasos.map(x => `<li>${x}</li>`).join('')}</ol>`}
+      ${p.insumos && !datos ? `<small>Insumos: ${esc(String(p.insumos).split('\n').join(', '))}</small><br>` : ''}
+      <button type="button" class="iv-ir" data-iv-pr="${esc(p.id)}">▶ Ver presentación</button>`;
+  }
+  function proyectoEn(t){
+    if (typeof proyectos !== 'function') return null;
+    const W = palabras(t).filter(w => !['proyecto','proyectos','obra','obras','ejecutado','ejecutados','costo','costó','inversion','cuanto','estado'].includes(w));
+    const R = proyectos().map(p => { const k = n(`${p.nombre} ${p.tipo} ${p.hacienda} ${p.cantidad}`); return [W.filter(w => k.includes(raiz(w))).length, p]; }).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0]);
+    return R.length ? R[0][1] : null;
+  }
+  function proyectoTxt(p){
+    const ppto = +p.ppto || 0, cost = +p.inversion || 0;
+    const D = String(p.datos || '').split('\n').filter(s => s.includes(':')).slice(0, 6);
+    return `<b>🏗️ ${esc(p.nombre)}</b> <small>· ${esc(p.tipo)} · ${esc(p.estado || 'Ejecutado')} · ${esc(p.anio || '')}</small>${lista([
+      p.descripcion ? esc(p.descripcion) : '',
+      ppto ? `Presupuesto: <b>${moneyM(ppto)}</b>` : '', cost ? `Costo / inversión: <b>${moneyM(cost)}</b>${ppto ? ` (${cost - ppto >= 0 ? '+' : '−'}${(Math.abs(cost - ppto) / ppto * 100).toFixed(1)}%)` : ''}` : '',
+      ...D.map(esc), p.resultado ? `Resultado: ${esc(p.resultado)}` : ''].filter(Boolean))}
+      <button type="button" class="iv-ir" data-iv-proy="${esc(p.id)}">▶ Ver presentación</button>`;
+  }
+
+  // ── Presupuesto 2026 (cruce con el comité) ──
+  function ppto26Txt(t){
+    if (typeof pptoCruce !== 'function' || !(DB.ppto2026 && DB.ppto2026.suertes)) return 'Aún no está cargada la hoja «PPTO 2026».';
+    const {filas, fuera} = pptoCruce(), z = zonaEn(t), m = mesEn(t);
+    const F = filas.filter(f => (!z || f.z === z) && (!m || f.mes === m));
+    const ha_ = e => sum(F.filter(f => !e || f.est === e), f => f.a), tot = ha_() || 1, hoyMes = new Date().getMonth() + 1;
+    if (tiene(t, 'fuera')) return `<b>Sembradas fuera del presupuesto 2026</b> (${fuera.length} · ${ha(sum(fuera, l => l.a))})${lista(fuera.slice(0, 15).map(l => `${esc(l.s)} ${esc(l.h)} · ${ha(l.a)}`))}${ir('pptodet', 'Ver detalle')}`;
+    if (tiene(t, 'atrasad', 'retrasad', 'vencid', 'demorad')) {
+      const A = F.filter(f => f.mes && f.mes < hoyMes && f.est !== 'Sembrada').sort((a, b) => a.mes - b.mes);
+      return `<b>Suertes del presupuesto 2026 con el mes ya pasado y sin sembrar</b> (${A.length} · ${ha(sum(A, f => f.a))})${lista(A.slice(0, 15).map(f => `${esc(f.s)} ${esc(f.h)} · ${ha(f.a)} · ${MESES[f.mes - 1]} · ${esc(f.est)}`))}${A.length > 15 ? `<small>…y ${A.length - 15} más.</small><br>` : ''}${ir('pptodet', 'Ver detalle')}`;
     }
-    return res.length ? `<b>Estructura del área</b>${lista([...new Set(res)].slice(0, 10))}` : null;
+    if (tiene(t, 'faltan', 'que falta', 'pendientes', 'sin iniciar', 'por sembrar') && tiene(t, 'cuales', 'que suertes', 'lista', 'listado')) {
+      const A = F.filter(f => f.est !== 'Sembrada').sort((a, b) => a.mes - b.mes);
+      return `<b>Del presupuesto 2026 faltan ${A.length} suertes (${ha(sum(A, f => f.a))})</b>${lista(A.slice(0, 15).map(f => `${esc(f.s)} ${esc(f.h)} · ${ha(f.a)} · ${MESES[f.mes - 1] || '—'} · ${esc(f.est)}`))}${A.length > 15 ? `<small>…y ${A.length - 15} más.</small><br>` : ''}${ir('pptodet', 'Ver detalle')}`;
+    }
+    const sem = ha_('Sembrada'), curso = ha_('En proceso') + ha_('En ruta de siembra');
+    return `<b>Presupuesto 2026${z ? ' · zona ' + z : ''}${m ? ' · ' + cap(MESL[m - 1]) : ''}</b>${lista([
+      `Presupuestado: <b>${ha(tot)}</b> (${F.length} suertes)`,
+      `Sembrado: <b>${ha(sem)}</b> · ${(sem / tot * 100).toFixed(1)}%`,
+      `En proceso / ruta: ${ha(curso)} · en arroz: ${ha(ha_('En arroz'))}`,
+      `Falta: <b>${ha(tot - sem - curso)}</b> · ${((tot - sem - curso) / tot * 100).toFixed(1)}% (sin iniciar ${ha(ha_('Sin iniciar'))})`,
+      !m && !z ? `Fuera del presupuesto se sembraron ${ha(sum(fuera, l => l.a))}` : ''].filter(Boolean))}${ir('pptodet', 'Ver detalle')}`;
   }
 
   function ppto27(t){
     const P = typeof ppto2027 === 'function' ? ppto2027() : null; if (!P || !(P.suertes || []).length) return 'Aún no hay programa 2027 cargado.';
-    const mi = MESES.findIndex(m => t.includes(n(m))), mesesL = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-    const mm = mi >= 0 ? mi : mesesL.findIndex(m => t.includes(m));
-    const S = P.suertes.filter(s => mm < 0 || s.mes === mm + 1);
+    const mm = mesEn(t), h = hacEn(t), z = zonaEn(t);
+    const S = P.suertes.filter(s => (!mm || s.mes === mm) && (!h || s.h === h) && (!z || s.z === z));
     const tot = sum(S, s => s.a);
-    return `<b>Presupuesto APS 2027${mm >= 0 ? ' · ' + cap(mesesL[mm]) : ''}</b>${lista([
+    return `<b>Presupuesto APS 2027${mm ? ' · ' + cap(MESL[mm - 1]) : ''}${h ? ' · ' + esc(h) : ''}${z ? ' · zona ' + z : ''}</b>${lista([
       `${S.length} suertes · <b>${ha(tot)}</b> (Z1 ${ha(sum(S.filter(s => s.z === 1), s => s.a))} · Z2 ${ha(sum(S.filter(s => s.z === 2), s => s.a))})`,
-      typeof pptoHa2027 === 'function' ? `Inversión estimada: <b>${moneyM(tot * pptoHa2027(P))}</b>` : '',
-      mm >= 0 ? S.map(s => `${esc(s.s)} ${esc(s.h)}`).slice(0, 15).join(', ') + (S.length > 15 ? '…' : '') : 'Pregunta por un mes, ej. "¿qué se renueva en marzo 2027?"',
-    ].filter(Boolean))}`;
+      typeof pptoHa2027 === 'function' ? `Inversión estimada: <b>${moneyM(tot * pptoHa2027(P))}</b> (${money(pptoHa2027(P))}/ha)` : '',
+      mm || h ? S.map(s => `${esc(s.s)} ${esc(s.h)}`).slice(0, 15).join(', ') + (S.length > 15 ? '…' : '') : 'Pregunta por un mes o hacienda, ej. "¿qué se renueva en marzo 2027?"',
+    ].filter(Boolean))}${ir('ppto', 'Abrir presupuesto 2027')}`;
   }
 
-  const AYUDA = `Soy el <b>Inge Virtual</b> 👷. Respondo con los datos publicados del portal y sé de labores, mecanización, drenajes y obras civiles. Prueba:`;
-  const EJEMPLOS = ['¿Días de lucro de la 050 de Normandía?', '¿En qué estado está la 3501-050?', '¿Cómo va la zona 2?', '¿Qué suertes están en subsuelo?', '¿Qué es la descepada?', '¿Cuánto cuesta la surcada de Riocast?', 'Ruta de siembra', '¿Qué se renueva en marzo 2027?'];
+  function lucroTxt(t){
+    const z = zonaEn(t), h = hacEn(t);
+    const L = DB.lotes.filter(l => (!z || l.z === z) && (!h || l.h === h)), pen = L.filter(l => l.e !== 'SEMBRADA'), sem = L.filter(l => l.e === 'SEMBRADA');
+    const prom = A => A.length ? Math.round(sum(A, dl) / A.length) : '—';
+    return `<b>Días de lucro${z ? ' · zona ' + z : ''}${h ? ' · ' + esc(h) : ''}</b> <small>(según maestro ${esc((DB.maestro && DB.maestro.fecha) || '')})</small>${lista([
+      `Promedio todas: <b>${prom(L)} días</b> (${L.length} suertes)`,
+      `Pendientes (corte → hoy): <b>${prom(pen)} días</b> (${pen.length})`,
+      `Sembradas (corte → siembra): <b>${prom(sem)} días</b> (${sem.length})`,
+      `Dato del comité: ${L.length ? Math.round(sum(L, l => l.d) / L.length) : '—'} días`])}
+      <small>Pendientes con más días: ${pen.slice().sort((a, b) => dl(b) - dl(a)).slice(0, 4).map(l => `${esc(l.s)} (${dl(l)})`).join(', ') || '—'}</small>`;
+  }
+
+  // ── Cómo usar la plataforma (sin datos privados ni el enlace de editor) ──
+  const COMO = [
+    {k:['publicar','publico','subir cambios','que vean'], r:'Los cambios los hace el administrador en <b>modo editor</b>: se edita y luego <b>🚀 Publicar</b>. En 1–2 minutos los ven todos y las pestañas abiertas se actualizan solas.'},
+    {k:['agregar suerte','agrego una suerte','nueva suerte','añadir suerte'], r:'En modo editor: <b>✏️ Editar → ➕ Agregar suerte</b>. Se escribe el sector-suerte (ej. 3113070) y hacienda, zona, área, cultivo, variedad y días se llenan solos desde el maestro de suertes.'},
+    {k:['importar','excel semanal','actualizar comite','cargar comite','semana nueva'], r:'En modo editor: <b>✏️ Editar → 📥 Importar Excel semanal</b>, se elige el .xlsm del comité y luego <b>🚀 Publicar</b>. Trae lotes, ruta, labores, costos y la hoja PPTO 2026.'},
+    {k:['maestro','cargar maestro'], r:'El <b>maestro de suertes</b> se toma solo del PC del administrador (carpeta COMITE APS\\MAESTRO, el más reciente). En Agronomía también está <b>📥 Cargar maestro</b>. Con él se calculan los días de lucro (sembradas: corte → siembra; pendientes: corte → hoy).'},
+    {k:['descargar','excel','exportar'], r:'En el dashboard, botón <b>📊 Excel</b>: descarga el resumen con los filtros que tengas puestos.'},
+    {k:['filtro','filtrar'], r:'En la barra superior del dashboard hay filtros por zona, hacienda, cultivo, estado, presupuesto y días de lucro. <b>✕ Limpiar</b> los quita.'},
+    {k:['presentacion','diapositiva'], r:'En <b>Proyectos ejecutados</b> y <b>Protocolos de emergencia</b>, cada tarjeta tiene <b>▶ Ver presentación</b>: se pasa con las flechas, deslizando en el celular, y Esc para cerrar.'},
+    {k:['ver detalle','cruce','presupuesto vs'], r:'En el dashboard, recuadro <b>% vs Presupuesto → 🔎 Ver detalle</b>: cruza la hoja PPTO 2026 con lo sembrado y en proceso (qué se hizo y qué falta, por mes y por suerte).'},
+    {k:['buscar','buscador'], r:'Arriba está el <b>buscador del portal</b>: temas, personas, procesos, haciendas y suertes.'},
+    {k:['editar protocolo','directorio','telefono','cambiar nombre'], r:'En modo editor, en <b>Protocolos de emergencia</b> se abre la tarjeta y se editan pasos, insumos, mapas y el <b>directorio</b> (nombre, cargo, teléfono); luego 🚀 Publicar.'},
+    {k:['proyecto nuevo','agregar proyecto'], r:'En modo editor, <b>Proyectos ejecutados → + Nuevo proyecto</b>: nombre, tipo, hacienda, presupuesto, costo, cifras, problema, solución y costos. La presentación se arma sola.'},
+    {k:['celular','movil','telefono movil'], r:'La página funciona en el celular: el menú se compacta, las tablas pasan a tarjetas y las presentaciones se deslizan con el dedo.'},
+  ];
+  function comoTxt(t){
+    const R = COMO.map(c => [c.k.filter(k => t.includes(n(k))).length, c]).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0]);
+    return R.length ? `<b>Cómo se hace</b><br>${R[0][1].r}` : null;
+  }
+
+  // ── Búsqueda general en toda la plataforma (último recurso antes de "no entendí") ──
+  function documentos(){
+    const D = [];
+    (typeof TEMAS !== 'undefined' ? TEMAS : []).forEach(m => D.push({tit:m.t, txt:m.d + ' ' + m.k, res:`<b>${esc(m.t)}</b><br>${esc(m.d)}${ir(m.ir)}`}));
+    if (typeof protocolos === 'function') protocolos().forEach(p => D.push({tit:p.titulo, txt:`${p.titulo} ${p.tipo} ${p.activa} ${p.pasos} ${p.insumos || ''} ${p.datos || ''}`, res:`🚨 <b>${esc(p.titulo)}</b><br><small>${esc(p.activa || '')}</small><br><button type="button" class="iv-ir" data-iv-pr="${esc(p.id)}">▶ Ver presentación</button>`}));
+    if (typeof proyectos === 'function') proyectos().forEach(p => D.push({tit:p.nombre, txt:`${p.nombre} ${p.tipo} ${p.hacienda} ${p.descripcion || ''} ${p.diagnostico || ''} ${p.solucion || ''} ${p.datos || ''} ${p.resultado || ''}`, res:`🏗️ <b>${esc(p.nombre)}</b><br><small>${esc(p.descripcion || '')}</small><br><button type="button" class="iv-ir" data-iv-proy="${esc(p.id)}">▶ Ver presentación</button>`}));
+    if (typeof estructura === 'function') (estructura().procesos || []).forEach(p => D.push({tit:p.especifico, txt:`${p.especifico} ${p.general} ${p.nucleo}`, res:`⚙️ ${esc(p.especifico)} → <b>${esc(p.responsable)}</b> <small>(${esc(p.general)})</small>`}));
+    GLOSARIO.forEach(g => D.push({tit:g.t, txt:`${g.t} ${g.k.join(' ')} ${g.d}`, res:`📘 <b>${esc(g.t)}</b><br>${esc(g.d)}`}));
+    COMO.forEach(c => D.push({tit:'Cómo se hace', txt:c.k.join(' ') + ' ' + c.r.replace(/<[^>]+>/g, ''), res:c.r}));
+    return D;
+  }
+  function buscarTodo(t){
+    const W = palabras(t).map(raiz); if (!W.length) return null;
+    const R = documentos().map(d => { const tx = n(d.txt), ti = n(d.tit); return [W.reduce((s, w) => s + (ti.includes(w) ? 3 : tx.includes(w) ? 1 : 0), 0), d]; })
+      .filter(([s]) => s >= Math.min(2, W.length)).sort((a, b) => b[0] - a[0]).slice(0, 3);
+    return R.length ? `Esto es lo que encontré en la plataforma:${lista(R.map(([, d]) => d.res))}` : null;
+  }
+
+  const AYUDA = `Soy el <b>Inge Virtual</b> 👷. Conozco toda la plataforma: comité APS, presupuesto 2026 y 2027, días de lucro, agronomía, simulador, proyectos, protocolos de emergencia, el equipo y conceptos de ingeniería agrícola y civil. Prueba:`;
+  const EJEMPLOS = ['Resumen de la semana', '¿Cuánto falta del presupuesto 2026?', '¿Qué suertes están atrasadas?', 'Días de lucro de las pendientes', '¿Qué hacer si se rompe un dique?', '¿Quién es el jefe de zona 1?', '¿Cuánto costó el drenaje de San Nicolás?', '¿En qué estado está la 3111-131?', 'Comparación con la semana pasada', '¿Qué es la descepada?'];
 
   function responder(pregunta){
     const t = n(pregunta);
     if (!t) return AYUDA;
     if (/^(hola|buenas|buenos|hey|que mas|saludos)\b/.test(t) && t.split(' ').length < 4) return `¡Hola! ${AYUDA}`;
-    if (tiene(t, 'ayuda', 'que sabes', 'que puedes', 'como funciona')) return AYUDA;
-    if (tiene(t, 'gracias')) return 'Con gusto 👷. ¿Algo más?';
+    if (tiene(t, 'gracias', 'listo', 'perfecto') && t.split(' ').length < 4) return 'Con gusto 👷. ¿Algo más?';
+    if (tiene(t, 'ayuda', 'que sabes', 'que puedes', 'que preguntas')) return AYUDA;
 
-    const hac = hacEn(t), S = suertesEn(t, hac);
-    // 1) Una suerte concreta
+    // 1) Cómo usar la plataforma
+    if (/^(como|donde|de que forma)\b/.test(t) && !tiene(t, 'va ', 'van ', 'esta ', 'vamos')) { const r = comoTxt(t); if (r) return r; }
+
+    const hac = hacEn(t), S = suertesEn(t, hac), z = zonaEn(t);
+    // 2) Una suerte concreta
     if (S.length === 1) {
       const F = fichaSuerte(S[0]); let frase = '';
       if (tiene(t, 'lucro', 'dias')) frase = F.dias != null ? `La suerte ${esc(S[0].s)} de ${esc(S[0].h)} tiene <b>${F.dias} días de lucro</b>.` : 'No tengo días de lucro para esa suerte.';
-      else if (tiene(t, 'estado', 'como va', 'como esta', 'en que va')) frase = F.P ? `Está en <b>${esc(cap(F.P.labor))}</b>.` : F.L.some(l => l.e === 'SEMBRADA') ? 'Está <b>sembrada</b>.' : F.R ? 'Está <b>en ruta de siembra</b>.' : F.L.length ? 'Está <b>pendiente</b> y no aparece en labores esta semana.' : F.Q ? 'No está en el comité actual; está en el <b>programa 2027</b>.' : '';
+      else if (tiene(t, 'corte')) frase = F.M && F.M[0] ? `Último corte (maestro): <b>${fechaLarga(F.M[0])}</b>.` : 'No tengo la fecha de corte de esa suerte.';
+      else if (tiene(t, 'siembra', 'sembro', 'sembrada', 'se siembra')) frase = F.L.some(l => l.e === 'SEMBRADA') ? `Está <b>sembrada</b>${F.M && F.M[1] ? ` (maestro: ${fechaLarga(F.M[1])})` : ''}.` : F.R ? 'Está <b>en ruta de siembra</b>.' : 'Aún <b>no está sembrada</b>.';
+      else if (tiene(t, 'estado', 'como va', 'como esta', 'en que va', 'que pasa')) frase = F.P ? `Está en <b>${esc(cap(F.P.labor))}</b>.` : F.L.some(l => l.e === 'SEMBRADA') ? 'Está <b>sembrada</b>.' : F.R ? 'Está <b>en ruta de siembra</b>.' : F.L.length ? 'Está <b>pendiente</b> y no aparece en labores esta semana.' : F.P26 ? 'Está en el <b>presupuesto 2026</b> pero <b>no aparece en el comité</b> (sin iniciar).' : F.Q ? 'Está en el <b>programa 2027</b>.' : '';
+      else if (tiene(t, 'presupuesto', 'ppto')) frase = F.P26 ? `Sí está en el presupuesto 2026 (${MESES[F.P26.mes - 1] || '—'}).` : 'No está en el presupuesto 2026.';
       else if (tiene(t, 'area', 'hectarea', 'cuantas ha', 'tamano')) frase = `Tiene <b>${ha(F.area)}</b>.`;
       else if (tiene(t, 'variedad')) { const v = (F.R && F.R.variedad) || (F.L[0] && F.L[0].v) || (F.Q && F.Q.v1); frase = v ? `Variedad: <b>${esc(v)}</b>.` : 'No tengo variedad registrada.'; }
-      else if (tiene(t, 'contratista', 'quien')) frase = F.P ? `Contratista: <b>${esc(F.P.cont || '—')}</b>.` : F.R ? `Contratista de siembra: <b>${esc(F.R.cont || '—')}</b>.` : '';
+      else if (tiene(t, 'contratista', 'quien')) frase = F.P && F.P.cont && F.P.cont !== '—' ? `Contratista: <b>${esc(F.P.cont)}</b>.` : F.R && F.R.cont ? `Contratista de siembra: <b>${esc(F.R.cont)}</b>.` : 'No tiene contratista asignado esta semana.';
       return (frase ? frase + '<br>' : '') + F.html;
     }
     if (S.length > 1) return `Encontré ${S.length} suertes con ese número. ¿Cuál?${lista(S.slice(0, 12).map(x => `<a href="#" class="iv-preg" data-q="${esc(x.s)} ${esc(x.h)}">${esc(x.s)} · ${esc(x.h)}</a>`))}`;
-    if (/\b\d{1,3}\b/.test(t) && hac && tiene(t, 'suerte', 'ste', 'la ')) return `No encontré esa suerte en ${esc(hac)}. ${resumenHacienda(hac)}`;
 
-    // 2) Glosario (qué es, para qué sirve…) antes que listas, si lo pide explícito
+    // 3) Definiciones explícitas ("qué es…")
     const g = buscarConcepto(t);
-    const definir = tiene(t, 'que es', 'que son', 'para que', 'como se hace', 'explica', 'definicion', 'significa', 'diferencia', 'cual es la funcion', 'sirve', 'como se calcula', 'como calcular', 'tipos de', 'cuales son', 'recomend', 'como se mide', 'cada cuanto', 'cuanto se', 'cuantos bultos', 'que tan');
-    const pideDatos = tiene(t, 'mas dias', 'mayor', 'prioridad', 'cuales tienen', 'cuantas', 'suertes', 'ruta', 'zona', '2027', 'semana');
-    if (g && (definir || (g.largo >= 10 && !hac && !S.length && !pideDatos))) return `<b>${g.t}</b><br>${g.d}`;
+    const definir = tiene(t, 'que es', 'que son', 'para que', 'como se hace', 'explica', 'definicion', 'significa', 'diferencia', 'cual es la funcion', 'sirve', 'como se calcula', 'como calcular', 'tipos de', 'recomend', 'como se mide', 'cada cuanto', 'cuantos bultos', 'que tan');
+    if (g && definir && !tiene(t, 'promedio')) return `<b>${g.t}</b><br>${g.d}`;
 
-    // 3) Tarifas / costos
-    const c = contratistaEn(t);
-    if (tiene(t, 'tarifa', 'cuanto cuesta', 'cuanto vale', 'precio', 'valor de')) { const r = buscarTarifas(t, c && c[0]); if (r) return r; }
-    if (tiene(t, 'costo', 'simulador', 'sobrecosto', 'ahorro') && typeof simSuertes === 'function') {
-      const L = simSuertes(), tot = sum(L, s => s.total), pp = sum(L, s => s.pptoTotal);
-      return `<b>Simulador · suertes en proceso</b>${lista([`Costo proyectado <b>${moneyM(tot)}</b> vs presupuesto ${moneyM(pp)} → ${pp - tot >= 0 ? 'ahorro' : 'sobrecosto'} <b>${moneyM(Math.abs(pp - tot))}</b>`,
-        ...L.map(s => `${esc(s.r.sue)} ${esc(s.r.hac)}: ${moneyM(s.total)} (${s.dif >= 0 ? 'ahorro' : 'sobrecosto'} ${money(Math.abs(s.dif))}/ha)`)])}`;
+    // 4) Protocolos de emergencia
+    if (tiene(t, 'protocolo', 'emergencia', 'que hacer si', 'que hago si', 'se rompe', 'ruptura', 'incendio', 'derrame', 'accidente', 'ola invernal', 'invierno', 'creciente', 'inund', 'libro de reaccion')) {
+      if (tiene(t, 'que protocolos', 'cuales protocolos', 'protocolos hay', 'lista de protocolos') || (tiene(t, 'protocolos') && !protocoloEn(t))) {
+        return `<b>Protocolos de emergencia</b>${lista(protocolos().map(p => `${esc(p.titulo)}${p.borrador ? ' <small>(borrador)</small>' : ''} <a href="#" class="iv-preg" data-q="protocolo ${esc(p.titulo)}">ver</a>`))}${ir('proto', 'Abrir protocolos')}`;
+      }
+      const p = protocoloEn(t); if (p) return protocoloTxt(p, t);
     }
-    // 4) Contratista
+    // 5) Personas y cargos
+    if (tiene(t, 'quien', 'jefe', 'coordinador', 'coordinadora', 'analista', 'tecnico', 'telefono', 'celular', 'contacto', 'numero de', 'especialista', 'practicante', 'maestro de obra', 'cargo')) {
+      const r = personasTxt(t); if (r) return r;
+      if (tiene(t, 'responsable', 'encargado', 'a cargo', 'quien')) { const r2 = procesosTxt(t); if (r2) return r2; }
+    }
+    if (tiene(t, 'responsable', 'encargado', 'a cargo de', 'procesos')) { const r = procesosTxt(t); if (r) return r; }
+    // 6) Proyectos ejecutados
+    const pj = proyectoEn(t);
+    if (tiene(t, 'proyecto', 'obra', 'ejecutad', 'ranchera', 'bombeo', 'drenaje entubado', 'estacion') || (pj && tiene(t, 'costo', 'costó', 'inversion', 'cuanto', 'estado'))) {
+      if (pj) return proyectoTxt(pj);
+      const L = typeof proyectos === 'function' ? proyectos() : [];
+      if (L.length) return `<b>Proyectos ejecutados</b> (${L.length} · ${moneyM(sum(L, p => +p.inversion || 0))})${lista(L.map(p => `${esc(p.nombre)} · ${esc(p.estado || '')} <a href="#" class="iv-preg" data-q="proyecto ${esc(p.nombre)}">ver</a>`))}${ir('proy', 'Abrir proyectos')}`;
+    }
+    // 7) Presupuesto 2026 (cruce) y 2027
+    if (tiene(t, '2027', 'renueva', 'renovar') && !tiene(t, '2026')) return ppto27(t);
+    if (tiene(t, 'presupuesto', 'ppto', 'atrasad', 'retrasad', 'fuera de presupuesto', 'cumplimiento') && !tiene(t, '2027')) return ppto26Txt(t);
+    // 8) Días de lucro
+    if (tiene(t, 'lucro', 'dias promedio') && !tiene(t, 'agronomia', 'real')) return lucroTxt(t);
+    // 9) Agronomía
+    if (tiene(t, 'agronomia', 'fecha de siembra real', 'lucro cesante real', 'lucro real') && typeof agroFilas === 'function') {
+      const A = agroFilas(), PL = typeof promedioLucro === 'function' ? promedioLucro(A) : null, PM = typeof promedioLucro === 'function' ? promedioLucro(A, 'mLucro') : null;
+      return `<b>Gestión Agronomía</b>${lista([`${A.length} suertes · ${ha(sum(A, x => x.a))}`, `${A.filter(x => x.fecha).length} con fecha de siembra real registrada`,
+        PM && PM.prom != null ? `Lucro cesante promedio (maestro): <b>${Math.round(PM.prom)} días</b>` : '', PL && PL.prom != null ? `Lucro cesante real: <b>${Math.round(PL.prom)} días</b>` : ''].filter(Boolean))}${ir('agro', 'Abrir agronomía')}`;
+    }
+    // 10) Costos, tarifas y simulador
+    const c = contratistaEn(t);
+    if (tiene(t, 'tarifa', 'cuanto cuesta', 'cuanto vale', 'precio', 'valor de')) {
+      if (tiene(t, 'hectarea', 'preparar', 'preparacion') && !c) {
+        const Pp = (DB.sim && DB.sim.ppto) || [], tot = sum(Pp, l => (+l.cant || 0) * (+l.costo || 0));
+        if (Pp.length) return `<b>Costo presupuestado de preparación por hectárea</b>${lista(Pp.map(l => `${esc(l.labor)}: ${l.cant} pases × ${money(l.costo)} = <b>${money(l.cant * l.costo)}</b>`))}Total: <b>${money(tot)}/ha</b>${ir('simulador', 'Abrir el simulador')}`;
+      }
+      const r = buscarTarifas(t, c && c[0]); if (r) return r;
+    }
+    if (tiene(t, 'costo', 'simulador', 'sobrecosto', 'ahorro', 'inversion') && typeof simSuertes === 'function') {
+      const L = simSuertes(), tot = sum(L, s => s.total), ppT = sum(L, s => s.pptoTotal);
+      return `<b>Simulador · suertes en proceso</b>${lista([`Costo proyectado <b>${moneyM(tot)}</b> vs presupuesto ${moneyM(ppT)} → ${ppT - tot >= 0 ? 'ahorro' : 'sobrecosto'} <b>${moneyM(Math.abs(ppT - tot))}</b>`,
+        ...L.map(s => `${esc(s.r.sue)} ${esc(s.r.hac)}: ${moneyM(s.total)} (${s.dif >= 0 ? 'ahorro' : 'sobrecosto'} ${money(Math.abs(s.dif))}/ha)`)])}${ir('simulador', 'Abrir el simulador')}`;
+    }
     if (c) {
       const P = DB.proceso.filter(r => r.cont === c[0]), R = DB.ruta.filter(r => r.cont === c[0]), T = tarifas().filter(x => x.contratista === c[0]);
       return `<b>${esc(c[0])}</b>${lista([P.length ? `En proceso: ${P.map(r => `${esc(r.sue)} ${esc(r.hac)} (${esc(cap(r.labor))})`).join(', ')}` : 'Sin suertes en proceso esta semana',
         R.length ? `En ruta de siembra: ${R.map(r => esc(r.s)).join(', ')}` : '', T.length ? `${T.length} tarifas en el simulador (pregunta "tarifas de ${esc(cap(c[0]))}")` : ''].filter(Boolean))}`;
     }
-    // 5) Labores en proceso
+    // 11) Labores, comparativo, ruta, arroz
+    if (tiene(t, 'semana pasada', 'semana anterior', 'comparacion', 'comparativo', 'que cambio', 'cambios')) return comparativoTxt();
     const labores = ['descepada', 'nivelacion', 'land plane', 'subsuelo', 'rastra', 'pulida', 'surcada', 'canterizador'];
     const lab = labores.find(l => t.includes(l));
-    if (lab && !definir && tiene(t, 'suertes', 'cuales', 'que', 'en ', 'cuantas', 'hay')) return porLaborTxt(lab);
-    if (tiene(t, 'labores', 'en proceso', 'proceso')) return porLaborTxt('');
-    // 6) Ruta de siembra
-    if (tiene(t, 'ruta', 'por sembrar', 'proximas a sembrar', 'siembra esta semana')) return DB.ruta.length
-      ? `<b>Ruta de siembra · ${esc(DB.meta.semana)}</b>${lista(DB.ruta.map(r => `${esc(r.s)} ${esc(r.h)} · ${ha(r.a)} · ${esc(r.variedad || '—')} · semillero ${esc(r.semillero || '—')} · ${esc(r.cont || '—')}`))}` : 'No hay suertes en ruta de siembra esta semana.';
-    // 7) Presupuesto 2027
-    if (tiene(t, '2027', 'renovacion', 'renueva', 'renovar')) return ppto27(t);
-    // 8) Personas y procesos
-    const pe = personas(t); if (pe) return pe;
-    // 9) Mayor lucro / prioridad
-    if (tiene(t, 'mas dias', 'mayor', 'prioridad', 'priorizar', 'mas atrasad', 'urgente')) {
-      const pen = DB.lotes.filter(l => l.e !== 'SEMBRADA').sort((a, b) => b.d - a.d);
-      return `<b>Pendientes con más días de lucro</b>${lista(pen.slice(0, 8).map(l => `${esc(l.s)} ${esc(l.h)} · <b>${l.d} días</b> · ${ha(l.a)}`))}`;
+    if (lab && !definir) return porLaborTxt(lab);
+    if (tiene(t, 'labores', 'en proceso', 'proceso', 'labor')) return porLaborTxt('');
+    if (tiene(t, 'ruta', 'por sembrar', 'proximas a sembrar', 'siembra esta semana', 'semillero', 'bandereo')) return DB.ruta.length
+      ? `<b>Ruta de siembra · ${esc(DB.meta.semana)}</b>${lista(DB.ruta.map(r => `${esc(r.s)} ${esc(r.h)} · ${ha(r.a)} · ${esc(r.variedad || '—')} · semillero ${esc(r.semillero || '—')}${r.cont ? ' · ' + esc(r.cont) : ''}`))}` : 'No hay suertes en ruta de siembra esta semana.';
+    if (tiene(t, 'arroz')) {
+      const A = DB.lotes.filter(l => l.c === 'ARROZ' && (!z || l.z === z));
+      return `<b>Suertes con arroz</b> (${A.length} · ${ha(sum(A, l => l.a))})${lista(A.map(l => `${esc(l.s)} ${esc(l.h)} · ${ha(l.a)} · ${l.e === 'SEMBRADA' ? 'sembrada' : 'pendiente'}`))}`;
     }
-    // 10) Zona / hacienda / totales
-    const z = t.match(/\bzona\s*([12])\b/);
-    if (hac) return resumenHacienda(hac);
-    if (z) return totales(+z[1]);
-    if (tiene(t, 'sembrad', 'avance', 'cuantas hectareas', 'total', 'pendiente', 'falta', 'presupuesto', 'ppto', 'cumplimiento', 'resumen', 'como vamos')) return totales(null);
-    if (tiene(t, 'agronomia', 'fecha de siembra') && typeof agroFilas === 'function') {
-      const A = agroFilas(); return `<b>Gestión Agronomía</b>${lista([`${A.length} suertes · ${ha(sum(A, x => x.a))}`, `${A.filter(x => x.fecha).length} con fecha de siembra registrada`])}`;
+    // 12) Rankings
+    if (tiene(t, 'mas area', 'mayor area', 'mas grande', 'mas hectareas')) { const L = DB.lotes.slice().sort((a, b) => b.a - a.a); return `<b>Suertes con más área</b>${lista(L.slice(0, 6).map(l => `${esc(l.s)} ${esc(l.h)} · <b>${ha(l.a)}</b> · ${l.e.toLowerCase()}`))}`; }
+    if (tiene(t, 'mas dias', 'mayor', 'prioridad', 'priorizar', 'mas atrasad', 'urgente', 'mas lucro')) {
+      const pen = DB.lotes.filter(l => l.e !== 'SEMBRADA').sort((a, b) => dl(b) - dl(a));
+      return `<b>Pendientes con más días de lucro</b>${lista(pen.slice(0, 8).map(l => `${esc(l.s)} ${esc(l.h)} · <b>${dl(l)} días</b> · ${ha(l.a)}`))}`;
     }
+    // 13) Hacienda / zona / resumen
+    if (hac) return resumenHacienda(hac, t);
+    if (z) return totales(z);
+    if (tiene(t, 'sembrad', 'avance', 'cuantas hectareas', 'total', 'pendiente', 'falta', 'resumen', 'como vamos', 'como va', 'semana', 'llevamos', 'indicador')) return totales(0);
+    // 14) Personas por nombre suelto ("luis acosta")
+    { const r = personasTxt(t); if (r) return r; }
     if (g) return `<b>${g.t}</b><br>${g.d}`;
-    return `No entendí bien 🤔. Puedo responder sobre suertes (por número y hacienda), haciendas, zonas, labores en proceso, ruta de siembra, costos y tarifas, presupuesto 2027 y el equipo. También explico conceptos de suelos, riego y drenaje, maquinaria, caña y obras civiles (concreto, vías, alcantarillas, muros…): pregunta "¿qué es…?".`;
+    // 15) Búsqueda en toda la plataforma
+    const b = buscarTodo(t); if (b) return b;
+    return `No encontré eso todavía 🤔. Puedo responder sobre: <b>suertes</b> (por número y hacienda), <b>haciendas y zonas</b>, <b>resumen de la semana</b>, <b>presupuesto 2026</b> (qué falta, atrasadas), <b>2027</b>, <b>días de lucro</b>, <b>labores</b> y <b>ruta</b>, <b>costos y tarifas</b>, <b>proyectos</b>, <b>protocolos de emergencia</b>, <b>personas y cargos</b>, y conceptos de ingeniería (pregunta "¿qué es…?").`;
   }
   return {responder, AYUDA, EJEMPLOS};
 })();
@@ -308,7 +503,7 @@ const IV = (() => {
 // ── Ventana del chat ──
 (function(){
   const btn = document.createElement('button');
-  btn.type = 'button'; btn.className = 'iv-fab'; btn.title = 'Inge Virtual: pregúntame sobre suertes, labores y obras';
+  btn.type = 'button'; btn.className = 'iv-fab'; btn.title = 'Inge Virtual: pregúntame sobre la plataforma de Ingeniería Agrícola';
   btn.innerHTML = '<span>👷</span><b>Inge Virtual</b>';
   const win = document.createElement('div');
   win.className = 'iv-win'; win.hidden = true;
@@ -317,7 +512,7 @@ const IV = (() => {
     <form class="iv-f" id="iv-f"><input id="iv-in" type="text" autocomplete="off" placeholder="Escribe tu pregunta…"><button type="submit">➤</button></form>`;
   document.body.append(btn, win);
   const msgs = win.querySelector('#iv-msgs'), inp = win.querySelector('#iv-in');
-  const poner = (html, quien) => { const d = document.createElement('div'); d.className = 'iv-m ' + quien; d.innerHTML = html; msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; };
+  const poner = (html, quien) => { const d = document.createElement('div'); d.className = 'iv-m ' + quien; d.innerHTML = html; msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return d; };
   const chips = () => `<div class="iv-chips">${IV.EJEMPLOS.map(e => `<button type="button" class="iv-preg" data-q="${esc(e)}">${esc(e)}</button>`).join('')}</div>`;
   let iniciado = false;
   function abrir(si){
@@ -328,8 +523,9 @@ const IV = (() => {
   function preguntar(txt){
     if (!txt.trim()) return;
     poner(esc(txt), 'yo');
+    const espera = poner('<span class="iv-escribe"><i></i><i></i><i></i></span>', 'bot');
     let r; try { r = IV.responder(txt); } catch (e) { console.error(e); r = 'Tuve un problema leyendo los datos 😕. Intenta de otra forma.'; }
-    setTimeout(() => poner(r, 'bot'), 180);
+    setTimeout(() => { espera.innerHTML = r; msgs.scrollTop = msgs.scrollHeight; }, 250);
   }
   btn.addEventListener('click', () => abrir(win.hidden));
   win.querySelector('.iv-x').addEventListener('click', () => abrir(false));
@@ -338,11 +534,14 @@ const IV = (() => {
   msgs.addEventListener('click', e => {
     const p = e.target.closest('.iv-preg'); if (p) { e.preventDefault(); preguntar(p.dataset.q); return; }
     const b = e.target.closest('.iv-ir'); if (!b) return;
-    const {ivSue:sue, ivHac:hac} = b.dataset;
-    if (window.innerWidth < 760) abrir(false);
+    const d = b.dataset, chico = window.innerWidth < 760;
+    if (d.ivMod) { if (chico) abrir(false); irA(d.ivMod); return; }
+    if (d.ivProy) { const x = proyectos().find(y => y.id === d.ivProy); if (x) abrirPresentacion(x); return; }
+    if (d.ivPr) { const x = protocolos().find(y => y.id === d.ivPr); if (x) abrirPresentacion(x, prDiapositivas(x), '🚨 ' + x.titulo); return; }
+    if (chico) abrir(false);
     irA('aps');
-    F.hac = hac; q('sel-hac').value = hac; q('sel-hac').className = 'fsel on'; estadoTabla = 'all'; render();
-    const row = sue && [...q('lotes-tbody').querySelectorAll('tr')].find(r => r.dataset.sue === sue);
+    F.hac = d.ivHac; q('sel-hac').value = d.ivHac; q('sel-hac').className = 'fsel on'; estadoTabla = 'all'; render();
+    const row = d.ivSue && [...q('lotes-tbody').querySelectorAll('tr')].find(r => r.dataset.sue === d.ivSue);
     if (row) { row.scrollIntoView({behavior:'smooth', block:'center'}); row.style.background = '#fff3cd'; setTimeout(() => row.style.background = '', 1800); }
   });
 })();

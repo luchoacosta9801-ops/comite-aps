@@ -994,3 +994,6 @@ body.pz-abierta{overflow:hidden}
   .pd-t tfoot{display:none}
 }
 .kpi-det{float:right;margin-top:-2px;padding:2px 8px;font-size:9px;text-transform:none;letter-spacing:0}
+.iv-ol{margin:6px 0 4px 18px;padding:0}.iv-ol li{margin:3px 0}
+.iv-escribe{display:inline-flex;gap:4px}.iv-escribe i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:ivPunto 1s infinite}.iv-escribe i:nth-child(2){animation-delay:.15s}.iv-escribe i:nth-child(3){animation-delay:.3s}
+@keyframes ivPunto{0%,80%,100%{opacity:.3}40%{opacity:1}}
