@@ -6,7 +6,7 @@ const STORE_KEY = 'comite-aps:v1';
 // abriendo una vez ?editor=<clave> (la clave está en _privado/clave-editor.txt; aquí solo su hash).
 // Es una comodidad, no seguridad: publicar exige servidor.ps1 en su PC y su acceso a GitHub.
 const EDITOR_KEY = 'comite-aps:editor';
-const EDITOR_HASH = 'af8b68f4115e09b71a8f924bf6eceee2db4329a3e3eab3638d2000068a65344d';
+const EDITOR_HASH = '0d61b39d450f6f876d221f11fd3aa5e782f0abfda293e1180f0354750a13437f';
 const ES_LOCAL = location.protocol === 'file:' || ['localhost','127.0.0.1'].includes(location.hostname);
 function editorActivado(){ try { return localStorage.getItem(EDITOR_KEY) === EDITOR_HASH; } catch (e) { return false; } }
 const MODO_EDICION = ES_LOCAL || editorActivado();
