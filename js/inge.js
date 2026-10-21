@@ -149,7 +149,7 @@ const IV = (() => {
     const z = (L[0] && L[0].z) || (P && P.z) || (Q && Q.z) || zonaDe(h);
     const dias = (P && P.dias) || (L.find(l => l.e !== 'SEMBRADA') || L[0] || {}).d || (R && R.d);
     const filas = [];
-    L.forEach(l => filas.push(`<b>${l.e === 'SEMBRADA' ? '✅ Sembrada' : '⏳ Pendiente de siembra'}</b> · ${esc(cap(l.c))} · ${l.d} días de lucro · variedad ${esc(l.v || '—')}${l.p === 'NO' ? ' · <i>fuera del presupuesto</i>' : ''}`));
+    L.forEach(l => filas.push(`<b>${l.e === 'SEMBRADA' ? '✅ Sembrada' : '⏳ Pendiente de siembra'}</b> · ${esc(cap(l.c))} · ${l.d} días de lucro · variedad ${esc(l.v || '—')}${pp(l) === 'NO' ? ' · <i>fuera del presupuesto</i>' : ''}`));
     if (P) filas.push(`🚜 En proceso: labor <b>${esc(cap(P.labor))}</b> · contratista ${esc(P.cont || '—')}${P.obs ? ` · "${esc(P.obs)}"` : ''}`);
     if (Pa && P && norm(Pa.labor) !== norm(P.labor)) filas.push(`↩️ La semana anterior (${esc(DB.procesoAnterior.semana)}) estaba en ${esc(cap(Pa.labor))}`);
     if (R) filas.push(`🌱 En ruta de siembra · variedad ${esc(R.variedad || '—')} · semillero ${esc(R.semillero || '—')}${R.bandereo ? ` · bandereo ${R.bandereo} m` : ''} · ${esc(R.cont || '—')}`);
