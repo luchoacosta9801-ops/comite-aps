@@ -499,7 +499,7 @@ function agroFilas(){
     const g = guard[x.k] || {}, partes = String(x.s).split('-');
     return Object.assign(x, {sector:partes.length > 1 ? partes[0] : '', ste:partes.length > 1 ? partes.slice(1).join('-') : x.s,
       fecha:g.fecha || '', corte:g.corte || '', variedad:g.variedad !== undefined ? g.variedad : x.vBase, obs:g.obs || '',
-      lucro:diasEntre(g.corte, g.fecha), mCorte:g.mCorte || '', mFecha:g.mFecha || '', mLucro:diasEntre(g.mCorte, g.mFecha)});
+      lucro:diasEntre(g.corte, g.fecha), mCorte:g.mCorte || '', mFecha:g.mFecha || '', mLucro:diasEntre(g.mCorte, g.mFecha), mArea:+g.mArea || 0});
   }).sort((a, b) => a.h.localeCompare(b.h) || a.s.localeCompare(b.s));
 }
 function fechaLarga(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[3]} ${MESES[+m[2] - 1]} ${m[1]}` : ''; }
@@ -548,9 +548,9 @@ function renderAgronomia(){
     </div>
     <div class="sim-card abierta"><div class="sim-tw"><table class="sim-t ag-t">
       <thead><tr><th rowspan="2">Sector</th><th rowspan="2">Suerte</th><th rowspan="2">Hacienda</th><th rowspan="2" class="n">Área (ha)</th><th rowspan="2">Cultivo</th><th rowspan="2">Estado</th>
-        <th colspan="3" class="ag-grp ag-grp-real">Real</th><th colspan="3" class="ag-grp ag-grp-mae">Maestro</th><th rowspan="2">Variedad</th><th rowspan="2">Observación</th>${ed ? '<th rowspan="2"></th>' : ''}</tr>
+        <th colspan="3" class="ag-grp ag-grp-real">Real</th><th colspan="4" class="ag-grp ag-grp-mae">Maestro</th><th rowspan="2">Variedad</th><th rowspan="2">Observación</th>${ed ? '<th rowspan="2"></th>' : ''}</tr>
         <tr><th class="ag-sub-real">Fecha de corte</th><th class="ag-sub-real">Fecha de siembra</th><th class="n ag-sub-real" title="Días entre la fecha de corte y la fecha de siembra">Días lucro cesante</th>
-        <th class="ag-sub-mae">Fecha de corte</th><th class="ag-sub-mae">Fecha de siembra</th><th class="n ag-sub-mae" title="Según las fechas del maestro">Días lucro cesante</th></tr></thead>
+        <th class="ag-sub-mae">Fecha de corte</th><th class="ag-sub-mae">Fecha de siembra</th><th class="n ag-sub-mae" title="Según las fechas del maestro">Días lucro cesante</th><th class="n ag-sub-mae" title="Área neta del maestro">Área (ha)</th></tr></thead>
       <tbody>${A.length ? A.map(x => `<tr data-k="${esc(x.k)}">
         <td class="ag-sec" style="font-family:var(--mono)">${esc(x.sector) || '—'}</td><td class="lab ag-ste" style="font-family:var(--mono)">${esc(x.ste)}</td>
         <td class="ag-hac">${esc(x.h)} <span class="meta">Z${x.z}</span></td><td class="n b ag-a">${f2(x.a)}<span class="ag-u"> ha</span></td>
@@ -558,10 +558,11 @@ function renderAgronomia(){
         <td class="ag-co" data-l="Fecha de corte">${celda(x, 'corte', 'date', '')}</td><td class="ag-f" data-l="Fecha de siembra">${celda(x, 'fecha', 'date', '')}</td>
         ${celLucro(x.lucro, 'ag-l', 'Días lucro (real)')}
         <td class="ag-mco ag-mae" data-l="Corte (maestro)">${celda(x, 'mCorte', 'date', '')}</td><td class="ag-mf ag-mae" data-l="Siembra (maestro)">${celda(x, 'mFecha', 'date', '')}</td>
-        ${celLucro(x.mLucro, 'ag-ml ag-mae', 'Días lucro (maestro)')}<td class="ag-v" data-l="Variedad">${celda(x, 'variedad', 'text', 'Variedad')}</td><td class="ag-o" data-l="Observación" style="min-width:200px">${celda(x, 'obs', 'text', 'Observación')}</td>
+        ${celLucro(x.mLucro, 'ag-ml ag-mae', 'Días lucro (maestro)')}
+        <td class="n ag-ma ag-mae" data-l="Área maestro">${x.mArea ? `<span ${Math.abs(x.mArea - x.a) > 0.1 ? `style="color:var(--amber);font-weight:800" title="Distinta al comité (${f2(x.a)} ha)"` : ''}>${f2(x.mArea)}</span>` : '<span class="meta">—</span>'}</td><td class="ag-v" data-l="Variedad">${celda(x, 'variedad', 'text', 'Variedad')}</td><td class="ag-o" data-l="Observación" style="min-width:200px">${celda(x, 'obs', 'text', 'Observación')}</td>
         ${ed ? `<td class="ag-x">${x.origen === 'Guardada' ? '<button type="button" class="x" data-ag-borrar title="Quitar de la lista">×</button>' : ''}</td>` : ''}</tr>`).join('')
-        : `<tr><td colspan="${ed ? 15 : 14}" class="nores">${hayFiltro ? 'Ninguna suerte con esos filtros.' : 'No hay suertes cerradas en el último comité.'}</td></tr>`}</tbody>
-      ${A.length ? `<tfoot><tr><td colspan="3">Total</td><td class="n b">${f2(sum(A, x => x.a))}</td><td colspan="4"></td><td class="n b" title="Promedio simple real">${PL.prom != null ? 'Prom. ' + Math.round(PL.prom) : ''}</td><td colspan="2"></td><td class="n b" title="Promedio simple maestro">${PM.prom != null ? 'Prom. ' + Math.round(PM.prom) : ''}</td><td colspan="${ed ? 3 : 2}"></td></tr></tfoot>` : ''}
+        : `<tr><td colspan="${ed ? 16 : 15}" class="nores">${hayFiltro ? 'Ninguna suerte con esos filtros.' : 'No hay suertes cerradas en el último comité.'}</td></tr>`}</tbody>
+      ${A.length ? `<tfoot><tr><td colspan="3">Total</td><td class="n b">${f2(sum(A, x => x.a))}</td><td colspan="4"></td><td class="n b" title="Promedio simple real">${PL.prom != null ? 'Prom. ' + Math.round(PL.prom) : ''}</td><td colspan="2"></td><td class="n b" title="Promedio simple maestro">${PM.prom != null ? 'Prom. ' + Math.round(PM.prom) : ''}</td><td class="n b" title="Área neta del maestro">${sum(A, x => x.mArea) ? f2(sum(A, x => x.mArea)) : ''}</td><td colspan="${ed ? 3 : 2}"></td></tr></tfoot>` : ''}
     </table></div></div>
     <div class="meta" style="margin-top:8px">Si una suerte deja de aparecer en el comité, su fila se conserva aquí (estado «Guardada») cuando tiene datos escritos.</div>`;
 }
@@ -623,17 +624,23 @@ function cargarMaestro(buf, nombre){
       const m = L[0]; if (!m) { faltan.push(x.s); return null; }
       ok++; return {x, m};
     }).filter(Boolean);
-    if (!confirm(`Maestro «${nombre}»: encontré ${ok} de ${A.length} suertes${faltan.length ? ` (no están: ${faltan.join(', ')})` : ''}${varias ? `; ${varias} aparecen más de una vez` : ''}.\n\n¿Llenar el bloque Maestro (fecha de corte y de siembra) y la fecha de corte Real donde esté vacía?`)) return;
+    // Qué cambia frente a lo que ya había (para avisar antes de aplicar)
+    const nC = cambios.filter(({x, m}) => x.mCorte && m.corte && x.mCorte !== m.corte).length;
+    const nS = cambios.filter(({x, m}) => x.mFecha && m.siembra && x.mFecha !== m.siembra).length;
+    const nA = cambios.filter(({x, m}) => m.area && Math.abs(m.area - (x.mArea || x.a)) > 0.1).length;
+    if (!confirm(`Maestro «${nombre}»: encontré ${ok} de ${A.length} suertes${faltan.length ? ` (no están: ${faltan.join(', ')})` : ''}${varias ? `; ${varias} aparecen más de una vez` : ''}.\n\nCambios frente a lo cargado: ${nC} fechas de corte, ${nS} fechas de siembra, ${nA} áreas.\n\n¿Actualizar el bloque Maestro (corte, siembra y área) y la fecha de corte Real (solo donde estaba vacía o igual al maestro anterior)?`)) return;
     modCambio(() => {
       DB.agronomia = DB.agronomia || {filas:{}};
       DB.agronomia.maestro = nombre;
       cambios.forEach(({x, m}) => {
         const g = DB.agronomia.filas[x.k] = Object.assign({s:x.s, h:x.h, c:x.c, a:x.a, z:x.z}, DB.agronomia.filas[x.k]);
+        // El corte real sigue al maestro salvo que se haya corregido a mano
+        if (!g.corte || g.corte === g.mCorte) g.corte = m.corte;
         g.mCorte = m.corte; g.mFecha = m.siembra;
-        if (!g.corte) g.corte = m.corte;
+        if (m.area) g.mArea = +(+m.area).toFixed(2);
       });
     });
-    toast(`✓ Maestro cargado en ${ok} suertes · recuerda 🚀 Publicar`);
+    toast(`✓ Maestro cargado en ${ok} suertes · ${nC + nS + nA} cambios · recuerda 🚀 Publicar`);
   });
 }
 

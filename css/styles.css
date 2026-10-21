@@ -574,12 +574,14 @@ body[data-vista="portal"] #btn-inicio{display:none}
   #agronomia .ag-t .ag-mco,#agronomia .ag-t .ag-mf,#agronomia .ag-t .ag-ml{display:flex;flex-direction:column;gap:2px;margin-top:6px}
   #agronomia .ag-t .ag-mco::before,#agronomia .ag-t .ag-mf::before,#agronomia .ag-t .ag-ml::before{content:attr(data-l);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--violet)}
   #agronomia .ag-t td.ag-mae{background:transparent}
-  #agronomia .ag-t .ag-v{grid-column:1/-1;grid-row:6}
-  #agronomia .ag-t .ag-o{grid-column:1/-1;grid-row:7}
+  #agronomia .ag-t .ag-ma{grid-column:1/-1;grid-row:6;text-align:left;margin-top:4px}
+  #agronomia .ag-t .ag-ma::before{content:"Área maestro: ";font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--violet)}
+  #agronomia .ag-t .ag-v{grid-column:1/-1;grid-row:7}
+  #agronomia .ag-t .ag-o{grid-column:1/-1;grid-row:8}
   #agronomia .ag-t .ag-f::before,#agronomia .ag-t .ag-v::before,#agronomia .ag-t .ag-o::before,#agronomia .ag-t .ag-co::before,#agronomia .ag-t .ag-l::before{content:attr(data-l);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
   #agronomia .ag-t input[type=date],#agronomia .ag-t input[type=text]{width:100%!important;max-width:none;font-size:14px;padding:7px 9px;min-width:0;box-sizing:border-box}
   #agronomia .ag-t .ag-x:empty{display:none}
-  #agronomia .ag-t .ag-x{grid-column:1/-1;grid-row:8;text-align:right}
+  #agronomia .ag-t .ag-x{grid-column:1/-1;grid-row:9;text-align:right}
   #agronomia .ag-t tfoot{display:block}
   #agronomia .ag-t tfoot tr{display:flex;justify-content:space-between;padding:8px 12px;font-weight:800}
   #agronomia .ag-t tfoot td{border:0;padding:0}
