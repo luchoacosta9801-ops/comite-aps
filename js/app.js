@@ -22,12 +22,22 @@ function filtered(){
     if(F.cult!=='all'&&l.c!==F.cult)return false;
     if(F.est!=='all'&&l.e!==F.est)return false;
     if(F.ppto!=='all'&&l.p!==F.ppto)return false;
-    if(F.dias==='critico'&&l.d>=100)return false;
-    if(F.dias==='alerta'&&(l.d<100||l.d>=200))return false;
-    if(F.dias==='normal'&&l.d<200)return false;
+    const d=dl(l);
+    if(F.dias==='critico'&&d>=100)return false;
+    if(F.dias==='alerta'&&(d<100||d>=200))return false;
+    if(F.dias==='normal'&&d<200)return false;
     return true;
   });
 }
+// Días de lucro según el maestro de suertes (DB.maestro.lotes "HACIENDA|suerte" → [corte, siembra]):
+// sembradas = siembra − corte; pendientes = hoy − corte. Sin dato válido en el maestro queda el del comité.
+function dlMaestro(l){
+  const m=((DB.maestro&&DB.maestro.lotes)||{})[l.h+'|'+l.s];if(!m)return null;
+  const c=Date.parse(m[0]);if(isNaN(c))return null;
+  if(l.e==='SEMBRADA'){const s=Date.parse(m[1]);return !isNaN(s)&&s>=c?Math.round((s-c)/864e5):null;}
+  return Math.max(0,Math.floor((Date.now()-c)/864e5));
+}
+function dl(l){const v=dlMaestro(l);return v==null?l.d:v;}
 function avC(v){return v>=.85?'var(--green)':v>=.6?'var(--amber)':'var(--red)'}
 function cCls(v){return v>=.85?'cg':v>=.6?'ca':'cr'}
 function avChip(v){return`<span class="chip ${cCls(v)}">${(v*100).toFixed(0)}%</span>`}
@@ -95,7 +105,7 @@ function render(){
   const sembL=data.filter(l=>l.e==='SEMBRADA'),pendL=data.filter(l=>l.e!=='SEMBRADA');
   const tot=sum(data,l=>l.a),semb=sum(sembL,l=>l.a);
   const pend=tot-semb,av=tot>0?semb/tot:0,aC=avC(av);
-  const dias=data.length?Math.round(sum(data,l=>l.d)/data.length):0;
+  const dias=data.length?Math.round(sum(data,dl)/data.length):0;
   const psiL=data.filter(l=>l.p==='SI'),pnoL=data.filter(l=>l.p==='NO');
   const psi=sum(psiL,l=>l.a),pno=sum(pnoL,l=>l.a);
 
@@ -107,9 +117,8 @@ function render(){
   q('k-av').textContent=(avPpto*100).toFixed(1)+'%';q('k-av').style.color=avPptoC;
   q('k-av-s').textContent=`${f2(semb)} / ${f2(PPTO_TOTAL)} ha ppto`;
   q('k-dias').textContent=dias;
-  // Lucro según el maestro de suertes (corte → siembra) de las sembradas filtradas, cargado en Agronomía
-  const fil=(DB.agronomia&&DB.agronomia.filas)||{},dm=sembL.map(l=>{const g=fil[`${l.h}|${l.s}|${l.c}`]||{},a=Date.parse(g.mCorte||''),b=Date.parse(g.mFecha||'');return isNaN(a)||isNaN(b)?null:Math.round((b-a)/864e5);}).filter(v=>v!=null&&v>=0);
-  q('k-dias-s').innerHTML=dm.length?`comité · <b style="color:var(--violet)">${Math.round(sum(dm)/dm.length)} días</b> según maestro (${dm.length} sembradas)`:'promedio filtrado';
+  const nM=data.filter(l=>dlMaestro(l)!=null).length,dCom=data.length?Math.round(sum(data,l=>l.d)/data.length):0;
+  q('k-dias-s').innerHTML=nM?`según maestro${DB.maestro&&DB.maestro.fecha?` <span title="${esc(DB.maestro.nombre)}">(${esc(DB.maestro.fecha)})</span>`:''} · ${nM} de ${data.length} suertes · comité: ${dCom}`:'promedio filtrado (comité)';
   // Caña/Arroz: solo área sembrada
   const canaS=sum(sembL.filter(l=>l.c==='CAÑA'),l=>l.a),arrozS=sum(sembL.filter(l=>l.c==='ARROZ'),l=>l.a);
   q('k-cult').innerHTML=`${canaS.toFixed(0)} <span style="color:var(--cyan)">/${arrozS.toFixed(0)}</span>`;
@@ -167,7 +176,7 @@ function render(){
   q('nores').hidden=lotesTabla.length>0;
   q('lotes-tbody').innerHTML=lotesTabla.map(l=>{
     const zC=l.z===1?'var(--green)':'var(--amber)',cC=l.c==='CAÑA'?'var(--green)':'var(--cyan)';
-    return`<tr data-sue="${esc(l.s)}"><td style="font-family:var(--mono);font-size:10px;color:var(--cyan)">${esc(l.s)}</td><td style="text-align:left;color:var(--dim)">${esc(l.h)}</td><td style="color:${zC};font-weight:700">${l.z}</td><td>${f2(l.a)}</td><td style="color:${cC}">${l.c}</td><td style="color:${dc(l.d)};font-weight:600;font-family:var(--mono)">${l.d}</td><td><span class="chip ${l.e==='SEMBRADA'?'cg':'ca'}" style="font-size:8.5px">${l.e}</span></td><td><span class="chip ${l.p==='SI'?'cg':'cr'}" style="font-size:8.5px">${l.p}</span></td></tr>`;
+    return`<tr data-sue="${esc(l.s)}"><td style="font-family:var(--mono);font-size:10px;color:var(--cyan)">${esc(l.s)}</td><td style="text-align:left;color:var(--dim)">${esc(l.h)}</td><td style="color:${zC};font-weight:700">${l.z}</td><td>${f2(l.a)}</td><td style="color:${cC}">${l.c}</td>${(()=>{const m=dlMaestro(l),d=m==null?l.d:m;return`<td style="color:${dc(d)};font-weight:600;font-family:var(--mono)" title="${m==null?'Dato del comité (el maestro no trae fechas válidas)':`Maestro: ${l.e==='SEMBRADA'?'corte → siembra':'corte → hoy'} · comité: ${l.d}`}">${d}${m==null?'<sup style="color:var(--muted)">c</sup>':''}</td>`;})()}<td><span class="chip ${l.e==='SEMBRADA'?'cg':'ca'}" style="font-size:8.5px">${l.e}</span></td><td><span class="chip ${l.p==='SI'?'cg':'cr'}" style="font-size:8.5px">${l.p}</span></td></tr>`;
   }).join('');
   q('lotes-tag').textContent=`${lotesTabla.length} lotes`;
 
@@ -178,7 +187,7 @@ function render(){
   q('psi-ha').textContent=f2(psi);q('pno-ha').textContent=f2(pno);
   q('psi-l').textContent=`ha · ${psiL.length} lotes`;q('pno-l').textContent=`ha · ${pnoL.length} lotes`;
   q('dias-avg').textContent=dias+' días';
-  const crit=data.filter(l=>l.d<100).length,alt=data.filter(l=>l.d>=100&&l.d<200).length,norm=data.filter(l=>l.d>=200).length,td2=data.length||1;
+  const crit=data.filter(l=>dl(l)<100).length,alt=data.filter(l=>dl(l)>=100&&dl(l)<200).length,norm=data.filter(l=>dl(l)>=200).length,td2=data.length||1;
   q('dias-dist').innerHTML=[['Crítico <100',crit,'var(--red)'],['Alerta 100–200',alt,'var(--amber)'],['Normal >200',norm,'var(--green)']].map(([l,n,c])=>`<div style="display:flex;align-items:center;gap:9px"><div style="width:92px;font-size:9.5px;color:${c}">${l}</div><div style="flex:1"><div class="bt"><div class="bf" style="width:${(n/td2*100)}%;background:${c}"></div></div></div><div style="font-size:9.5px;font-family:var(--mono);color:${c};width:46px;text-align:right">${n} L</div></div>`).join('');
 
   if(q('acc-body').classList.contains('open'))buildLaborPanels();

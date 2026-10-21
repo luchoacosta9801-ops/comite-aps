@@ -47,7 +47,7 @@ function exportarExcel(){
       ['% sembrado del área APS', tot > 0 ? r2(s / tot * 100) : 0],
       ['Presupuesto total (ha)', r2(pptoTotal)],
       ['% vs presupuesto', pptoTotal > 0 ? r2(s / pptoTotal * 100) : 0],
-      ['Días lucro promedio', data.length ? Math.round(sum(data, l => l.d) / data.length) : 0],
+      ['Días lucro promedio (maestro)', data.length ? Math.round(sum(data, dl) / data.length) : 0],
       ['Caña sembrada (ha)', r2(sum(semb.filter(l => l.c === 'CAÑA'), l => l.a))],
       ['Arroz sembrado (ha)', r2(sum(semb.filter(l => l.c === 'ARROZ'), l => l.a))],
       ['En presupuesto (ha)', r2(sum(data.filter(l => l.p === 'SI'), l => l.a))],
@@ -69,7 +69,7 @@ function exportarExcel(){
     // LOTES
     XLSX.utils.book_append_sheet(wb, hoja(XLSX,
       [['SUERTE', 'HACIENDA', 'ZONA', 'ÁREA APS (ha)', 'CULTIVO', 'DÍAS LUCRO', 'ESTADO', 'PPTO 2026', 'VARIEDAD'],
-       ...data.map(l => [l.s, l.h, l.z, r2(l.a), l.c, l.d, l.e, l.p, l.v])],
+       ...data.map(l => [l.s, l.h, l.z, r2(l.a), l.c, dl(l), l.e, l.p, l.v])],
       [11, 14, 6, 13, 9, 11, 11, 10, 13]), 'LOTES');
 
     // RUTA DE SIEMBRA

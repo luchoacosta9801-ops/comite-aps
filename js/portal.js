@@ -640,6 +640,7 @@ function cargarMaestro(buf, nombre){
         if (m.area) g.mArea = +(+m.area).toFixed(2);
       });
     });
+    if (typeof syncMaestroLotes === 'function') syncMaestroLotes();   // días de lucro del dashboard
     toast(`✓ Maestro cargado en ${ok} suertes · ${nC + nS + nA} cambios · recuerda 🚀 Publicar`);
   });
 }

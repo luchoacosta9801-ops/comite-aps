@@ -90,7 +90,9 @@ const SEED = {
   // Protocolos de emergencia (libros de reacción)
   protocolos: ${J(d.protocolos)},` : ''}${d.proyectos ? `
   // Proyectos ejecutados del área
-  proyectos: ${J(d.proyectos)},` : ''}${d.portada ? `
+  proyectos: ${J(d.proyectos)},` : ''}${d.maestro ? `
+  // Maestro de suertes: fechas de corte y siembra de las suertes del comité (días de lucro)
+  maestro: ${J(d.maestro)},` : ''}${d.portada ? `
   // Imagen de la portada del portal (foto del equipo o del área)
   portada: ${J(d.portada)},` : ''}
   costos: ${lista(d.costos)},

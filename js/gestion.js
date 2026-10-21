@@ -80,9 +80,21 @@ function buscarMaestro(cod,hac){
 function cargarMaestroArchivo(file,despues){
   return cargarXLSX().then(XLSX=>file.arrayBuffer().then(buf=>{
     const M=leerMaestro(XLSX,buf);guardarMaestroLocal(M,file.name);
-    toast(`✓ Maestro listo: ${M.size} suertes`);if(despues)despues();
+    toast(`✓ Maestro listo: ${M.size} suertes`);syncMaestroLotes();if(despues)despues();
   })).catch(err=>toast('⚠ '+err.message));
 }
+// Copia en DB.maestro (se publica) solo las fechas de corte y siembra de las suertes del comité,
+// para que el dashboard calcule los días de lucro con el maestro. Se rehace sola si cambian.
+function syncMaestroLotes(){
+  const M=maestroLocal();if(!MODO_EDICION||!M)return false;
+  const lotes={};DB.lotes.forEach(l=>{const m=buscarMaestro(l.s,l.h);if(m&&(m.corte||m.siembra))lotes[l.h+'|'+l.s]=[m.corte||'',m.siembra||''];});
+  const f=/(\d{1,2})\s*(?:de\s*)?([a-záéíóú]+|\d{1,2})\s*(?:de\s*)?(\d{4})/i.exec(M.nombre||'');
+  const nuevo={nombre:M.nombre,fecha:f?`${f[1]} ${f[2]} ${f[3]}`:(M.fecha||'').slice(0,10),lotes};
+  if(JSON.stringify(nuevo)===JSON.stringify(DB.maestro||null))return false;
+  DB.maestro=nuevo;save();renderAll();return true;
+}
+// Al abrir en modo editor con el servidor del PC, se trae el maestro más reciente y se actualizan los días
+if(MODO_EDICION)setTimeout(()=>maestroDesdeServidor().then(ok=>{if((ok||maestroLocal())&&syncMaestroLotes())toast('📚 Días de lucro actualizados con el maestro · recuerda 🚀 Publicar');}),1500);
 // Con el servidor del PC abierto, trae solo el maestro más reciente de Documents\COMITE APS\MAESTRO
 // (una vez por sesión; si es el mismo archivo que ya se tenía, no lo vuelve a leer)
 let maestroPromesa=null;
@@ -183,7 +195,7 @@ function saveLote(){
     DB.lotes.push({s:sue,h:hac,z:zona,a:+area.toFixed(2),c:g('f-cult'),d:dias,e:est,p:g('f-ppto'),v:g('f-var')});
     if(labor)DB.proceso.push({hac,z:zona,sue,area:+area.toFixed(2),dias,cont:g('f-cont')||'—',labor,obs:g('f-obs')||null,variedad:null});
   });
-  closeModal();toast(`✓ Suerte ${sue} agregada`);
+  syncMaestroLotes();closeModal();toast(`✓ Suerte ${sue} agregada`);
 }
 
 // ── Editar suertes ──
@@ -439,7 +451,7 @@ function procesarExcel(file){
 function confirmarImport(){
   const o={};['lotes','ruta','proceso','costos'].forEach(t=>o[t]=q('chk-'+t)?.checked);
   o.fecha=q('imp-fecha').value.trim();o.semana=q('imp-sem').value.trim();
-  aplicarImport(o);renderAll();closeModal();toast('✓ Datos importados');
+  aplicarImport(o);syncMaestroLotes();renderAll();closeModal();toast('✓ Datos importados');
 }
 
 // ── Respaldo ──
