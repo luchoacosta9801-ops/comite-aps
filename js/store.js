@@ -41,10 +41,36 @@ function loadDB(){
       const iso = c => /^\d{4}-\d{2}-\d{2}T/.test(String(c || ''));
       const c0 = d && d.meta && d.meta.corte, c1 = SEED.meta.corte;
       const vigente = c0 === c1 || (iso(c0) && iso(c1) && c0 > c1);
-      if (d && Array.isArray(d.lotes) && vigente) { DB = Object.assign(clone(SEED), d); return; }
+      if (d && Array.isArray(d.lotes) && vigente) {
+        DB = Object.assign(clone(SEED), d);
+        try { if (!localStorage.getItem(BASE_KEY)) guardarBase(SEED); } catch (e) {}
+        return;
+      }
+      // Llegó una versión publicada más nueva: los módulos del portal que se editaron aquí y no se
+      // publicaron (distintos a como estaban al cargarlos) se conservan; el resto se toma de lo publicado.
+      if (d && Array.isArray(d.lotes)) {
+        DB = clone(SEED);
+        let base = {}; try { base = JSON.parse(localStorage.getItem(BASE_KEY) || '{}'); } catch (e) {}
+        const conservados = MODULOS_LOCALES.filter(k => d[k] !== undefined && base[k] !== undefined && JSON.stringify(d[k]) !== base[k] && JSON.stringify(d[k]) !== JSON.stringify(SEED[k]));
+        conservados.forEach(k => { DB[k] = d[k]; });
+        try { localStorage.setItem(STORE_KEY + ':descartado', raw); } catch (e) {}   // copia de seguridad de lo anterior
+        guardarBase(SEED);
+        if (conservados.length) setTimeout(() => toast(`⚠ Se conservaron tus cambios sin publicar en: ${conservados.join(', ')} · recuerda 🚀 Publicar`), 1500);
+        return;
+      }
     }
   } catch (e) { console.warn('No se pudo leer el guardado local', e); }
   DB = clone(SEED);
+  guardarBase(SEED);
+}
+// Módulos del portal que solo se editan a mano (no los trae el Excel semanal) y su copia "tal como se
+// cargó", para saber qué se cambió aquí sin publicar
+const MODULOS_LOCALES = ['estructura', 'protocolos', 'proyectos', 'portada', 'agronomia', 'sim', 'ppto2027'];
+const BASE_KEY = 'comite-aps:base';
+function guardarBase(d){
+  if (!MODO_EDICION) return;
+  const b = {}; MODULOS_LOCALES.forEach(k => { b[k] = JSON.stringify(d[k] === undefined ? null : d[k]); });
+  try { localStorage.setItem(BASE_KEY, JSON.stringify(b)); } catch (e) {}
 }
 
 function save(){
@@ -114,7 +140,7 @@ function publicarDatos(mensaje, publicar = true){
     .then(res => {
       if (!res.ok) throw new Error(res.error || res.salida || 'No se pudo publicar');
       DB.meta.corte = d.meta.corte;
-      save();
+      save(); guardarBase(DB);
       return res;
     });
 }
