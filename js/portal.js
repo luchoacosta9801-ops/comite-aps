@@ -14,6 +14,7 @@ const VISTAS = {
   proto:      {hash:'#protocolos', titulo:'Protocolos de emergencia', sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Protocolos de emergencia · Ingeniería Agrícola'},
   proy:       {hash:'#proyectos',  titulo:'Proyectos ejecutados',     sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Proyectos ejecutados · Ingeniería Agrícola'},
   freat:      {hash:'#freaticos',  titulo:'Niveles freáticos',        sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Niveles freáticos · Ingeniería Agrícola'},
+  nfcos:      {hash:'#cosecha-niveles', titulo:'Cosecha vs niveles freáticos', sub:'Ingeniería Agrícola · Riopaila Agrícola', doc:'Cosecha vs niveles freáticos · Ingeniería Agrícola'},
 };
 const vistaDeHash = h => (Object.entries(VISTAS).find(([, v]) => v.hash === h) || ['portal'])[0];
 let vistaActual = 'portal';
@@ -43,6 +44,7 @@ function renderVista(){
   else if (vistaActual === 'proy') renderProyectos();
   else if (vistaActual === 'pptodet') renderPptoDetalle();
   else if (vistaActual === 'freat' && typeof renderFreatico === 'function') renderFreatico();
+  else if (vistaActual === 'nfcos' && typeof renderCosechaNF === 'function') renderCosechaNF();
 }
 // El simulador ya traía su propio botón: ahora navega con el portal
 function modoSimulador(abrir){ irA(abrir ? 'simulador' : 'aps'); }

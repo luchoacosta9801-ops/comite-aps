@@ -65,7 +65,7 @@ function loadDB(){
 }
 // Módulos del portal que solo se editan a mano (no los trae el Excel semanal) y su copia "tal como se
 // cargó", para saber qué se cambió aquí sin publicar
-const MODULOS_LOCALES = ['estructura', 'protocolos', 'proyectos', 'portada', 'agronomia', 'sim', 'ppto2027', 'freatico'];
+const MODULOS_LOCALES = ['estructura', 'protocolos', 'proyectos', 'portada', 'agronomia', 'sim', 'ppto2027', 'freatico', 'lluvias', 'cosechaNF'];
 const BASE_KEY = 'comite-aps:base';
 function guardarBase(d){
   if (!MODO_EDICION) return;
@@ -122,7 +122,11 @@ const SEED = {
   // Presupuesto 2026 por suerte (hoja PPTO 2026 del comité), para "Ver detalle" del presupuesto
   ppto2026: ${J(d.ppto2026)},` : ''}${d.freatico ? `
   // Niveles freáticos: pozos de observación y lecturas por fecha (Excel de Documents\\SIG\\LECTURA NIVEL FREATICO)
-  freatico: ${J(d.freatico)},` : ''}${d.portada ? `
+  freatico: ${J(d.freatico)},` : ''}${d.lluvias ? `
+  // Lluvias diarias por hacienda (para cruzar con los niveles freáticos)
+  lluvias: ${J(d.lluvias)},` : ''}${d.cosechaNF ? `
+  // Suertes cosechadas para el análisis cosecha vs niveles freáticos
+  cosechaNF: ${J(d.cosechaNF)},` : ''}${d.portada ? `
   // Imagen de la portada del portal (foto del equipo o del área)
   portada: ${J(d.portada)},` : ''}
   costos: ${lista(d.costos)},
