@@ -558,7 +558,7 @@ function frInforme(){
 <div class="hoja portada"><div class="foto" style="background-image:url('${portada}')"></div><div class="velo"></div>
   <div class="caja"><div class="logo"><img src="${logo}" alt="Riopaila Agrícola"></div>
     <div class="pill t">Informe Isóbatas</div>
-    <div class="pill s">Área de Ingeniería Agrícola<br>y Recursos Hídricos<br><br><span contenteditable="true" class="ed">${hoyTxt}</span></div></div></div>
+    <div class="pill s">Área de Ingeniería Agrícola<br><br><span contenteditable="true" class="ed">${hoyTxt}</span></div></div></div>
 
 <div class="hoja"><h2>Objetivo</h2>
 <p class="ed" contenteditable="true">El presente informe tiene como objetivo principal realizar un análisis riguroso y detallado sobre el comportamiento espacial de las isóbatas correspondientes al monitoreo del ${frFechaL(fecha)} en las haciendas pertenecientes a Riopaila Agrícola. A través de la zonificación de los niveles freáticos, se busca identificar sectores vulnerables por excesos hídricos para optimizar la toma de decisiones operativas en el mantenimiento y gestión de la red de drenaje agrícola, garantizando la óptima aireación radicular del cultivo de caña de azúcar. Es por esto que la descripción de las condiciones de estos niveles se presenta en la tabla 1.</p>
