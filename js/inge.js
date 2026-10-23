@@ -404,6 +404,28 @@ const IV = (() => {
       <small>Pendientes con más días: ${pen.slice().sort((a, b) => dl(b) - dl(a)).slice(0, 4).map(l => `${esc(l.s)} (${dl(l)})`).join(', ') || '—'}</small>`;
   }
 
+  // Niveles freáticos: última lectura de los pozos (por hacienda o un pozo concreto)
+  function freaticoTxt(t){
+    const F = freatico(), fe = frFechas(F), u = fe[fe.length - 1], L = F.lecturas[u] || {};
+    const h = hacEn(t), num = (t.match(/pozo\s*(?:no\.?\s*)?(\d{1,3})\b/) || [])[1];
+    if (num) {
+      const p = F.pozos.find(x => x[0] === +num); if (!p) return `No tengo el pozo ${esc(num)}.`;
+      const hist = fe.map(f => frVal(F.lecturas[f][p[0]])).filter(v => v != null), v = frVal(L[p[0]]);
+      return `<b>Pozo ${p[0]}</b> · ${esc(p[3])} (sector ${esc(p[4])})${lista([
+        `Lectura del ${frFecha(u)}: <b>${v != null ? (L[p[0]] === 'S' ? 'seco (> 2 m)' : frNum(v) + ' m · ' + FR_CLASES[frClase(v)].n) : 'sin lectura'}</b>`,
+        hist.length ? `Promedio histórico: ${frNum(sum(hist, x => x) / hist.length)} m · mínimo ${frNum(Math.min(...hist))} m (${hist.length} lecturas)` : ''].filter(Boolean))}${ir('freat', 'Ver mapa de isobatas')}`;
+    }
+    const P = F.pozos.filter(p => !h || n(p[3]).includes(n(h)) || n(h).includes(n(p[3]))).map(p => ({p, v:frVal(L[p[0]])})).filter(x => x.v != null);
+    if (!P.length) return `No tengo lecturas de pozos${h ? ' en ' + esc(h) : ''} el ${frFecha(u)}.`;
+    const c = [0, 0, 0, 0]; P.forEach(x => c[frClase(x.v)]++);
+    const malos = P.filter(x => x.v < 0.5).sort((a, b) => a.v - b.v);
+    return `<b>Niveles freáticos${h ? ' · ' + esc(h) : ''}</b> <small>(lectura del ${frFecha(u)})</small>${lista([
+      `${P.length} pozos leídos · promedio <b>${frNum(sum(P, x => x.v) / P.length)} m</b>`,
+      ...FR_CLASES.map((k, i) => `${k.n} (${k.r} m): <b>${c[i]}</b> pozos`),
+      malos.length ? `Más superficiales: ${malos.slice(0, 6).map(x => `pozo ${x.p[0]} ${esc(x.p[3])} (${frNum(x.v)} m)`).join(', ')}` : ''].filter(Boolean))}
+      <small>El área por rango (ha) y el mapa IDW están en el módulo.</small>${ir('freat', 'Ver mapa de isobatas')}`;
+  }
+
   // ── Cómo usar la plataforma (sin datos privados ni el enlace de editor) ──
   const COMO = [
     {k:['publicar','publico','subir cambios','que vean'], r:'Los cambios los hace el administrador en <b>modo editor</b>: se edita y luego <b>🚀 Publicar</b>. En 1–2 minutos los ven todos y las pestañas abiertas se actualizan solas.'},
@@ -417,6 +439,7 @@ const IV = (() => {
     {k:['buscar','buscador'], r:'Arriba está el <b>buscador del portal</b>: temas, personas, procesos, haciendas y suertes.'},
     {k:['editar protocolo','directorio','telefono','cambiar nombre'], r:'En modo editor, en <b>Protocolos de emergencia</b> se abre la tarjeta y se editan pasos, insumos, mapas y el <b>directorio</b> (nombre, cargo, teléfono); luego 🚀 Publicar.'},
     {k:['proyecto nuevo','agregar proyecto'], r:'En modo editor, <b>Proyectos ejecutados → + Nuevo proyecto</b>: nombre, tipo, hacienda, presupuesto, costo, cifras, problema, solución y costos. La presentación se arma sola.'},
+    {k:['lecturas de pozos','niveles freaticos','actualizar lecturas','isobatas','mapa de isobatas'], r:'En <b>💧 Niveles freáticos</b>: el Excel de lecturas va siempre en <b>Documentos\\SIG\\LECTURA NIVEL FREATICO</b>. En modo editor, al abrir el módulo se leen solas (o con <b>🔄 Actualizar lecturas</b>) y luego <b>🚀 Publicar</b>. El mapa de isobatas (IDW) se calcula solo en la página y se puede <b>⬇ Descargar</b> como imagen.'},
     {k:['celular','movil','telefono movil'], r:'La página funciona en el celular: el menú se compacta, las tablas pasan a tarjetas y las presentaciones se deslizan con el dedo.'},
   ];
   function comoTxt(t){
@@ -453,7 +476,7 @@ const IV = (() => {
     if (tiene(t, 'ayuda', 'que sabes', 'que puedes', 'que preguntas')) return AYUDA;
 
     // 1) Cómo usar la plataforma
-    if (/^(como|donde|de que forma)\b/.test(t) && !tiene(t, 'va ', 'van ', 'esta ', 'vamos')) { const r = comoTxt(t); if (r) return r; }
+    if (/^(como|donde|de que forma)\b/.test(t) && !tiene(t, 'va ', 'van ', 'esta ', 'estan ', 'vamos')) { const r = comoTxt(t); if (r) return r; }
 
     const hac = hacEn(t), S = suertesEn(t, hac), z = zonaEn(t);
     // 2) Una suerte concreta
@@ -500,6 +523,8 @@ const IV = (() => {
       const L = typeof proyectos === 'function' ? proyectos() : [];
       if (L.length) return `<b>Proyectos ejecutados</b> (${L.length} · ${moneyM(sum(L, p => +p.inversion || 0))})${lista(L.map(p => `${esc(p.nombre)} · ${esc(p.estado || '')} <a href="#" class="iv-preg" data-q="proyecto ${esc(p.nombre)}">ver</a>`))}${ir('proy', 'Abrir proyectos')}`;
     }
+    // Niveles freáticos (pozos de observación)
+    if (tiene(t, 'freatic', 'pozo', 'piezometr', 'isobata', 'nivel del agua', 'nivel de agua') && typeof freatico === 'function' && freatico()) return freaticoTxt(t);
     // 7) Presupuesto 2026 (cruce) y 2027
     if (tiene(t, '2027', 'renueva', 'renovar') && !tiene(t, '2026')) return ppto27(t);
     if (tiene(t, 'presupuesto', 'ppto', 'atrasad', 'retrasad', 'fuera de presupuesto', 'cumplimiento') && !tiene(t, '2027')) return ppto26Txt(t);

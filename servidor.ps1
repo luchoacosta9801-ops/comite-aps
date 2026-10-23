@@ -96,6 +96,40 @@ function Maestro($ctx) {
   $res.OutputStream.Write($bytes, 0, $bytes.Length)
 }
 
+# GET /api/freatico: lecturas de los pozos de observación desde el Excel más reciente de
+# Documents\SIG\LECTURA NIVEL FREATICO (lo resume freatico.ps1; copia en _privado\freatico.json).
+# ?info=1: solo nombre y fecha del archivo.
+$carpetaFreatico = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'SIG\LECTURA NIVEL FREATICO'
+function Freatico($ctx) {
+  $req = $ctx.Request; $res = $ctx.Response
+  $origen = $req.Headers['Origin']
+  if ($req.Headers['X-Comite'] -ne '1' -or ($origen -and $permitidos -notcontains $origen)) {
+    return Responder $res 403 @{ ok = $false; error = 'Origen no permitido' }
+  }
+  $f = Get-ChildItem -Path $carpetaFreatico -Filter '*.xls*' -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -notlike '~$*' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if (-not $f) { return Responder $res 404 @{ ok = $false; error = "No hay Excel en $carpetaFreatico" } }
+  if ($req.QueryString['info']) { return Responder $res 200 @{ ok = $true; archivo = $f.Name; fecha = $f.LastWriteTime.ToString('s') } }
+  $cache = Join-Path $raiz '_privado\freatico.json'
+  $marca = "$cache.origen"
+  $firma = "$($f.FullName)|$($f.LastWriteTime.Ticks)|$($f.Length)"
+  if (-not (Test-Path $cache) -or -not (Test-Path $marca) -or (Get-Content $marca -Raw).Trim() -ne $firma) {
+    $null = New-Item -ItemType Directory -Force (Split-Path $cache)
+    $psi = New-Object Diagnostics.ProcessStartInfo 'powershell.exe'
+    $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $raiz 'freatico.ps1') + '" -Archivo "' + $f.FullName + '" -Salida "' + $cache + '"'
+    $psi.UseShellExecute = $false; $psi.RedirectStandardError = $true; $psi.RedirectStandardOutput = $true; $psi.CreateNoWindow = $true
+    $p = [Diagnostics.Process]::Start($psi)
+    $err = $p.StandardError.ReadToEndAsync(); $null = $p.StandardOutput.ReadToEndAsync()
+    if (-not $p.WaitForExit(120000)) { & taskkill /T /F /PID $p.Id 2>$null | Out-Null; return Responder $res 504 @{ ok = $false; error = 'Leer el Excel tardó demasiado' } }
+    if ($p.ExitCode -ne 0 -or -not (Test-Path $cache)) { return Responder $res 500 @{ ok = $false; error = "No se pudo leer el Excel: $($err.Result)" } }
+    [IO.File]::WriteAllText($marca, $firma, $utf8)
+  }
+  $bytes = [IO.File]::ReadAllBytes($cache)
+  $res.ContentType = 'application/json; charset=utf-8'
+  $res.Headers.Add('Cache-Control', 'no-store')
+  $res.OutputStream.Write($bytes, 0, $bytes.Length)
+}
+
 $http = New-Object System.Net.HttpListener
 $http.Prefixes.Add("http://localhost:$Puerto/")
 $http.Start()
@@ -120,6 +154,8 @@ while ($http.IsListening) {
       Responder $res 200 @{ ok = $true; edicion = $true }
     } elseif ($ruta -eq 'api/maestro') {
       Maestro $ctx
+    } elseif ($ruta -eq 'api/freatico') {
+      Freatico $ctx
     } elseif ($ruta -eq 'api/publicar' -and $ctx.Request.HttpMethod -eq 'POST') {
       Publicar $ctx
     } else {

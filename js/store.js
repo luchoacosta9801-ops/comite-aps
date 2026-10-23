@@ -65,7 +65,7 @@ function loadDB(){
 }
 // Módulos del portal que solo se editan a mano (no los trae el Excel semanal) y su copia "tal como se
 // cargó", para saber qué se cambió aquí sin publicar
-const MODULOS_LOCALES = ['estructura', 'protocolos', 'proyectos', 'portada', 'agronomia', 'sim', 'ppto2027'];
+const MODULOS_LOCALES = ['estructura', 'protocolos', 'proyectos', 'portada', 'agronomia', 'sim', 'ppto2027', 'freatico'];
 const BASE_KEY = 'comite-aps:base';
 function guardarBase(d){
   if (!MODO_EDICION) return;
@@ -120,7 +120,9 @@ const SEED = {
   // Maestro de suertes: fechas de corte y siembra de las suertes del comité (días de lucro)
   maestro: ${J(d.maestro)},` : ''}${d.ppto2026 ? `
   // Presupuesto 2026 por suerte (hoja PPTO 2026 del comité), para "Ver detalle" del presupuesto
-  ppto2026: ${J(d.ppto2026)},` : ''}${d.portada ? `
+  ppto2026: ${J(d.ppto2026)},` : ''}${d.freatico ? `
+  // Niveles freáticos: pozos de observación y lecturas por fecha (Excel de Documents\\SIG\\LECTURA NIVEL FREATICO)
+  freatico: ${J(d.freatico)},` : ''}${d.portada ? `
   // Imagen de la portada del portal (foto del equipo o del área)
   portada: ${J(d.portada)},` : ''}
   costos: ${lista(d.costos)},

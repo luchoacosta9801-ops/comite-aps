@@ -13,6 +13,7 @@ const VISTAS = {
   pptodet:    {hash:'#ppto2026',   titulo:'Presupuesto 2026 · Detalle', sub:'Comité APS · Riopaila Agrícola',          doc:'Presupuesto 2026 vs ejecutado · Comité APS'},
   proto:      {hash:'#protocolos', titulo:'Protocolos de emergencia', sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Protocolos de emergencia · Ingeniería Agrícola'},
   proy:       {hash:'#proyectos',  titulo:'Proyectos ejecutados',     sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Proyectos ejecutados · Ingeniería Agrícola'},
+  freat:      {hash:'#freaticos',  titulo:'Niveles freáticos',        sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Niveles freáticos · Ingeniería Agrícola'},
 };
 const vistaDeHash = h => (Object.entries(VISTAS).find(([, v]) => v.hash === h) || ['portal'])[0];
 let vistaActual = 'portal';
@@ -41,6 +42,7 @@ function renderVista(){
   else if (vistaActual === 'proto') renderProtocolos();
   else if (vistaActual === 'proy') renderProyectos();
   else if (vistaActual === 'pptodet') renderPptoDetalle();
+  else if (vistaActual === 'freat' && typeof renderFreatico === 'function') renderFreatico();
 }
 // El simulador ya traía su propio botón: ahora navega con el portal
 function modoSimulador(abrir){ irA(abrir ? 'simulador' : 'aps'); }
@@ -96,6 +98,9 @@ function renderPortal(){
         L.length ? `<b>${L.length}</b> ${L.length === 1 ? 'protocolo' : 'protocolos'} · ${L.filter(p => p.borrador).length} en borrador` : 'Por completar', 'var(--red)'); })()}
       ${(() => { const L = proyectos(); return card('proy', '🏗️', 'Proyectos ejecutados', 'Obras y proyectos del área: drenajes, diques, vías, canales, nivelación y mejoras, con inversión y resultados.',
         L.length ? `<b>${L.length}</b> ${L.length === 1 ? 'proyecto' : 'proyectos'} · inversión <b>${moneyM(sum(L, p => +p.inversion || 0))}</b>` : 'Por completar', '#0f766e'); })()}
+      ${typeof freatico !== 'function' ? '' : (() => { const F = freatico(), fe = F ? frFechas(F) : [], u = fe[fe.length - 1], L = u ? Object.values(F.lecturas[u]).map(frVal) : [];
+        return card('freat', '💧', 'Niveles freáticos', 'Lecturas quincenales de los pozos de observación y mapa de isobatas por suerte: crítico, subcrítico, regular y bueno.',
+        u ? `Última lectura <b>${frFecha(u)}</b> · ${L.length} pozos · <b>${L.filter(v => v < 1).length}</b> a menos de 1 m` : 'Sin lecturas aún', '#0369a1'); })()}
     </div>
     <div class="pt-pie">Comité APS · Riopaila Agrícola · Elaborado por: <b>Luis Acosta</b> · Esp. de Ingeniería Agrícola</div>`;
 }
@@ -1078,6 +1083,7 @@ const TEMAS = [
   {ir:'estructura', t:'Estructura del área', d:'Organigrama, cargos y procesos', k:'estructura organigrama cargos personas equipo procesos responsables'},
   {ir:'ppto', t:'Presupuesto APS 2027', d:'Programa de renovación 2027 por mes, zona y hacienda', k:'presupuesto 2027 programa renovacion meses zona hacienda nivelacion'},
   {ir:'proto', t:'Protocolos de emergencia', d:'Libros de reacción ante emergencias', k:'protocolos emergencia libro reaccion inundacion dique incendio derrame accidente evacuacion'},
+  {ir:'freat', t:'Niveles freáticos', d:'Pozos de observación, lecturas y mapa de isobatas (IDW)', k:'niveles freaticos nivel freatico pozos observacion piezometro isobatas idw drenaje critico subcritico agua'},
   {ir:'proy', t:'Proyectos ejecutados', d:'Obras y proyectos realizados, inversión y resultados', k:'proyectos ejecutados obras drenaje dique vias canal nivelacion inversion'},
   {ir:'agro', t:'Gestión Agronomía', d:'Suertes surcadas: fecha de siembra, variedad y observaciones', k:'gestion agronomia surcadas siembra fecha variedad observacion sector'},
 ];
