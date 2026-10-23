@@ -187,6 +187,8 @@ function renderFreatico(){
         <div class="fr-mapa" id="fr-mapa"><canvas id="fr-cv"></canvas><div class="fr-tip" id="fr-tip" hidden></div>
           <div class="fr-ley">${FR_CLASES.map(c => `<span><i style="background:${c.c}"></i>${c.r}</span>`).join('')}<span class="meta">m de profundidad</span></div></div>
         <div class="meta fr-ayuda">＋/－, Ctrl + rueda del ratón o dos dedos para acercar · arrastra para moverte · toca un pozo para ver su historia</div>
+        <div class="fr-inf"><button type="button" class="mbtn" data-fr-informe>📄 Generar informe de isóbatas · ${frFecha(frE.fecha)}</button>
+          <span class="meta">Informe con objetivo, metodología, mapa, áreas por condición, análisis, pozos críticos y conclusiones, listo para imprimir o guardar en PDF</span></div>
       </div>
       <div class="fr-lado">
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por intervalo</b> <span class="meta">· ${frFecha(frE.fecha)}</span></div>
@@ -380,26 +382,37 @@ function frMapaIniciar(){
   cv.style.touchAction = 'none';
 }
 
-// Imagen para descargar: mapa completo + convenciones + tabla, al estilo del mapa de QGIS
-function frDescargarPNG(){
-  const F = freatico(), C = frCalculo(F, frE.fecha), M = MAPA_FREATICO, R = C.R;
+// Plano completo en un canvas (para la imagen descargable y el informe). Con pozos: puntos y número de los críticos.
+function frPlano(C, W, pieH = 0, conPozos = false){
+  const M = MAPA_FREATICO;
   if (!C.raster) C.raster = frRaster(C.V);
-  const W = 1600, mapH = Math.round((W - 80) * M.alto / M.ancho), H = mapH + 330;
+  const mapH = Math.round((W - 80) * M.alto / M.ancho), H = mapH + 80 + pieH;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
-  const s = (W - 80) / M.ancho, ox = 40, oy = 40, sx = x => ox + x * s, sy = y => oy + (M.alto - y) * s;
-  const linea = (r, cerrar) => { for (let k = 0; k < r.length; k += 2) { const x = sx(r[k]), y = sy(r[k + 1]); k ? g.lineTo(x, y) : g.moveTo(x, y); } if (cerrar) g.closePath(); };
+  const s = (W - 80) / M.ancho, ox = 40, oy = 40, sx = x => ox + x * s, sy = y => oy + (M.alto - y) * s, k = W / 1600;
+  const linea = (r, cerrar) => { for (let i = 0; i < r.length; i += 2) { const x = sx(r[i]), y = sy(r[i + 1]); i ? g.lineTo(x, y) : g.moveTo(x, y); } if (cerrar) g.closePath(); };
   g.fillStyle = '#eef2f6'; g.fillRect(ox, oy, M.ancho * s, M.alto * s);
   g.imageSmoothingEnabled = false; g.drawImage(C.raster, ox, oy, C.raster.width * FR_CELDA * s, C.raster.height * FR_CELDA * s);
-  g.strokeStyle = '#2b7bd6'; g.lineWidth = 2.2; g.beginPath(); M.rios.forEach(r => linea(r)); g.stroke();
-  g.strokeStyle = '#4f9ae8'; g.lineWidth = 1.2; g.beginPath(); M.canales.forEach(r => linea(r)); g.stroke();
+  g.strokeStyle = '#2b7bd6'; g.lineWidth = 2.2 * k; g.beginPath(); M.rios.forEach(r => linea(r)); g.stroke();
+  g.strokeStyle = '#4f9ae8'; g.lineWidth = 1.2 * k; g.beginPath(); M.canales.forEach(r => linea(r)); g.stroke();
   g.fillStyle = '#8ec5f5'; g.beginPath(); frMalla().agua.forEach(r => linea(r, true)); g.fill();
-  g.strokeStyle = 'rgba(15,23,42,.6)'; g.lineWidth = 0.6; g.beginPath(); M.suertes.forEach(x => x[3].forEach(r => linea(r, true))); g.stroke();
-  g.strokeStyle = '#0f172a'; g.lineWidth = 2; g.strokeRect(ox, oy, M.ancho * s, M.alto * s);
-  g.fillStyle = '#0f172a'; g.beginPath(); g.moveTo(W - 90, 70); g.lineTo(W - 104, 108); g.lineTo(W - 90, 98); g.lineTo(W - 76, 108); g.closePath(); g.fill();
-  g.font = '700 26px Arial'; g.textAlign = 'center'; g.fillText('N', W - 90, 136);
-  g.fillRect(60, oy + M.alto * s - 40, 2000 * s, 8); g.font = '600 18px Arial'; g.textAlign = 'left'; g.fillText('2 km', 70 + 2000 * s, oy + M.alto * s - 30);
-  // Pie: convenciones, tabla y título
+  g.strokeStyle = 'rgba(15,23,42,.6)'; g.lineWidth = 0.6 * k; g.beginPath(); M.suertes.forEach(x => x[3].forEach(r => linea(r, true))); g.stroke();
+  if (conPozos) C.P.forEach(p => {
+    if (p.v == null) return;
+    const x = sx(p.x), y = sy(p.y), cr = p.v < 0.5;
+    g.beginPath(); g.arc(x, y, (cr ? 7 : 4) * k, 0, Math.PI * 2); g.fillStyle = FR_CLASES[frClase(p.v)].c; g.fill(); g.lineWidth = 1.2 * k; g.strokeStyle = '#0f172a'; g.stroke();
+    if (cr) { g.font = `700 ${16 * k}px Arial`; g.lineWidth = 4 * k; g.strokeStyle = '#fff'; g.strokeText(p.n, x + 9 * k, y + 5 * k); g.fillStyle = '#0f172a'; g.fillText(p.n, x + 9 * k, y + 5 * k); }
+  });
+  g.strokeStyle = '#0f172a'; g.lineWidth = 2 * k; g.strokeRect(ox, oy, M.ancho * s, M.alto * s);
+  g.fillStyle = '#0f172a'; g.beginPath(); g.moveTo(W - 90 * k, 70 * k); g.lineTo(W - 104 * k, 108 * k); g.lineTo(W - 90 * k, 98 * k); g.lineTo(W - 76 * k, 108 * k); g.closePath(); g.fill();
+  g.font = `700 ${26 * k}px Arial`; g.textAlign = 'center'; g.fillText('N', W - 90 * k, 136 * k);
+  g.fillRect(60, oy + M.alto * s - 40 * k, 2000 * s, 8 * k); g.font = `600 ${18 * k}px Arial`; g.textAlign = 'left'; g.fillText('2 km', 70 + 2000 * s, oy + M.alto * s - 30 * k);
+  return {cv, g, mapH};
+}
+// Imagen para descargar: mapa completo + convenciones + tabla, al estilo del mapa de QGIS
+function frDescargarPNG(){
+  const F = freatico(), C = frCalculo(F, frE.fecha), R = C.R;
+  const {cv, g, mapH} = frPlano(C, 1600, 250);
   const y0 = mapH + 70;
   g.fillStyle = '#0f172a'; g.font = '700 22px Arial'; g.fillText('Profundidad nivel freático (m)', 40, y0);
   FR_CLASES.forEach((c, k) => { g.fillStyle = c.c; g.fillRect(40, y0 + 20 + k * 38, 40, 26); g.strokeStyle = '#0f172a'; g.lineWidth = 1; g.strokeRect(40, y0 + 20 + k * 38, 40, 26);
@@ -409,9 +422,197 @@ function frDescargarPNG(){
   g.font = '700 30px Arial'; g.fillText(`MAPA DE ISÓBATAS · ${frFecha(frE.fecha).toUpperCase()}`, 800, y0 + 10);
   g.font = '20px Arial'; g.fillStyle = '#334155';
   g.fillText('Riopaila Agrícola S.A. · Área de Ingeniería Agrícola', 800, y0 + 50);
-  g.fillText(`Interpolación IDW (potencia 2) con ${C.P.filter(p => p.v != null).length} pozos de observación`, 800, y0 + 84);
+  g.fillText(`Interpolación IDW (potencia 2,75) con ${C.P.filter(p => p.v != null).length} pozos de observación`, 800, y0 + 84);
   g.fillText('Recortado a las suertes · MAGNA-SIRGAS Colombia Oeste', 800, y0 + 118);
   const a = document.createElement('a'); a.download = `Isobatas_${frE.fecha}.png`; a.href = cv.toDataURL('image/png'); a.click();
+}
+
+// ── Informe de isóbatas (como el informe del área): se arma con la lectura del plano que se está viendo ──
+// Abre una página aparte, lista para imprimir o guardar en PDF. Los textos se pueden corregir allí mismo y las
+// partes que la plataforma no conoce (lluvias, riego, observaciones de campo) quedan como espacios para escribir.
+const FR_INF = [
+  {n:'Crítico',    d:'Existe una saturación total del suelo.',                 col:'Rojo'},
+  {n:'Subcrítico', d:'El suelo se encuentra muy húmedo.',                      col:'Naranja'},
+  {n:'Regular',    d:'El agua se encuentra disponible para raíces profundas.', col:'Amarillo'},
+  {n:'Normal',     d:'Profundidad óptima.',                                    col:'Verde'},
+];
+const frMesL = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const frFechaL = f => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(f || ''); return m ? `${+m[3]} de ${frMesL[+m[2] - 1]} de ${m[1]}` : '—'; };
+const frFechaCorta = f => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(f || ''); return m ? `${m[3]}-${m[2]}-${m[1].slice(2)}` : ''; };
+// Mini gráfico de la historia de un pozo hasta la fecha del informe (últimas 10 lecturas)
+function frMiniHist(F, n, hasta){
+  const fe = frFechas(F).filter(f => f <= hasta), pts = fe.map(f => ({f, raw:F.lecturas[f][n], v:frVal(F.lecturas[f][n])})).filter(x => x.v != null).slice(-10);
+  if (pts.length < 2) return '';
+  const W = 300, H = 120, ml = 28, mr = 8, mt = 8, mb = 20, X = i => ml + i / (pts.length - 1) * (W - ml - mr), Y = v => mt + v / 2 * (H - mt - mb);
+  return `<svg viewBox="0 0 ${W} ${H}" class="mini">${FR_CLASES.map((c, k) => `<rect x="${ml}" y="${Y(k / 2)}" width="${W - ml - mr}" height="${Y(0.5) - Y(0)}" fill="${c.c}" opacity=".2"/>`).join('')}
+    ${[0, 1, 2].map(v => `<text x="${ml - 4}" y="${Y(v) + 3}" text-anchor="end">${v}</text>`).join('')}
+    <path d="${pts.map((p, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.v).toFixed(1)}`).join('')}" fill="none" stroke="#0f172a" stroke-width="1.5"/>
+    ${pts.map((p, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="${p.f === hasta ? 4.5 : 3}" fill="${FR_CLASES[frClase(p.v)].c}" stroke="#0f172a" stroke-width=".7"/>
+      ${i % 2 === pts.length % 2 || p.f === hasta ? `<text x="${X(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${frFecha(p.f, false)}</text>` : ''}`).join('')}</svg>`;
+}
+function frInforme(){
+  const F = freatico(); if (!F) return;
+  const fe = frFechas(F), fecha = frE.fecha, i = fe.indexOf(fecha), ant = fe[i - 1];
+  const C = frCalculo(F, fecha), R = C.R, Ra = ant ? frResumenRapido(F, ant) : null, tot = R.total || 1;
+  const pc = k => R.clases[k] / tot * 100, ha = k => R.clases[k];
+  const fav = pc(2) + pc(3), malo = pc(0) + pc(1), haMalo = ha(0) + ha(1);
+  const pctA = k => Ra && Ra.total ? Ra.clases[k] / Ra.total * 100 : null;
+  const malA = Ra ? pctA(0) + pctA(1) : null;
+  const n1 = (x, d = 1) => frNum(x, d), ha2 = x => frNum(x, 2);
+  const leidos = C.P.filter(p => p.v != null);
+  const Lant = ant ? F.lecturas[ant] : {};
+  const criticos = leidos.filter(p => p.v < 0.5).map(p => ({...p, va:frVal(Lant[p.n])})).sort((a, b) => a.v - b.v);
+  const subcrit = leidos.filter(p => p.v >= 0.5 && p.v < 1);
+  // Pozos que estaban críticos en la lectura anterior y ya no
+  const salieron = leidos.filter(p => p.v >= 0.5 && frVal(Lant[p.n]) != null && frVal(Lant[p.n]) < 0.5);
+  const hacs = Object.entries(R.hac).map(([h, c]) => ({h, c, t:c.reduce((a, b) => a + b, 0)})).filter(x => x.t > 0)
+    .map(x => ({...x, p:(x.c[0] + x.c[1]) / x.t * 100})).sort((a, b) => b.p - a.p);
+  const hacMal = hacs.filter(x => x.p >= 10).slice(0, 5);
+  const crSue = R.suertes.filter(s => s.v < 0.5).sort((a, b) => a.v - b.v);
+  const estado = fav >= 85 ? 'favorable' : fav >= 65 ? 'aceptable' : 'desfavorable';
+  const hoy = new Date(), hoyTxt = `${frMesL[hoy.getMonth()].replace(/^./, c => c.toUpperCase())} ${hoy.getDate()} del ${hoy.getFullYear()}`;
+  const abs = u => new URL(u, document.baseURI).href;
+  const logo = abs('img/logo-riopaila.png');
+  const portada = DB.portada && DB.portada.imagen ? DB.portada.imagen : abs('img/portada.svg');
+  const plano = frPlano(C, 1500, 0, true).cv.toDataURL('image/jpeg', 0.9);
+  const editable = (txt, ph) => `<p class="ed${txt ? '' : ' vacio'}" contenteditable="true" data-ph="${ph}">${txt}</p>`;
+  const cambio = (a, b) => a == null ? '' : Math.abs(b - a) < 0.5 ? 'se mantuvo prácticamente igual' : b > a ? `aumentó ${n1(b - a)} puntos porcentuales` : `disminuyó ${n1(a - b)} puntos porcentuales`;
+
+  // Textos de análisis según los resultados (mismo enfoque del informe del área)
+  const pGeneral = `La zonificación de niveles freáticos evidencia un comportamiento hidráulico <b>${estado}</b>, ya que el <b>${n1(fav)}%</b> del área evaluada presenta condiciones regulares y normales, mientras que el <b>${n1(malo)}%</b> corresponde a condiciones subcríticas y críticas. ` +
+    (fav >= 85 ? 'Esta distribución indica que la red de drenaje está funcionando adecuadamente en la mayor parte de Riopaila Agrícola, permitiendo mantener el nivel freático a profundidades compatibles con el desarrollo normal del sistema radicular de los cultivos.'
+      : fav >= 65 ? 'Aunque la mayor parte del área conserva condiciones aceptables, existen sectores con restricciones de drenaje que requieren atención para evitar que el nivel freático continúe ascendiendo.'
+      : 'Esta distribución evidencia restricciones de drenaje importantes, con una proporción alta del área bajo niveles freáticos superficiales que pueden afectar el desarrollo del cultivo.');
+  const pNormal = `La condición normal, que representa el <b>${n1(pc(3))}%</b> del área total (${ha2(ha(3))} ha), corresponde a la situación más favorable agronómicamente, pues existe una adecuada zona de aireación para las raíces y se favorece una exploración radicular más profunda. Adicionalmente, estas profundidades permiten una adecuada reserva hídrica en el suelo sin generar condiciones de saturación.`;
+  const pRegular = `La categoría regular, con <b>${n1(pc(2))}%</b> (${ha2(ha(2))} ha), presenta condiciones aceptables para el cultivo al reflejar una menor capacidad de almacenamiento ante eventos de lluvia intensa. En estas áreas es recomendable mantener un seguimiento permanente, ya que incrementos en las precipitaciones o limitaciones en la evacuación del agua podrían provocar ascensos del nivel freático hacia categorías menos favorables.`;
+  const pSub = `En las condiciones subcríticas, con un <b>${n1(pc(1))}%</b> (${ha2(ha(1))} ha), comienza a evidenciarse una reducción de la zona radicular disponible, lo que puede limitar el crecimiento de las raíces, afectar la absorción de nutrientes y aumentar la susceptibilidad del cultivo al estrés por exceso de humedad. Estas áreas constituyen zonas de vigilancia prioritaria dentro del sistema de drenaje.`;
+  const pCrit = ha(0) >= 0.5 ? `Finalmente, la condición crítica, identificada en <b>${ha2(ha(0))} ha</b> (${n1(pc(0))}%), refleja una saturación cercana a la superficie del suelo. Bajo estas condiciones existe un alto riesgo de deficiencia de oxígeno en las raíces, restricciones en las labores agrícolas y potenciales pérdidas en productividad. ${pc(0) < 5 ? 'Aunque la extensión es relativamente baja, estas' : 'Estas'} áreas requieren especial atención para identificar obstrucciones en la red de drenaje en donde se acumula el agua.`
+    : 'Finalmente, no se identificaron áreas en condición crítica en esta lectura, lo que indica que no hay sectores con saturación cercana a la superficie del suelo.';
+  const pDesempeno = `En términos de desempeño del drenaje, ${fav >= 85 ? 'los resultados pueden considerarse positivos, dado que' : fav >= 65 ? 'los resultados son aceptables, dado que' : 'los resultados requieren atención, dado que solo'} cerca de ${Math.round(pc(3) / 10)} de cada diez hectáreas evaluadas presentan condiciones óptimas y ${pc(2) >= 33 ? 'más de un tercio' : `el ${n1(pc(2))}%`} se encuentra en condiciones aceptables. ` +
+    (malo < 10 ? 'La baja proporción de áreas críticas y subcríticas indica que los problemas de drenaje son localizados y no generalizados. ' : '') +
+    `${haMalo >= 0.5 ? `Sin embargo, la presencia de aproximadamente <b>${ha2(haMalo)} ha</b> bajo condiciones críticas y subcríticas sugiere la necesidad de mantener actividades de monitoreo, limpieza y mantenimiento de la infraestructura hidráulica para evitar que estos sectores aumenten su extensión durante periodos de mayores precipitaciones.` : 'Se recomienda mantener las actividades de monitoreo y mantenimiento de la infraestructura hidráulica.'}`;
+  const pCompara = Ra ? `Respecto a la lectura anterior del ${frFechaL(ant)}, el área en condiciones críticas y subcríticas ${cambio(malA, malo)} (de ${n1(malA)}% a ${n1(malo)}%), y el área en condición normal ${cambio(pctA(3), pc(3))} (de ${n1(pctA(3))}% a ${n1(pc(3))}%). ${malo > malA + 0.5 ? 'Este ascenso de los niveles freáticos debe contrastarse con las precipitaciones y los riegos del periodo.' : malo < malA - 0.5 ? 'Esta mejoría indica una evacuación adecuada del agua en el perfil del suelo durante el periodo.' : 'El comportamiento se mantiene estable entre ambas lecturas.'}` : '';
+  const pHac = hacMal.length ? `Por hacienda, las mayores proporciones de área en condición crítica y subcrítica se presentan en ${hacMal.map(x => `<b>${esc(x.h)}</b> (${n1(x.p, 0)}%)`).join(', ').replace(/, ([^,]*)$/, ' y $1')}, por lo que estos sectores deben priorizarse en la revisión de canales, desagües y estructuras de drenaje.` : 'Ninguna hacienda presenta más del 10% de su área en condición crítica o subcrítica.';
+  const pPozos = criticos.length ? `En la lectura del ${frFechaL(fecha)}, <b>${criticos.length}</b> ${criticos.length === 1 ? 'pozo presentó' : 'pozos presentaron'} condición crítica (menos de 0,5 m) y ${subcrit.length} condición subcrítica. A continuación se muestra el desempeño de los pozos críticos en sus últimas lecturas.${salieron.length ? ` Respecto a la lectura anterior, ${salieron.length === 1 ? 'el pozo' : 'los pozos'} ${salieron.map(p => p.n).join(', ')} ${salieron.length === 1 ? 'salió' : 'salieron'} de la condición crítica.` : ''}`
+    : `En la lectura del ${frFechaL(fecha)} ningún pozo presentó condición crítica (menos de 0,5 m); ${subcrit.length} ${subcrit.length === 1 ? 'pozo se encuentra' : 'pozos se encuentran'} en condición subcrítica.`;
+  const fichaPozo = p => { const tend = p.va == null ? '' : Math.abs(p.v - p.va) < 0.05 ? `se mantuvo estable respecto a la lectura anterior (${frNum(p.va)} m)` : p.v < p.va ? `el nivel subió ${frNum(p.va - p.v)} m respecto a la lectura anterior (${frNum(p.va)} m)` : `el nivel bajó ${frNum(p.v - p.va)} m respecto a la lectura anterior (${frNum(p.va)} m)`;
+    const sue = (() => { const G = frMalla(), M = MAPA_FREATICO, gx = Math.floor(p.x / FR_CELDA), gy = Math.floor((M.alto - p.y) / FR_CELDA); if (gx < 0 || gy < 0 || gx >= G.W || gy >= G.H) return ''; const c = G.celda[gy * G.W + gx]; return c < 0 ? '' : M.suertes[G.sue[c]][0]; })();
+    return `<div class="pozo"><div><h4>Pozo ${p.n} · ${esc(p.h)}</h4><p>Sector ${esc(p.s)}${sue ? ` · suerte ${esc(sue)}` : ''} · Zona ${esc(p.z)}. Lectura: <b>${frNum(p.v)} m</b> (condición crítica)${tend ? `; ${tend}` : ''}.</p>
+      ${editable('', 'Observación de campo (ej.: suerte en riego, canal obstruido, lluvia reciente…)')}</div>${frMiniHist(F, p.n, fecha)}</div>`; };
+  const concl = [
+    `El monitoreo de niveles freáticos realizado el ${frFechaL(fecha)} evidenció condiciones ${estado}s de drenaje, con el ${n1(fav)}% del área evaluada clasificada en condiciones normal y regular.`,
+    pc(3) >= pc(2) ? `La condición normal predominó en el área de estudio, representando el ${n1(pc(3))}% de la superficie total, lo que indica una adecuada profundidad del nivel freático para el desarrollo del cultivo y una buena aireación radicular.`
+      : `La condición regular predominó en el área de estudio (${n1(pc(2))}%), por lo que se recomienda vigilar estos sectores ante eventos de lluvia intensa.`,
+    `Las áreas con condiciones críticas y subcríticas representaron ${malo < 10 ? 'únicamente ' : ''}el ${n1(malo)}% del área evaluada (${ha2(haMalo)} ha)${malo < 10 ? ', lo que sugiere que los problemas asociados a niveles freáticos superficiales se presentan de manera localizada' : ', una proporción que requiere intervenciones en la red de drenaje'}.`,
+    Ra ? `Frente a la lectura del ${frFechaL(ant)}, el área crítica y subcrítica ${cambio(malA, malo)}.` : '',
+    hacMal.length ? `Las haciendas ${hacMal.slice(0, 3).map(x => esc(x.h)).join(', ').replace(/, ([^,]*)$/, ' y $1')} concentran la mayor proporción de área con restricciones de drenaje y deben priorizarse en el mantenimiento.` : '',
+    criticos.length ? `Los pozos ${criticos.map(p => p.n).join(', ').replace(/, ([^,]*)$/, ' y $1')} presentaron condición crítica; se recomienda verificar en campo su causa (riego, obstrucciones o lluvias) y continuar con su seguimiento.` : '',
+    'Se recomienda mantener las labores de monitoreo, mantenimiento y conservación de la infraestructura de drenaje para garantizar la estabilidad de las condiciones observadas y minimizar la expansión de áreas con restricciones de drenaje.',
+  ].filter(Boolean);
+
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Informe de Isóbatas ${frFechaCorta(fecha)}</title>
+<style>
+  @page{size:letter;margin:20mm 22mm 26mm;@bottom-right{content:counter(page);font:10pt Arial}}
+  @page:first{margin:0;@bottom-right{content:none}}
+  *{box-sizing:border-box}
+  body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;background:#e5e7eb;font-size:11.5pt;line-height:1.55}
+  .hoja{background:#fff;width:216mm;min-height:279mm;margin:12px auto;padding:20mm 22mm 26mm;position:relative;box-shadow:0 2px 12px rgba(0,0,0,.15)}
+  .pie{position:absolute;left:22mm;right:22mm;bottom:10mm;display:flex;justify-content:space-between;align-items:flex-end}
+  .pie img{height:13mm}
+  .portada{padding:0;overflow:hidden;color:#0f172a}
+  .portada .foto{position:absolute;inset:0;background:#1e3a5f center/cover no-repeat}
+  .portada .velo{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.15),rgba(255,255,255,0) 60%)}
+  .portada .caja{position:absolute;left:18mm;top:40mm;display:flex;flex-direction:column;gap:12mm}
+  .portada .logo{display:flex;align-items:center;gap:5mm;background:rgba(255,255,255,.85);padding:4mm 6mm;border-radius:6mm;width:max-content}
+  .portada .logo img{height:22mm}
+  .pill{background:rgba(226,232,240,.92);border-radius:8mm;padding:4mm 8mm;width:max-content;max-width:110mm}
+  .pill.t{font-size:22pt;font-weight:600}
+  .pill.s{font-size:12pt;font-weight:600;line-height:1.5}
+  h2{display:inline-block;background:linear-gradient(90deg,#dfe5ec,#9db2c7);border-radius:0 6mm 6mm 6mm;padding:2.5mm 9mm 2.5mm 7mm;font-size:14pt;margin:4mm 0 5mm -4mm}
+  h4{margin:0 0 1mm;font-size:11.5pt}
+  p{text-align:justify;margin:0 0 3.5mm}
+  table{border-collapse:collapse;margin:3mm auto 5mm;font-size:10.5pt}
+  th,td{border:1px solid #333;padding:1.5mm 3mm;text-align:center}
+  th{background:#a8c8ec}
+  .cap{font-size:11pt}
+  .plano{display:block;max-width:100%;max-height:165mm;margin:2mm auto;border:1px solid #cbd5e1}
+  .ley{display:flex;gap:6mm;justify-content:center;font-size:9.5pt;margin-bottom:3mm}
+  .ley i{display:inline-block;width:5mm;height:3.5mm;border:1px solid #333;margin-right:1.5mm;vertical-align:-0.5mm}
+  .pozo{display:grid;grid-template-columns:1fr 78mm;gap:5mm;align-items:start;border-top:1px solid #e2e8f0;padding:3mm 0;break-inside:avoid}
+  .mini{width:100%}.mini text{font-size:8.5px;fill:#475569}
+  ul.c{padding-left:5mm}ul.c li{margin-bottom:3mm;text-align:justify}
+  .ed{outline:none;border-radius:2mm;transition:background .2s}
+  .ed:hover,.ed:focus{background:#fef9c3}
+  .ed.vacio:empty::before{content:attr(data-ph);color:#94a3b8;font-style:italic}
+  .barra{position:sticky;top:0;z-index:5;background:#0f172a;color:#fff;padding:8px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13px}
+  .barra button{background:#0369a1;color:#fff;border:0;border-radius:6px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px}
+  td.c0{background:#ff0000;color:#fff}td.c1{background:#ffc000}td.c2{background:#ffff00}td.c3{background:#92d050}
+  .logo-pie{display:none}
+  @media print{body{background:#fff}.barra{display:none}.hoja{margin:0;box-shadow:none;width:auto;min-height:auto;padding:0;page-break-after:always}
+    .pie{display:none}.logo-pie{display:block;position:fixed;left:0;bottom:-18mm;height:12mm}
+    .portada{width:216mm;height:279mm;page-break-after:always;position:relative;z-index:2;background:#fff}.ed.vacio:empty{display:none}}
+</style></head><body>
+<img class="logo-pie" src="${logo}" alt="">
+<div class="barra"><b>Informe de Isóbatas ${frFechaCorta(fecha)}</b><span>Puedes corregir cualquier texto haciendo clic sobre él. Los espacios en gris son para completar (si quedan vacíos no salen impresos).</span><button onclick="print()">🖨 Imprimir / Guardar PDF</button></div>
+
+<div class="hoja portada"><div class="foto" style="background-image:url('${portada}')"></div><div class="velo"></div>
+  <div class="caja"><div class="logo"><img src="${logo}" alt="Riopaila Agrícola"></div>
+    <div class="pill t">Informe Isóbatas</div>
+    <div class="pill s">Área de Ingeniería Agrícola<br>y Recursos Hídricos<br><br><span contenteditable="true" class="ed">${hoyTxt}</span></div></div></div>
+
+<div class="hoja"><h2>Objetivo</h2>
+<p class="ed" contenteditable="true">El presente informe tiene como objetivo principal realizar un análisis riguroso y detallado sobre el comportamiento espacial de las isóbatas correspondientes al monitoreo del ${frFechaL(fecha)} en las haciendas pertenecientes a Riopaila Agrícola. A través de la zonificación de los niveles freáticos, se busca identificar sectores vulnerables por excesos hídricos para optimizar la toma de decisiones operativas en el mantenimiento y gestión de la red de drenaje agrícola, garantizando la óptima aireación radicular del cultivo de caña de azúcar. Es por esto que la descripción de las condiciones de estos niveles se presenta en la tabla 1.</p>
+<p class="cap"><b>Tabla 1.</b> Descripción de las condiciones de niveles freáticos junto con su rango y color representativo en el mapa.</p>
+<table><tr><th>Condición</th><th>Descripción</th><th>Rango de<br>profundidad (m)</th><th>Color representante<br>de la condición</th></tr>
+${FR_INF.map((c, k) => `<tr><td>${c.n}</td><td>${c.d}</td><td>${FR_CLASES[k].r.replace(/,/g, '.').replace(' - ', ' – ')}</td><td>${c.col}</td></tr>`).join('')}</table>
+<h2>Metodología</h2>
+<p class="ed" contenteditable="true">Las lecturas de nivel freático fueron obtenidas mediante mediciones directas en campo utilizando la red de pozos de observación distribuida estratégicamente dentro de las haciendas evaluadas (${leidos.length} pozos leídos el ${frFechaL(fecha)}). Posteriormente, la información recopilada fue procesada mediante el método de interpolación espacial Inverse Distance Weighting (IDW), permitiendo representar de manera continua la distribución de los niveles freáticos dentro de las suertes y generar el mapa de zonificación correspondiente, en el que se identifican las diferentes zonas de acuerdo con sus condiciones freáticas.</p>
+<div class="pie"><img src="${logo}" alt=""><span>1</span></div></div>
+
+<div class="hoja"><h2>Análisis de precipitaciones</h2>
+${editable('', `Escribe aquí las lluvias de los 15 días previos a la lectura del ${frFechaL(fecha)} (acumulado por zona y su efecto en los niveles)…`)}
+<h2>Análisis de niveles freáticos del ${frFechaL(fecha).replace(/ de \d{4}$/, '')}</h2>
+<p class="ed" contenteditable="true">El mapa de zonificación elaborado a partir de las lecturas, bajo el nombre de Mapa de Isóbatas ${frFechaCorta(fecha)}, muestra la distribución espacial de las distintas condiciones de nivel freático presentes en las haciendas evaluadas. El procesamiento geoespacial del mapa de zonificación del ${frFechaL(fecha)} arrojó una superficie total evaluada de ${ha2(tot)} ha. Los resultados consolidados y sus respectivas proporciones porcentuales se exponen en la Tabla 2.</p>
+<img class="plano" src="${plano}" alt="Mapa de isóbatas">
+<div class="ley">${FR_CLASES.map((c, k) => `<span><i style="background:${c.c}"></i>${FR_INF[k].n} ${c.r} m</span>`).join('')}</div>
+<p class="cap" style="text-align:center"><b>Mapa de Isóbatas ${frFechaCorta(fecha)}.</b> Los números señalan los pozos en condición crítica.</p>
+<div class="pie"><img src="${logo}" alt=""><span>2</span></div></div>
+
+<div class="hoja">
+<p class="cap"><b>Tabla 2.</b> Áreas totales por cada condición de nivel freático para la lectura del ${frFechaL(fecha)}.</p>
+<table><tr><th colspan="3">Área total por condición de nivel freático</th></tr><tr><th>Condición</th><th>Área total (ha)</th><th>%</th></tr>
+${FR_INF.map((c, k) => `<tr><td class="c${k}">${c.n}</td><td>${ha2(ha(k))}</td><td>${n1(pc(k))}</td></tr>`).join('')}
+<tr><td><b>Total</b></td><td><b>${ha2(tot)}</b></td><td>100</td></tr></table>
+<p class="ed" contenteditable="true">${pGeneral}</p>
+<p class="ed" contenteditable="true">${pNormal}</p>
+<p class="ed" contenteditable="true">${pRegular}</p>
+<p class="ed" contenteditable="true">${pSub}</p>
+<p class="ed" contenteditable="true">${pCrit}</p>
+<p class="ed" contenteditable="true">${pDesempeno}</p>
+${pCompara ? `<p class="ed" contenteditable="true">${pCompara}</p>` : ''}
+<p class="ed" contenteditable="true">${pHac}</p>
+${hacs.length ? `<p class="cap"><b>Tabla 3.</b> Haciendas con mayor proporción de área en condición crítica y subcrítica.</p>
+<table><tr><th>Hacienda</th><th>Crítico (ha)</th><th>Subcrítico (ha)</th><th>Área (ha)</th><th>% crítico + subcrítico</th></tr>
+${hacs.slice(0, 8).map(x => `<tr><td style="text-align:left">${esc(x.h)}</td><td>${ha2(x.c[0])}</td><td>${ha2(x.c[1])}</td><td>${ha2(x.t)}</td><td><b>${n1(x.p)}</b></td></tr>`).join('')}</table>` : ''}
+<div class="pie"><img src="${logo}" alt=""><span>3</span></div></div>
+
+<div class="hoja"><h2>Seguimiento de pozos críticos</h2>
+<p class="ed" contenteditable="true">${pPozos}</p>
+${criticos.map(fichaPozo).join('')}
+${crSue.length ? `<p class="cap" style="margin-top:4mm"><b>Tabla 4.</b> Suertes con nivel freático promedio en condición crítica.</p>
+<table><tr><th>Suerte</th><th>Hacienda</th><th>Área (ha)</th><th>Nivel promedio (m)</th></tr>
+${crSue.slice(0, 25).map(s => `<tr><td>${esc(s.cod)}</td><td style="text-align:left">${esc(s.h)}</td><td>${ha2(s.ha)}</td><td>${frNum(s.v)}</td></tr>`).join('')}</table>` : ''}
+<div class="pie"><img src="${logo}" alt=""><span>4</span></div></div>
+
+<div class="hoja"><h2>Conclusiones</h2>
+<ul class="c">${concl.map(c => `<li class="ed" contenteditable="true">${c}</li>`).join('')}</ul>
+${editable('', 'Conclusiones o recomendaciones adicionales…')}
+<div class="pie"><img src="${logo}" alt=""><span>5</span></div></div>
+<script>document.querySelectorAll('.ed').forEach(e => e.addEventListener('input', () => e.classList.toggle('vacio', !e.textContent.trim())));</script>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { toast('⚠ El navegador bloqueó la ventana del informe: permite las ventanas emergentes para esta página'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
 }
 
 // ── Fuente de datos: qué Excel se usa y cómo cargar el último (solo editor) ──
@@ -468,13 +669,14 @@ function frActualizar(auto){
     frAplicar(d);
   }).catch(e => { console.error(e); frE.carpeta = {...c, estado:''}; frPintarFuente(); if (!auto) toast('⚠ No se pudo leer el Excel: ' + (e.message || 'servidor apagado')); });
 }
-// Completa lo que el Excel no trae con lo que ya se tenía (publicado y local): coordenadas, hacienda,
+// Completa lo que el Excel no trae con la ubicación fija de los pozos y lo publicado: coordenadas, hacienda,
 // sector y zona de cada pozo (las hojas por técnico no las traen) y las fechas antiguas que no vengan en el Excel.
 function frCompletar(d){
-  const viejos = [typeof SEED !== 'undefined' && SEED.freatico, DB.freatico].filter(F => F && F.pozos && F.pozos.length);
+  // Solo lo publicado (no la copia local: si una carga anterior trajo un error, no se arrastra)
+  const viejos = [typeof SEED !== 'undefined' && SEED.freatico].filter(F => F && F.pozos && F.pozos.length);
   const P = {}, lect = {};
-  if (typeof MAPA_FREATICO !== 'undefined') (MAPA_FREATICO.pozos || []).forEach(p => P[p[0]] = p);   // ubicación fija de los pozos
   viejos.forEach(F => { F.pozos.forEach(p => { if (p[1] != null) P[p[0]] = p; }); Object.assign(lect, F.lecturas || {}); });
+  if (typeof MAPA_FREATICO !== 'undefined') (MAPA_FREATICO.pozos || []).forEach(p => P[p[0]] = p);   // ubicación fija de los pozos (manda)
   const nuevas = new Set(Object.keys(d.lecturas));
   Object.keys(lect).forEach(f => { if (!nuevas.has(f)) d.lecturas[f] = lect[f]; });
   const ids = new Set(); Object.values(d.lecturas).forEach(L => Object.keys(L).forEach(id => ids.add(+id)));
@@ -482,7 +684,8 @@ function frCompletar(d){
   d.pozos.forEach(p => out[p[0]] = p);
   ids.forEach(id => { if (!out[id]) out[id] = [id, null, null, '', '', '']; });
   const pozos = Object.values(out).map(p => { const v = P[p[0]];
-    const r = [p[0], p[1] ?? (v && v[1]), p[2] ?? (v && v[2]), p[3] || (v && v[3]) || '', p[4] || (v && v[4]) || '', p[5] || (v && v[5]) || ''];
+    // Hacienda/sector/zona: primero los datos fijos del pozo (en las hojas nuevas la "hacienda" es la ruta del técnico)
+    const r = [p[0], p[1] ?? (v && v[1]), p[2] ?? (v && v[2]), (v && v[3]) || p[3] || '', (v && v[4]) || p[4] || '', (v && v[5]) || p[5] || ''];
     if (r[1] == null) { sinCoord.push(p[0]); return null; } return r; }).filter(Boolean).sort((a, b) => a[0] - b[0]);
   const ok = new Set(pozos.map(p => String(p[0]))), lecturas = {};
   Object.keys(d.lecturas).sort().forEach(f => { const L = {}; Object.entries(d.lecturas[f]).forEach(([id, v]) => { if (ok.has(id)) L[id] = v; }); if (Object.keys(L).length >= 10) lecturas[f] = L; });
@@ -598,20 +801,25 @@ async function frLeerExcel(file, nombre, fechaArchivo){
       const id = pozoId(c[C.id]); if (id == null) return ++vacias < 300;
       if (larga) {
         const d = num(c[C.f]); if (!(d > 40000 && d < 60000)) return ++vacias < 300;
-        vacias = 0; ponerPozo(id, c, C); const v = valor(c[C.l[0]]); if (v != null) crudas.push([id, Math.floor(d), v, hi, 0]);
+        vacias = 0; ponerPozo(id, c, C); const v = valor(c[C.l[0]]); if (v != null) crudas.push([id, Math.floor(d), v, hi, -1]);
       } else {
         vacias = 0; ponerPozo(id, c, C);
         for (const [k, d] of fechas) { const v = valor(c[k]); if (v != null) crudas.push([id, d, v, hi, k]); }
       }
     }); };
   // Hojas en su orden y al final el Consolidado (manda si hay diferencias); las tablas dinámicas no tienen "No de pozo"
-  for (let i = 0; i < hojas.length; i++) if (hojas[i].k !== 'consolidado') await leerHoja(hojas[i], i);
-  for (let i = 0; i < hojas.length; i++) if (hojas[i].k === 'consolidado') await leerHoja(hojas[i], i);
+  const esCons = h => h.k.includes('consolidad');   // "Consolidado", "Base Consolidada"
+  for (let i = 0; i < hojas.length; i++) if (!esCons(hojas[i])) await leerHoja(hojas[i], i);
+  for (let i = 0; i < hojas.length; i++) if (esCons(hojas[i])) await leerHoja(hojas[i], i);
 
   // Fechas de campaña: las que tienen lecturas de buena parte de los pozos (lectura quincenal)
   const nPozos = Object.keys(pozos).length || 1, freq = {};
   crudas.forEach(x => freq[x[1]] = (freq[x[1]] || 0) + 1);
-  const camp = Object.keys(freq).map(Number).filter(d => freq[d] >= 0.35 * nPozos).sort((a, b) => a - b), esCamp = new Set(camp);
+  // (si dos fechas grandes quedan a menos de 6 días, son la misma campaña leída en dos días: manda la de más lecturas)
+  const camp = [];
+  Object.keys(freq).map(Number).filter(d => freq[d] >= 0.35 * nPozos).sort((a, b) => freq[b] - freq[a])
+    .forEach(d => { if (!camp.some(c => Math.abs(c - d) <= 6)) camp.push(d); });
+  camp.sort((a, b) => a - b); const esCamp = new Set(camp);
   // Fechas mal digitadas en las hojas anchas: en cada hoja las columnas van en orden; la secuencia creciente más
   // larga (dando más peso a fechas de campaña) se toma como buena y cada fecha fuera de orden se cambia por la
   // fecha de campaña que le corresponde entre sus vecinas (si no hay una sola opción clara, esa columna se descarta)
@@ -635,10 +843,14 @@ async function frLeerExcel(file, nombre, fechaArchivo){
   }
   // Lecturas de una misma campaña tomadas en días cercanos (±6 días) quedan en la fecha de la campaña
   const campana = d => { if (esCamp.has(d)) return d; let m = null; for (const c of camp) if (Math.abs(c - d) <= 6 && (m == null || Math.abs(c - d) < Math.abs(m - d))) m = c; return m ?? d; };
+  // Las hojas largas (Base Consolidada) copian las fechas de las hojas por técnico: se les aplica la misma
+  // corrección, pozo por pozo
+  const porPozo = {};
+  for (const [id, d0, , hi, col] of crudas) { const k = hi + '|' + col; if (k in arreglo) porPozo[id + '|' + d0] = arreglo[k]; }
   const lect = {};
   for (const [id, d0, v, hi, col] of crudas) {
-    let d = d0; const k = hi + '|' + col;
-    if (k in arreglo) { d = arreglo[k]; if (d == null) continue; }
+    let d = d0; const k = col < 0 ? id + '|' + d0 : hi + '|' + col, M = col < 0 ? porPozo : arreglo;
+    if (k in M) { d = M[k]; if (d == null) continue; }
     const f = fecha(campana(d)); (lect[f] = lect[f] || {})[id] = v;
   }
   const lecturas = {};
@@ -661,6 +873,7 @@ q('freaticos').addEventListener('click', e => {
   const t = e.target;
   if (t.closest('[data-fr-act]')) { frRevisarServidor(true); return; }
   if (t.closest('[data-fr-png]')) { frDescargarPNG(); return; }
+  if (t.closest('[data-fr-informe]')) { frInforme(); return; }
   const z = t.closest('[data-fr-zoom]'); if (z) { frE.zoom && frE.zoom(+z.dataset.frZoom); return; }
   if (t.closest('[data-fr-ajustar]')) { frE.suerteSel = null; frE.ajustar && frE.ajustar(); return; }
   if (t.closest('[data-fr-cerrar-pozo]')) { frE.pozo = null; q('fr-pozo-card').innerHTML = frPozoHTML(freatico()); frE.dibujar && frE.dibujar(); return; }

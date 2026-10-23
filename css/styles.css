@@ -1059,3 +1059,6 @@ tr.fr-sel td{background:#fff3cd}
 .fr-f-det{margin-top:6px;font-size:12px}
 .fr-f-det summary{cursor:pointer;color:#0369a1;font-weight:600}
 .fr-f-det ul{margin:6px 0 4px 18px;max-height:180px;overflow:auto}
+.fr-inf{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:10px 12px 12px;border-top:1px solid var(--line,#e2e8f0);background:#f8fafc}
+.fr-inf .mbtn{background:#0369a1;color:#fff;border-color:#0369a1}
+.fr-inf .meta{font-size:11px;flex:1 1 220px}
