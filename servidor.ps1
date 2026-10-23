@@ -96,9 +96,8 @@ function Maestro($ctx) {
   $res.OutputStream.Write($bytes, 0, $bytes.Length)
 }
 
-# GET /api/freatico: lecturas de los pozos de observación desde el Excel más reciente de
-# Documents\SIG\LECTURA NIVEL FREATICO (lo resume freatico.ps1; copia en _privado\freatico.json).
-# ?info=1: solo nombre y fecha del archivo.
+# GET /api/freatico: el Excel de niveles freáticos más reciente de Documents\SIG\LECTURA NIVEL FREATICO,
+# tal cual (la página lo lee en el navegador). ?info=1: solo nombre y fecha. Nunca se sube a GitHub.
 $carpetaFreatico = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'SIG\LECTURA NIVEL FREATICO'
 function Freatico($ctx) {
   $req = $ctx.Request; $res = $ctx.Response
@@ -110,22 +109,13 @@ function Freatico($ctx) {
     Where-Object { $_.Name -notlike '~$*' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
   if (-not $f) { return Responder $res 404 @{ ok = $false; error = "No hay Excel en $carpetaFreatico" } }
   if ($req.QueryString['info']) { return Responder $res 200 @{ ok = $true; archivo = $f.Name; fecha = $f.LastWriteTime.ToString('s') } }
-  $cache = Join-Path $raiz '_privado\freatico.json'
-  $marca = "$cache.origen"
-  $firma = "$($f.FullName)|$($f.LastWriteTime.Ticks)|$($f.Length)"
-  if (-not (Test-Path $cache) -or -not (Test-Path $marca) -or (Get-Content $marca -Raw).Trim() -ne $firma) {
-    $null = New-Item -ItemType Directory -Force (Split-Path $cache)
-    $psi = New-Object Diagnostics.ProcessStartInfo 'powershell.exe'
-    $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $raiz 'freatico.ps1') + '" -Archivo "' + $f.FullName + '" -Salida "' + $cache + '"'
-    $psi.UseShellExecute = $false; $psi.RedirectStandardError = $true; $psi.RedirectStandardOutput = $true; $psi.CreateNoWindow = $true
-    $p = [Diagnostics.Process]::Start($psi)
-    $err = $p.StandardError.ReadToEndAsync(); $null = $p.StandardOutput.ReadToEndAsync()
-    if (-not $p.WaitForExit(120000)) { & taskkill /T /F /PID $p.Id 2>$null | Out-Null; return Responder $res 504 @{ ok = $false; error = 'Leer el Excel tardó demasiado' } }
-    if ($p.ExitCode -ne 0 -or -not (Test-Path $cache)) { return Responder $res 500 @{ ok = $false; error = "No se pudo leer el Excel: $($err.Result)" } }
-    [IO.File]::WriteAllText($marca, $firma, $utf8)
-  }
-  $bytes = [IO.File]::ReadAllBytes($cache)
-  $res.ContentType = 'application/json; charset=utf-8'
+  # Copia temporal por si el Excel está abierto
+  $tmp = [IO.Path]::GetTempFileName(); Copy-Item $f.FullName $tmp -Force
+  $bytes = [IO.File]::ReadAllBytes($tmp); Remove-Item $tmp -ErrorAction SilentlyContinue
+  $res.ContentType = 'application/octet-stream'
+  $res.Headers.Add('X-Archivo', [Uri]::EscapeDataString($f.Name))
+  $res.Headers.Add('X-Fecha', $f.LastWriteTime.ToString('s'))
+  $res.Headers.Add('Access-Control-Expose-Headers', 'X-Archivo, X-Fecha')
   $res.Headers.Add('Cache-Control', 'no-store')
   $res.OutputStream.Write($bytes, 0, $bytes.Length)
 }

@@ -130,7 +130,7 @@ function renderFreatico(){
   const F = freatico();
   if (MODO_EDICION) frRevisarServidor();
   if (!F || !frFechas(F).length) {
-    cont.innerHTML = `<div class="mod-top"><div class="sim-tit">💧 Niveles freáticos</div></div><div class="nores">Aún no hay lecturas cargadas.${MODO_EDICION ? ' Pon el Excel en <b>Documentos\\SIG\\LECTURA NIVEL FREATICO</b> y pulsa <button type="button" class="mbtn" data-fr-act>🔄 Actualizar lecturas</button>' : ''}</div>`;
+    cont.innerHTML = `<div class="mod-top"><div class="sim-tit">💧 Niveles freáticos</div></div>${frFuenteHTML()}<div class="nores">Aún no hay lecturas cargadas.${MODO_EDICION ? ' Pon el Excel en <b>Documentos\\SIG\\LECTURA NIVEL FREATICO</b> y pulsa <b>📥 Cargar último Excel</b>.' : ''}</div>`;
     return;
   }
   if (typeof MAPA_FREATICO === 'undefined') {
@@ -164,9 +164,9 @@ function renderFreatico(){
 
   cont.innerHTML = `
     <div class="mod-top"><div><div class="sim-tit">💧 Niveles freáticos · Mapa de isobatas</div>
-      <div class="sim-subt">${P.length} pozos de observación · lecturas quincenales · interpolación IDW recortada a las suertes${F.archivo ? ` · fuente: ${esc(F.archivo)}` : ''}</div></div>
-      <div class="fr-acc">${MODO_EDICION ? '<button type="button" class="mbtn" data-fr-act title="Lee otra vez el Excel de Documentos\\SIG\\LECTURA NIVEL FREATICO">🔄 Actualizar lecturas</button>' : ''}
-      <button type="button" class="mbtn mbtn-ghost" data-fr-png title="Descargar el mapa como imagen">⬇ Descargar mapa</button></div></div>
+      <div class="sim-subt">${P.length} pozos de observación · lecturas quincenales · interpolación IDW recortada a las suertes</div></div>
+      <div class="fr-acc"><button type="button" class="mbtn mbtn-ghost" data-fr-png title="Descargar el mapa como imagen">⬇ Descargar mapa</button></div></div>
+    ${frFuenteHTML()}
     <div class="fr-fechas">
       <button type="button" class="mbtn mbtn-ghost" data-fr-mov="-1" ${i ? '' : 'disabled'} title="Lectura anterior">◀</button>
       <label class="fchip"><span>Lectura del</span><select id="fr-fecha" class="fsel on">${opF}</select></label>
@@ -414,31 +414,252 @@ function frDescargarPNG(){
   const a = document.createElement('a'); a.download = `Isobatas_${frE.fecha}.png`; a.href = cv.toDataURL('image/png'); a.click();
 }
 
-// ── Lecturas desde el servidor (solo editor, en este PC) ──
+// ── Fuente de datos: qué Excel se usa y cómo cargar el último (solo editor) ──
+// frE.carpeta = estado del Excel más reciente en Documents\SIG\LECTURA NIVEL FREATICO (lo consulta el servidor)
+frE.carpeta = {estado:''};
+const frFechaArch = s => s ? frFecha(String(s).slice(0, 10)) : '—';
+function frFuenteHTML(){
+  const F = freatico(), c = frE.carpeta, fe = F ? frFechas(F) : [];
+  const igual = F && c.archivo === F.archivo && c.fecha === F.fechaArchivo;
+  const estado = !MODO_EDICION ? '' :
+    c.estado === 'revisando' ? '<span class="meta">⏳ Revisando la carpeta…</span>' :
+    c.estado === 'cargando' ? '<span class="meta">⏳ Leyendo el Excel…</span>' :
+    c.estado === 'apagado' ? '<span class="fr-f-aviso">⚠ El servidor de este PC está apagado: no puedo revisar la carpeta. Usa <b>📂 Elegir Excel</b>.</span>' :
+    c.estado === 'vacia' ? '<span class="fr-f-aviso">⚠ No hay ningún Excel en <b>Documentos\\SIG\\LECTURA NIVEL FREATICO</b>.</span>' :
+    c.archivo && igual ? '<span class="fr-f-ok">✓ Es el último Excel de la carpeta</span>' :
+    c.archivo ? `<span class="fr-f-aviso">🆕 En la carpeta hay uno más reciente: <b>${esc(c.archivo)}</b> (guardado ${frFechaArch(c.fecha)})</span>` : '';
+  return `<div class="fr-fuente" id="fr-fuente">
+    <div class="fr-f-txt">📄 ${F ? `Trabajando con <b>${esc(F.archivo || 'Excel de niveles')}</b>${F.fechaArchivo ? ` · guardado ${frFechaArch(F.fechaArchivo)}` : ''} · ${fe.length} lecturas (${frFecha(fe[0])} – <b>${frFecha(fe[fe.length - 1])}</b>)` : 'Sin Excel cargado'}
+      ${estado ? `<div>${estado}</div>` : ''}
+      ${MODO_EDICION && frE.avisos && (frE.avisos.fechas.length || frE.avisos.sinCoord.length) ? `<details class="fr-f-det"><summary>🛠 Revisión del Excel: ${frE.avisos.fechas.length} fechas corregidas${frE.avisos.sinCoord.length ? ` · ${frE.avisos.sinCoord.length} pozos sin coordenadas` : ''}</summary>
+        <ul>${frE.avisos.fechas.map(a => `<li>${esc(a)}</li>`).join('')}${frE.avisos.sinCoord.length ? `<li>Pozos sin coordenadas (no salen en el mapa): ${frE.avisos.sinCoord.join(', ')}</li>` : ''}</ul>
+        <small class="meta">Las fechas mal escritas en el Excel se corrigen solas según el orden de las columnas y las fechas de campaña. Conviene corregirlas también en el Excel.</small></details>` : ''}</div>
+    ${MODO_EDICION ? `<div class="fr-f-btns">
+      <button type="button" class="mbtn" data-fr-act title="Toma el Excel más reciente de Documentos\\SIG\\LECTURA NIVEL FREATICO">📥 Cargar último Excel de la carpeta</button>
+      <label class="mbtn mbtn-ghost" title="Elegir un Excel de niveles freáticos de cualquier carpeta (se lee aquí mismo, sin servidor)">📂 Elegir Excel…<input type="file" id="fr-archivo" accept=".xlsx,.xlsm" hidden></label></div>` : ''}
+  </div>`;
+}
+const frPintarFuente = () => { const el = q('fr-fuente'); if (el) el.outerHTML = frFuenteHTML(); };
+
+// Al abrir el módulo (y con el botón) se pregunta al servidor cuál es el último Excel; si es otro, se carga solo
 let frRevisado = false;
-function frRevisarServidor(){
-  if (frRevisado) return; frRevisado = true;
-  fetch(API_BASE + 'api/freatico?info=1', {cache:'no-store', headers:{'X-Comite':'1'}}).then(r => r.ok ? r.json() : null).then(info => {
-    const F = freatico();
-    if (info && info.ok && (!F || F.archivo !== info.archivo || F.fechaArchivo !== info.fecha)) frActualizar(true);
-  }).catch(() => {});
+function frRevisarServidor(forzar){
+  if (frRevisado && !forzar) return; frRevisado = true;
+  frE.carpeta = {estado:'revisando'}; frPintarFuente();
+  return fetch(API_BASE + 'api/freatico?info=1', {cache:'no-store', headers:{'X-Comite':'1'}})
+    .then(r => r.status === 404 ? {vacia:true} : r.ok ? r.json() : null).then(info => {
+      if (!info) throw new Error();
+      if (info.vacia) { frE.carpeta = {estado:'vacia'}; frPintarFuente(); return; }
+      frE.carpeta = {estado:'', archivo:info.archivo, fecha:info.fecha};
+      const F = freatico();
+      if (forzar || !F || !F.pozos || !F.pozos.length || F.archivo !== info.archivo || F.fechaArchivo !== info.fecha) return frActualizar(!forzar);
+      frPintarFuente();
+    }).catch(() => { frE.carpeta = {estado:'apagado'}; frPintarFuente(); if (forzar) toast('⚠ El servidor de este PC está apagado: usa 📂 Elegir Excel'); });
 }
 function frActualizar(auto){
-  if (!auto) toast('⏳ Leyendo el Excel de niveles freáticos…');
-  return fetch(API_BASE + 'api/freatico', {cache:'no-store', headers:{'X-Comite':'1'}}).then(r => r.json()).then(d => {
-    if (!d || !d.pozos) throw new Error(d && d.error || 'Respuesta no válida');
-    const antes = freatico(), nAntes = antes ? frFechas(antes).length : 0;
-    modCambio(() => { DB.freatico = d; });
-    frE.cache = {}; frE.evol = {}; frE.evolFechas = '';
-    const n = frFechas(d).length, ult = frFechas(d).pop();
-    frE.fecha = ult;
-    toast(`💧 ${d.pozos.length} pozos · ${n} lecturas (última ${frFecha(ult)})${n > nAntes && nAntes ? ` · ${n - nAntes} nuevas` : ''} · recuerda 🚀 Publicar`);
-  }).catch(e => { if (!auto) toast('⚠ No se pudo leer el Excel: ' + (e.message || 'servidor apagado')); });
+  const c = frE.carpeta; frE.carpeta = {...c, estado:'cargando'}; frPintarFuente();
+  // El servidor entrega el Excel tal cual y aquí se lee (mismo lector que 📂 Elegir Excel)
+  return fetch(API_BASE + 'api/freatico', {cache:'no-store', headers:{'X-Comite':'1'}}).then(async r => {
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || 'el servidor no entregó el Excel'); }
+    const nombre = decodeURIComponent(r.headers.get('X-Archivo') || 'niveles.xlsx'), fecha = r.headers.get('X-Fecha') || '';
+    const d = await frLeerExcel(await r.blob(), nombre, fecha);
+    await frCargarMapa();
+    frE.carpeta = {estado:'', archivo:nombre, fecha};
+    frAplicar(d);
+  }).catch(e => { console.error(e); frE.carpeta = {...c, estado:''}; frPintarFuente(); if (!auto) toast('⚠ No se pudo leer el Excel: ' + (e.message || 'servidor apagado')); });
+}
+// Completa lo que el Excel no trae con lo que ya se tenía (publicado y local): coordenadas, hacienda,
+// sector y zona de cada pozo (las hojas por técnico no las traen) y las fechas antiguas que no vengan en el Excel.
+function frCompletar(d){
+  const viejos = [typeof SEED !== 'undefined' && SEED.freatico, DB.freatico].filter(F => F && F.pozos && F.pozos.length);
+  const P = {}, lect = {};
+  if (typeof MAPA_FREATICO !== 'undefined') (MAPA_FREATICO.pozos || []).forEach(p => P[p[0]] = p);   // ubicación fija de los pozos
+  viejos.forEach(F => { F.pozos.forEach(p => { if (p[1] != null) P[p[0]] = p; }); Object.assign(lect, F.lecturas || {}); });
+  const nuevas = new Set(Object.keys(d.lecturas));
+  Object.keys(lect).forEach(f => { if (!nuevas.has(f)) d.lecturas[f] = lect[f]; });
+  const ids = new Set(); Object.values(d.lecturas).forEach(L => Object.keys(L).forEach(id => ids.add(+id)));
+  const out = {}, sinCoord = [];
+  d.pozos.forEach(p => out[p[0]] = p);
+  ids.forEach(id => { if (!out[id]) out[id] = [id, null, null, '', '', '']; });
+  const pozos = Object.values(out).map(p => { const v = P[p[0]];
+    const r = [p[0], p[1] ?? (v && v[1]), p[2] ?? (v && v[2]), p[3] || (v && v[3]) || '', p[4] || (v && v[4]) || '', p[5] || (v && v[5]) || ''];
+    if (r[1] == null) { sinCoord.push(p[0]); return null; } return r; }).filter(Boolean).sort((a, b) => a[0] - b[0]);
+  const ok = new Set(pozos.map(p => String(p[0]))), lecturas = {};
+  Object.keys(d.lecturas).sort().forEach(f => { const L = {}; Object.entries(d.lecturas[f]).forEach(([id, v]) => { if (ok.has(id)) L[id] = v; }); if (Object.keys(L).length >= 10) lecturas[f] = L; });
+  return {archivo:d.archivo, fechaArchivo:d.fechaArchivo, pozos, lecturas, sinCoord};
+}
+// Deja las lecturas nuevas como base del panel (y marca "sin publicar")
+function frAplicar(crudo){
+  const avisos = crudo.avisos || [], d = frCompletar(crudo), sinCoord = d.sinCoord; delete d.sinCoord;
+  if (!d.pozos.length || !frFechas(d).length) { toast('⚠ Ese Excel no trae pozos con lecturas (debe tener "No de pozo" y "Lectura")'); frPintarFuente(); return; }
+  const antes = freatico(), fAntes = new Set(antes ? frFechas(antes) : []);
+  frE.cache = {}; frE.evol = {}; frE.evolFechas = '';
+  frE.avisos = {fechas:avisos, sinCoord};
+  frE.fecha = frFechas(d).pop();
+  modCambio(() => { DB.freatico = d; });
+  const nuevas = frFechas(d).filter(f => !fAntes.has(f)).length;
+  toast(`💧 ${d.archivo}: ${d.pozos.length} pozos · última lectura ${frFecha(frE.fecha)}${nuevas ? ` · ${nuevas} lecturas nuevas` : ''}${avisos.length ? ` · ${avisos.length} fechas corregidas` : ''} · recuerda 🚀 Publicar`);
+}
+
+// ── Lector del Excel en el navegador. El archivo puede pesar ~90 MB y tener hojas de 800 MB de XML,
+// así que se descomprime por partes y cada hoja se deja de leer al terminar los datos.
+// Entiende: hojas anchas (encabezado "No de pozo" + una columna "Lectura" por fecha, con la fecha en
+// alguna de las 3 filas de arriba: BASE DE DATOS y hojas por técnico) y hojas largas (Fecha + Lectura,
+// una fila por pozo y fecha: Consolidado). Valores: número = m; SECO = "S" (2 m); LLENO = 0;
+// 0, daños y notas = sin lectura.
+const frNorm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '');
+const frXml = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (m, d) => String.fromCharCode(+d)).replace(/&amp;/g, '&');
+async function frZip(file){
+  const fin = new DataView(await file.slice(Math.max(0, file.size - 65558)).arrayBuffer());
+  let p = fin.byteLength - 22; while (p >= 0 && fin.getUint32(p, true) !== 0x06054b50) p--;
+  if (p < 0) throw new Error('no es un archivo .xlsx');
+  const n = fin.getUint16(p + 10, true), tam = fin.getUint32(p + 12, true), ini = fin.getUint32(p + 16, true);
+  const cd = new DataView(await file.slice(ini, ini + tam).arrayBuffer()), dec = new TextDecoder(), E = {};
+  for (let i = 0, k = 0; i < n && cd.getUint32(k, true) === 0x02014b50; i++) {
+    const ln = cd.getUint16(k + 28, true), lx = cd.getUint16(k + 30, true), lc = cd.getUint16(k + 32, true);
+    E[dec.decode(new Uint8Array(cd.buffer, k + 46, ln))] = {met:cd.getUint16(k + 10, true), comp:cd.getUint32(k + 20, true), off:cd.getUint32(k + 42, true)};
+    k += 46 + ln + lx + lc;
+  }
+  return E;
+}
+async function frFlujo(file, e){
+  const h = new DataView(await file.slice(e.off, e.off + 30).arrayBuffer()), ini = e.off + 30 + h.getUint16(26, true) + h.getUint16(28, true);
+  let s = file.slice(ini, ini + e.comp).stream();
+  if (e.met === 8) s = s.pipeThrough(new DecompressionStream('deflate-raw'));
+  return s.pipeThrough(new TextDecoderStream()).getReader();
+}
+async function frTexto(file, e){ if (!e) return ''; const r = await frFlujo(file, e); let t = ''; for (;;) { const {done, value} = await r.read(); if (done) return t; t += value; } }
+// Recorre una hoja fila por fila; fila(n, celdas{columna:valor}) devuelve false para detenerse
+async function frFilas(file, e, ss, fila){
+  const r = await frFlujo(file, e); let buf = '';
+  const col = c => { let n = 0; for (const ch of c) n = n * 26 + ch.charCodeAt(0) - 64; return n; };
+  for (;;) {
+    const {done, value} = await r.read(); if (done) return;
+    buf += value;
+    const fin = buf.lastIndexOf('</row>'); if (fin < 0) continue;
+    const trozo = buf.slice(0, fin + 6); buf = buf.slice(fin + 6);
+    for (const m of trozo.matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
+      const rn = +((/\br="(\d+)"/.exec(m[1]) || [])[1] || 0), cel = {};
+      for (const c of (m[2] || '').matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+        const ref = /\br="([A-Z]+)\d*"/.exec(c[1]), t = (/\bt="(\w+)"/.exec(c[1]) || [])[1], cont = c[2] || '';
+        if (!ref || t === 'e') continue;
+        let v = t === 'inlineStr' ? (/<t[^>]*>([\s\S]*?)<\/t>/.exec(cont) || [])[1] : (/<v>([\s\S]*?)<\/v>/.exec(cont) || [])[1];
+        if (v == null) continue;
+        v = frXml(v); if (t === 's') v = ss[+v] ?? '';
+        cel[col(ref[1])] = v;
+      }
+      if (fila(rn, cel) === false) { r.cancel().catch(() => {}); return; }
+    }
+  }
+}
+async function frLeerExcel(file, nombre, fechaArchivo){
+  const E = await frZip(file), ss = [];
+  const sst = (await frTexto(file, E['xl/sharedStrings.xml'])).replace(/<rPh\b[\s\S]*?<\/rPh>/g, '');
+  for (const m of sst.matchAll(/<si>([\s\S]*?)<\/si>|<si\/>/g)) ss.push(frXml([...(m[1] || '').matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(x => x[1]).join('')));
+  const rels = {};
+  for (const m of (await frTexto(file, E['xl/_rels/workbook.xml.rels'])).matchAll(/<Relationship\b[^>]*>/g)) {
+    const id = (/\bId="([^"]+)"/.exec(m[0]) || [])[1], tg = (/\bTarget="([^"]+)"/.exec(m[0]) || [])[1] || '';
+    rels[id] = tg.startsWith('/') ? tg.slice(1) : 'xl/' + tg;
+  }
+  const hojas = [];
+  for (const m of (await frTexto(file, E['xl/workbook.xml'])).matchAll(/<sheet\b[^>]*>/g)) {
+    const nom = frXml((/\bname="([^"]*)"/.exec(m[0]) || [])[1] || ''), id = (/\br:id="([^"]+)"/.exec(m[0]) || [])[1];
+    if (id && E[rels[id]]) hojas.push({nom, k:frNorm(nom), e:E[rels[id]]});
+  }
+  if (!hojas.length) throw new Error('no encontré hojas en el archivo');
+  const num = v => { const s = String(v ?? '').trim().replace(',', '.'); return s === '' ? NaN : Number(s); };
+  const fecha = d => new Date(Math.round((d - 25569) * 864e5)).toISOString().slice(0, 10);
+  const pozoId = v => { const d = num(v); return d > 0 && d < 100000 && Math.abs(d - Math.round(d)) < 1e-9 ? Math.round(d) : null; };
+  const valor = v => { if (v == null) return null; const d = num(v);
+    if (!isNaN(d)) return d <= 0 || d > 5 ? null : Math.round(d * 100) / 100;
+    const n = frNorm(v); return n.startsWith('seco') ? 'S' : n.startsWith('lleno') || n.includes('inund') || n.includes('encharc') ? 0 : null; };
+  const pozos = {}, crudas = [], anchas = [];   // crudas: [pozo, fecha (serial), valor, hoja, columna]
+  const ponerPozo = (id, c, C) => { const p = pozos[id] = pozos[id] || {h:'', s:'', z:''}, la = num(c[C.lat]), lo = num(c[C.lon]);
+    if (la > 3 && la < 6 && lo < -75 && lo > -78) { p.lat = la; p.lon = lo; }
+    for (const k of ['h', 's', 'z']) { const v = String(c[C[k]] ?? '').trim(); if (v) p[k] = v; } };
+  const encab = c => { const o = {l:[]}; for (const [k, v] of Object.entries(c)) { const x = frNorm(v);
+    if (x.startsWith('nopozo') || x.startsWith('nodepozo') || x.startsWith('nodepiez') || x.startsWith('nopiez') || x === 'pozo') o.id = +k;
+    else if (x.startsWith('latitud')) o.lat = +k; else if (x.startsWith('longitud')) o.lon = +k; else if (x.startsWith('fecha')) o.f = +k;
+    else if (x.startsWith('lectura')) o.l.push(+k); else if (x.startsWith('hacienda')) o.h = +k; else if (x.startsWith('sector')) o.s = +k; else if (x === 'zona') o.z = +k; }
+    return o; };
+  const leerHoja = (h, hi) => { let C = null, fechas = null, larga = false, vacias = 0; const prev = [];
+    return frFilas(file, h.e, ss, (rn, c) => {
+      if (!fechas && !larga) {
+        const o = encab(c);
+        if (o.id && o.l.length) {
+          const fs = [];
+          for (const k of o.l) for (let i = prev.length - 1; i >= 0; i--) { const d = num(prev[i][k]); if (d > 40000 && d < 60000) { fs.push([k, Math.floor(d)]); break; } }
+          if (fs.length) { fechas = fs; anchas.push({nom:h.nom, hi, cols:fs}); } else if (o.f) larga = true;
+          if (fechas || larga) { C = o; return true; }
+        }
+        prev.push(c); if (prev.length > 3) prev.shift();
+        return rn < 60;
+      }
+      const id = pozoId(c[C.id]); if (id == null) return ++vacias < 300;
+      if (larga) {
+        const d = num(c[C.f]); if (!(d > 40000 && d < 60000)) return ++vacias < 300;
+        vacias = 0; ponerPozo(id, c, C); const v = valor(c[C.l[0]]); if (v != null) crudas.push([id, Math.floor(d), v, hi, 0]);
+      } else {
+        vacias = 0; ponerPozo(id, c, C);
+        for (const [k, d] of fechas) { const v = valor(c[k]); if (v != null) crudas.push([id, d, v, hi, k]); }
+      }
+    }); };
+  // Hojas en su orden y al final el Consolidado (manda si hay diferencias); las tablas dinámicas no tienen "No de pozo"
+  for (let i = 0; i < hojas.length; i++) if (hojas[i].k !== 'consolidado') await leerHoja(hojas[i], i);
+  for (let i = 0; i < hojas.length; i++) if (hojas[i].k === 'consolidado') await leerHoja(hojas[i], i);
+
+  // Fechas de campaña: las que tienen lecturas de buena parte de los pozos (lectura quincenal)
+  const nPozos = Object.keys(pozos).length || 1, freq = {};
+  crudas.forEach(x => freq[x[1]] = (freq[x[1]] || 0) + 1);
+  const camp = Object.keys(freq).map(Number).filter(d => freq[d] >= 0.35 * nPozos).sort((a, b) => a - b), esCamp = new Set(camp);
+  // Fechas mal digitadas en las hojas anchas: en cada hoja las columnas van en orden; la secuencia creciente más
+  // larga (dando más peso a fechas de campaña) se toma como buena y cada fecha fuera de orden se cambia por la
+  // fecha de campaña que le corresponde entre sus vecinas (si no hay una sola opción clara, esa columna se descarta)
+  const arreglo = {}, avisos = [];
+  for (const A of anchas) {
+    const s = A.cols.map(x => x[1]), n = s.length, w = s.map(d => esCamp.has(d) ? 2 : 1), mejor = w.slice(), de = Array(n).fill(-1);
+    for (let i = 0; i < n; i++) for (let j = 0; j < i; j++) if (s[j] < s[i] && mejor[j] + w[i] > mejor[i]) { mejor[i] = mejor[j] + w[i]; de[i] = j; }
+    const ok = new Set(); for (let i = mejor.indexOf(Math.max(...mejor)); i >= 0; i = de[i]) ok.add(i);
+    const usadas = new Set(s.filter((d, k) => ok.has(k)));
+    for (let a = 0; a < n; ) {
+      if (ok.has(a)) { a++; continue; }
+      let b = a; while (b < n && !ok.has(b)) b++;
+      const lo = a > 0 ? s[a - 1] : -Infinity, hi = b < n ? s[b] : Infinity, cand = camp.filter(d => d > lo && d < hi && !usadas.has(d));
+      for (let k = a; k < b; k++) {
+        const nueva = cand.length === b - a ? cand[k - a] : null;
+        arreglo[A.hi + '|' + A.cols[k][0]] = nueva;
+        avisos.push(`Hoja «${A.nom}»: ${frFecha(fecha(s[k]))} → ${nueva ? frFecha(fecha(nueva)) : 'descartada (no se pudo saber la fecha)'}`);
+      }
+      a = b;
+    }
+  }
+  // Lecturas de una misma campaña tomadas en días cercanos (±6 días) quedan en la fecha de la campaña
+  const campana = d => { if (esCamp.has(d)) return d; let m = null; for (const c of camp) if (Math.abs(c - d) <= 6 && (m == null || Math.abs(c - d) < Math.abs(m - d))) m = c; return m ?? d; };
+  const lect = {};
+  for (const [id, d0, v, hi, col] of crudas) {
+    let d = d0; const k = hi + '|' + col;
+    if (k in arreglo) { d = arreglo[k]; if (d == null) continue; }
+    const f = fecha(campana(d)); (lect[f] = lect[f] || {})[id] = v;
+  }
+  const lecturas = {};
+  Object.keys(lect).sort().forEach(f => { if (Object.keys(lect[f]).length >= 10) lecturas[f] = lect[f]; });
+  return {archivo:nombre, fechaArchivo, avisos, lecturas,
+    pozos:Object.keys(pozos).map(Number).sort((a, b) => a - b).map(id => { const p = pozos[id]; return [id, p.lat != null ? +p.lat.toFixed(7) : null, p.lon != null ? +p.lon.toFixed(7) : null, p.h, p.s, p.z]; })};
+}
+function frElegirArchivo(file){
+  if (!file) return;
+  if (typeof DecompressionStream === 'undefined') { toast('⚠ Este navegador no puede leer el Excel; usa Chrome o Edge actualizados'); return; }
+  frE.carpeta = {...frE.carpeta, estado:'cargando'}; frPintarFuente();
+  toast(`⏳ Leyendo ${file.name}…`);
+  const dl = new Date(file.lastModified), p2 = x => String(x).padStart(2, '0');
+  const fechaArch = `${dl.getFullYear()}-${p2(dl.getMonth() + 1)}-${p2(dl.getDate())}T${p2(dl.getHours())}:${p2(dl.getMinutes())}:${p2(dl.getSeconds())}`;
+  frLeerExcel(file, file.name, fechaArch).then(d => frCargarMapa().then(() => d)).then(d => { frE.carpeta = {...frE.carpeta, estado:''}; frAplicar(d); })
+    .catch(e => { console.error(e); frE.carpeta = {...frE.carpeta, estado:''}; frPintarFuente(); toast('⚠ No se pudo leer ese Excel: ' + (e.message || e)); });
 }
 
 q('freaticos').addEventListener('click', e => {
   const t = e.target;
-  if (t.closest('[data-fr-act]')) { frActualizar(false); return; }
+  if (t.closest('[data-fr-act]')) { frRevisarServidor(true); return; }
   if (t.closest('[data-fr-png]')) { frDescargarPNG(); return; }
   const z = t.closest('[data-fr-zoom]'); if (z) { frE.zoom && frE.zoom(+z.dataset.frZoom); return; }
   if (t.closest('[data-fr-ajustar]')) { frE.suerteSel = null; frE.ajustar && frE.ajustar(); return; }
@@ -449,7 +670,8 @@ q('freaticos').addEventListener('click', e => {
   const s = t.closest('[data-fr-sue]'); if (s) { frE.suerteSel = +s.dataset.frSue; frE.dibujar && frE.dibujar(); q('fr-mapa').scrollIntoView({behavior:'smooth', block:'center'}); }
 });
 q('freaticos').addEventListener('change', e => {
-  if (e.target.id === 'fr-fecha') { frE.fecha = e.target.value; renderFreatico(); }
+  if (e.target.id === 'fr-archivo') { frElegirArchivo(e.target.files[0]); e.target.value = ''; }
+  else if (e.target.id === 'fr-fecha') { frE.fecha = e.target.value; renderFreatico(); }
   else if (e.target.id === 'fr-hac') { frE.hac = e.target.value; renderFreatico(); }
   else if (e.target.dataset.frCapa) { frE.capas[e.target.dataset.frCapa] = e.target.checked; frE.dibujar && frE.dibujar(); }
 });
