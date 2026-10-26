@@ -292,7 +292,7 @@ function frInformeComparativo(){
   const peor = filas.reduce((a, b) => malo(b) > malo(a) ? b : a), mejor = filas.reduce((a, b) => malo(b) < malo(a) ? b : a);
   const hoy = new Date(), hoyTxt = `${frMesL[hoy.getMonth()].replace(/^./, c => c.toUpperCase())} ${hoy.getDate()} del ${hoy.getFullYear()}`;
   const abs = u => new URL(u, document.baseURI).href, logo = abs('img/logo-riopaila.png');
-  const portada = DB.portada && DB.portada.imagen ? DB.portada.imagen : abs('img/portada.svg');
+  const portada = abs('img/portada-informe-nf.svg');   // ilustración del nivel freático (pozo, raíces, lámina de agua)
   const lista = sel.map(frFechaL).join(', ').replace(/, ([^,]*)$/, ' y $1');
   const editable = (txt, ph) => `<p class="ed${txt ? '' : ' vacio'}" contenteditable="true" data-ph="${ph}">${txt}</p>`;
   const cambio = (a, b) => Math.abs(b - a) < 0.5 ? 'se mantuvo prácticamente igual' : b > a ? `aumentó ${n1(b - a)} puntos porcentuales` : `disminuyó ${n1(a - b)} puntos porcentuales`;

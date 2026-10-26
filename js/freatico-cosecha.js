@@ -214,7 +214,7 @@ function frInformeCosecha(){
   const periodo = desde && hasta ? (desde.slice(0, 7) === hasta.slice(0, 7) ? `${frMesL[+desde.slice(5, 7) - 1]} de ${desde.slice(0, 4)}` : `${frFechaL(desde)} y el ${frFechaL(hasta)}`) : '';
   const hoy = new Date(), hoyTxt = `${frMesL[hoy.getMonth()].replace(/^./, c => c.toUpperCase())} ${hoy.getDate()} del ${hoy.getFullYear()}`;
   const abs = u => new URL(u, document.baseURI).href, logo = abs('img/logo-riopaila.png');
-  const portada = DB.portada && DB.portada.imagen ? DB.portada.imagen : abs('img/portada.svg');
+  const portada = abs('img/portada-informe-nf.svg');   // ilustración del nivel freático (pozo, raíces, lámina de agua)
   const editable = (txt, ph) => `<p class="ed${txt ? '' : ' vacio'}" contenteditable="true" data-ph="${ph}">${txt}</p>`;
   const afect = A.ok.filter(x => x.crit === 5).sort((a, b) => a.nivel - b.nivel);
   const pRes = `Se evaluaron <b>${tot.n}</b> suertes cosechadas${periodo ? ` entre ${desde.slice(0, 7) === hasta.slice(0, 7) ? '' : 'el '}${periodo}` : ''}, con un área de ${n1(tot.ha, 2)} ha. De ellas, <b>${r5.n} (${n1(pct(r5.n))}%, ${n1(r5.ha, 2)} ha)</b> presentaron niveles freáticos menores a 0,8 m en los ${frcE.ventana} días previos al corte (criterio 5, afectación alta), ${r3.n} (${n1(pct(r3.n))}%) se ubicaron entre 0,8 y 1,2 m (criterio 3) y ${r1.n} (${n1(pct(r1.n))}%) tuvieron niveles de 1,2 m o más (criterio 1, sin afectación).` +
