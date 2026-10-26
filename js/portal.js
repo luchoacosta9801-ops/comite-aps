@@ -99,25 +99,25 @@ function renderPortal(){
         `${esc(DB.meta.semana)} · <b>${f2(ha)} ha</b> sembradas · <b>${pct}%</b> vs ppto`, 'var(--cyan)')}
       ${card('simulador', '💰', 'Simulador de costos', 'Costo por suerte según labor, contratista y pases, comparado con el presupuesto.',
         `${S.length} suertes en proceso · <b>${moneyM(simTot)}</b> · ${simDifT >= 0 ? 'ahorro' : 'sobrecosto'} ${moneyM(Math.abs(simDifT))}`, 'var(--green)')}
-      ${card('estructura', '👥', 'Estructura del área', 'Organigrama del área: cargos, personas, equipos y zonas a cargo.',
-        E.personas.length ? `<b>${E.personas.length}</b> ${E.personas.length === 1 ? 'cargo' : 'cargos'} · ${E.personas.filter(p => !p.nombre).length} por asignar` : 'Por completar', 'var(--violet)')}
+      ${typeof maestroSuertes !== 'function' ? '' : (() => { const M = maestroSuertes(), L = M ? msFilas().filter(x => x.emp === 'RIOP') : [];
+        return card('maes', '📚', 'Maestro de suertes', 'El maestro de suertes en versión digital: áreas, variedades, edades, cortes y próximos cortes de cada suerte, con mapa.',
+        M ? `<b>${L.length}</b> suertes Riopaila · <b>${f2(sum(L, x => x.area || 0))} ha</b>${M.fecha ? ` · ${esc(M.fecha)}` : ''}` : 'Por cargar', '#7c3aed'); })()}
+      ${typeof freatico !== 'function' ? '' : (() => { const F = freatico(), fe = F ? frFechas(F) : [], u = fe[fe.length - 1], L = u ? Object.values(F.lecturas[u]).map(frVal) : [];
+        return card('freat', '💧', 'Niveles freáticos', 'Lecturas quincenales de los pozos de observación y mapa de isobatas por suerte: crítico, subcrítico, regular y bueno.',
+        u ? `Última lectura <b>${frFecha(u)}</b> · ${L.length} pozos · <b>${L.filter(v => v < 1).length}</b> a menos de 1 m` : 'Sin lecturas aún', '#0369a1'); })()}
       ${card('ppto', '📅', 'Presupuesto APS 2027', 'Hectáreas a renovar por mes y zona, y costo presupuestado por labor.',
         haP ? `<b>${f2(haP)} ha</b> · inversión <b>${moneyM(haP * pptoHa2027(P))}</b>` : 'Estructura lista · sin datos aún', 'var(--amber)')}
       ${(() => { const A = agroFilas(); return card('agro', '🌱', 'Gestión Agronomía', 'Suertes sembradas, surcadas y en ruta del Comité APS: fecha de siembra, variedad y observaciones.',
         A.length ? `<b>${A.length}</b> ${A.length === 1 ? 'suerte' : 'suertes'} · <b>${f2(sum(A, x => x.a))} ha</b> · ${A.filter(x => x.fecha).length} con fecha de siembra` : 'Sin suertes cerradas aún', '#15803d'); })()}
-      ${(() => { const L = protocolos(); return card('proto', '🚨', 'Protocolos de emergencia', 'Libros de reacción: qué hacer ante inundaciones, rotura de diques, incendios, derrames y accidentes.',
-        L.length ? `<b>${L.length}</b> ${L.length === 1 ? 'protocolo' : 'protocolos'} · ${L.filter(p => p.borrador).length} en borrador` : 'Por completar', 'var(--red)'); })()}
       ${(() => { const L = proyectos(); return card('proy', '🏗️', 'Proyectos ejecutados', 'Obras y proyectos del área: drenajes, diques, vías, canales, nivelación y mejoras, con inversión y resultados.',
         L.length ? `<b>${L.length}</b> ${L.length === 1 ? 'proyecto' : 'proyectos'} · inversión <b>${moneyM(sum(L, p => +p.inversion || 0))}</b>` : 'Por completar', '#0f766e'); })()}
-      ${typeof maestroSuertes !== 'function' ? '' : (() => { const M = maestroSuertes(), L = M ? msFilas().filter(x => x.emp === 'RIOP') : [];
-        return card('maes', '📚', 'Maestro de suertes', 'El maestro de suertes en versión digital: áreas, variedades, edades, cortes y próximos cortes de cada suerte, con mapa.',
-        M ? `<b>${L.length}</b> suertes Riopaila · <b>${f2(sum(L, x => x.area || 0))} ha</b>${M.fecha ? ` · ${esc(M.fecha)}` : ''}` : 'Por cargar', '#7c3aed'); })()}
+      ${(() => { const L = protocolos(); return card('proto', '🚨', 'Protocolos de emergencia', 'Libros de reacción: qué hacer ante inundaciones, rotura de diques, incendios, derrames y accidentes.',
+        L.length ? `<b>${L.length}</b> ${L.length === 1 ? 'protocolo' : 'protocolos'} · ${L.filter(p => p.borrador).length} en borrador` : 'Por completar', 'var(--red)'); })()}
+      ${card('estructura', '👥', 'Estructura del área', 'Organigrama del área: cargos, personas, equipos y zonas a cargo.',
+        E.personas.length ? `<b>${E.personas.length}</b> ${E.personas.length === 1 ? 'cargo' : 'cargos'} · ${E.personas.filter(p => !p.nombre).length} por asignar` : 'Por completar', 'var(--violet)')}
       ${!MODO_EDICION || typeof renderUsuarios !== 'function' ? '' : (() => { const n = ((DB.usuarios && DB.usuarios.lista) || []).length;
         return card('usu', '🔐', 'Usuarios y accesos', 'Crea los usuarios que pueden entrar a la página, con perfil Ver o Editor. Solo lo ve el administrador.',
         n ? `<b>${n}</b> ${n === 1 ? 'usuario' : 'usuarios'}` : 'Sin usuarios: la página está abierta', '#475569'); })()}
-      ${typeof freatico !== 'function' ? '' : (() => { const F = freatico(), fe = F ? frFechas(F) : [], u = fe[fe.length - 1], L = u ? Object.values(F.lecturas[u]).map(frVal) : [];
-        return card('freat', '💧', 'Niveles freáticos', 'Lecturas quincenales de los pozos de observación y mapa de isobatas por suerte: crítico, subcrítico, regular y bueno.',
-        u ? `Última lectura <b>${frFecha(u)}</b> · ${L.length} pozos · <b>${L.filter(v => v < 1).length}</b> a menos de 1 m` : 'Sin lecturas aún', '#0369a1'); })()}
     </div>
     <div class="pt-pie">Comité APS · Riopaila Agrícola · Elaborado por: <b>Luis Acosta</b> · Esp. de Ingeniería Agrícola</div>`;
 }
