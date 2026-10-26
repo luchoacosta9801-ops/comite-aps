@@ -767,7 +767,7 @@ q('protocolos').addEventListener('change', e => {
   modCambio(() => { const p = listaEditable('protocolos').find(x => x.id === id); if (p) p[el.dataset.pf] = el.type === 'checkbox' ? el.checked : el.value.trim(); });
   const d = q('protocolos').querySelector(`[data-id="${CSS.escape(id)}"]`); if (d) d.open = true;
 });
-q('protocolos').addEventListener('input', e => { if (e.target.id === 'pr-f-txt') { pfil.txt = e.target.value; const pos = e.target.selectionStart; renderProtocolos(); const i = q('pr-f-txt'); i.focus(); i.setSelectionRange(pos, pos); } });
+q('protocolos').addEventListener('input', e => { if (e.target.id === 'pr-f-txt') { pfil.txt = e.target.value; redibujarConservando('pr-f-txt', renderProtocolos); } });
 q('protocolos').addEventListener('click', e => {
   const ver = e.target.closest('[data-pr-ver]');
   if (ver) { const p = protocolos().find(x => x.id === ver.dataset.prVer); if (p) abrirPresentacion(p, prDiapositivas(p), '🚨 ' + p.titulo); return; }
@@ -1079,7 +1079,7 @@ q('pptodet').addEventListener('change', e => {
   const k = {'pd-zona':'zona', 'pd-est':'est', 'pd-mes':'mes'}[e.target.id]; if (!k) return;
   pdf[k] = k === 'mes' ? +e.target.value || 0 : e.target.value; renderPptoDetalle();
 });
-q('pptodet').addEventListener('input', e => { if (e.target.id === 'pd-txt') { pdf.txt = e.target.value; const p = e.target.selectionStart; renderPptoDetalle(); const i = q('pd-txt'); i.focus(); i.setSelectionRange(p, p); } });
+q('pptodet').addEventListener('input', e => { if (e.target.id === 'pd-txt') { pdf.txt = e.target.value; redibujarConservando('pd-txt', renderPptoDetalle); } });
 // Botón "Ver detalle" del panel de presupuesto del dashboard (sin plegar el panel)
 q('btn-ppto-det').addEventListener('click', e => { e.stopPropagation(); irA('pptodet'); });
 document.addEventListener('click', e => { if (e.target.closest('[data-ver-ppto]')) { e.stopPropagation(); irA('pptodet'); } }, true);

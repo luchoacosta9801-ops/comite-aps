@@ -228,7 +228,7 @@ function renderEditLotes(){
       <tbody>${rows||'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted)">Sin coincidencias</td></tr>'}</tbody></table>
     </div>`;
   const b=q('edit-buscar');
-  b.addEventListener('input',()=>{editFiltro=b.value;renderEditLotes();const nb=q('edit-buscar');nb.focus();nb.setSelectionRange(nb.value.length,nb.value.length);});
+  b.addEventListener('input',()=>{editFiltro=b.value;redibujarConservando('edit-buscar',renderEditLotes);});
   modalFooter.innerHTML=`${volver}<button class="mbtn mbtn-primary" onclick="showView('add')">➕ Agregar suerte</button>`;
   modalBody.insertAdjacentHTML('afterbegin',barraMaestro('renderEditLotes'));
 }

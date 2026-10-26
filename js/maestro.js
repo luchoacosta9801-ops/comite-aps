@@ -273,5 +273,6 @@ q('maestro').addEventListener('change', e => {
   const k = {'ms-zona':'zona', 'ms-hac':'hac', 'ms-uso':'uso', 'ms-estado':'estado', 'ms-variedad':'variedad'}[t.id];
   if (k) { msE[k] = t.value; renderMaestro(); }
 });
-q('maestro').addEventListener('input', e => { if (e.target.id === 'ms-txt') { msE.txt = e.target.value; const p = e.target.selectionStart; renderMaestro(); const i = q('ms-txt'); i.focus(); i.setSelectionRange(p, p); } });
+let msEspera = 0;
+q('maestro').addEventListener('input', e => { if (e.target.id === 'ms-txt') { msE.txt = e.target.value; clearTimeout(msEspera); msEspera = setTimeout(() => redibujarConservando('ms-txt', renderMaestro), 250); } });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && msE.ficha && q('ms-ficha')) { msE.ficha = null; q('ms-ficha').innerHTML = ''; } });

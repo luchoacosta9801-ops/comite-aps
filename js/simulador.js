@@ -198,7 +198,7 @@ function renderSimParam(){
     <div class="sim-tw" style="max-height:340px"><table class="sim-t sim-tar"><thead><tr><th>Contratista</th><th>Código</th><th>Descripción (labor)</th><th>Unidad</th><th class="n">$ tarifa</th>${ed ? '<th></th>' : ''}</tr></thead>
       <tbody>${filasT || '<tr><td colspan="6" class="nores">Sin coincidencias</td></tr>'}</tbody></table></div>`;
   const b = q('sim-qt');
-  b.addEventListener('input', () => { simFiltroT = b.value; renderSimParam(); const n = q('sim-qt'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); });
+  b.addEventListener('input', () => { simFiltroT = b.value; redibujarConservando('sim-qt', renderSimParam); });
 }
 
 // ── Eventos (delegados) ──

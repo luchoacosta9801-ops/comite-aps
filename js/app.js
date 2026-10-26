@@ -6,6 +6,9 @@ function q(id){return document.getElementById(id)}
 function esc(t){return String(t ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function f2(n){return (+n||0).toFixed(2)}
 function money(n){return '$'+Math.round(n||0).toLocaleString('en-US')}
+// Redibuja un módulo dejando intacto el campo de texto en el que se escribe: si se crea uno nuevo, el celular
+// pierde el teclado que se estaba usando (de números vuelve a letras) y el cursor
+function redibujarConservando(id,fn){const viejo=q(id);fn();const nuevo=q(id);if(viejo&&nuevo&&nuevo!==viejo)nuevo.replaceWith(viejo);if(viejo&&document.activeElement!==viejo)viejo.focus({preventScroll:true});}
 
 let tt;
 function toast(msg){const t=q('toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200);}
