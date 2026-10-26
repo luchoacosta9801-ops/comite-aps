@@ -194,6 +194,8 @@ const IV = (() => {
     DB.lotes.forEach(l => add(l.s, l.h)); DB.proceso.forEach(r => add(r.sue, r.hac)); DB.ruta.forEach(r => add(r.s, r.h));
     ((typeof ppto2027 === 'function' && ppto2027().suertes) || []).forEach(x => add(x.s, x.h));
     ((DB.ppto2026 && DB.ppto2026.suertes) || []).forEach(x => add(x.s, typeof hacDeSuerte === 'function' ? hacDeSuerte(x.s) : ''));
+    // Las suertes de Riopaila del maestro que no están en el comité (con el nombre de hacienda del maestro)
+    if (typeof msFilas === 'function') { const ya = new Set([...S.values()].map(x => x.s)); msFilas().forEach(x => { if (x.emp === 'RIOP' && !ya.has(x.s)) add(x.s, msHacN(x.hac)); }); }
     return [...S.values()];
   };
   function suertesEn(t, hac){
@@ -216,8 +218,15 @@ const IV = (() => {
     const A = typeof agroFilas === 'function' ? agroFilas().filter(x => x.s === s && x.h === h) : [];
     const M = ((DB.maestro && DB.maestro.lotes) || {})[h + '|' + s];
     const S = P && typeof simSuerte === 'function' ? simSuerte(P) : null;
-    const area = (L[0] && L[0].a) || (P && P.area) || (R && R.a) || (Q && Q.a) || (P26 && P26.a) || 0;
-    const z = (L[0] && L[0].z) || (P && P.z) || (Q && Q.z) || (P26 && P26.z) || zonaDe(h);
+    // Maestro de suertes y nivel freático del pozo más cercano a la suerte
+    const MSL = typeof msFilas === 'function' ? msFilas().filter(x => x.s === s) : [], MS = MSL.find(x => n(x.hac).includes(n(h)) || n(h).includes(n(x.hac))) || MSL[0];
+    let NF = null;
+    if (typeof frCentros === 'function' && typeof MAPA_FREATICO !== 'undefined' && typeof freatico === 'function' && freatico()) {
+      const Cn = frCentros()[s], F = freatico(), fe = frFechas(F), u = fe[fe.length - 1], Mf = MAPA_FREATICO;
+      if (Cn) { let mejor = null; F.pozos.forEach(p => { const v = frVal(F.lecturas[u][p[0]]); if (v == null) return; const [x, y] = frTM(p[1], p[2]), d = Math.hypot(x - Mf.x0 - Cn.x, y - Mf.y0 - Cn.y); if (!mejor || d < mejor.d) mejor = {p, v, d}; }); if (mejor) NF = {...mejor, u}; }
+    }
+    const area = (L[0] && L[0].a) || (P && P.area) || (R && R.a) || (Q && Q.a) || (P26 && P26.a) || (MS && MS.area) || 0;
+    const z = (L[0] && L[0].z) || (P && P.z) || (Q && Q.z) || (P26 && P26.z) || (MS && +MS.zona) || zonaDe(h);
     const lp = L.find(l => l.e !== 'SEMBRADA') || L[0];
     const dias = lp ? dl(lp) : P ? P.dias : R ? R.d : null;
     const filas = [];
@@ -230,8 +239,10 @@ const IV = (() => {
     else if (L.length) filas.push(`📋 Presupuesto 2026: <b>no está</b> en la lista`);
     if (S && S.total) filas.push(`💰 Costo proyectado ${moneyM(S.total)} (${money(S.proy)}/ha) vs ppto ${moneyM(S.pptoTotal)} → ${S.dif >= 0 ? 'ahorro' : 'sobrecosto'} ${money(Math.abs(S.dif))}/ha`);
     A.filter(a => a.fecha || a.obs).forEach(a => filas.push(`🌱 Agronomía: ${a.fecha ? 'siembra real ' + fechaLarga(a.fecha) : 'sin fecha de siembra real'}${a.lucro != null && a.lucro >= 0 ? ` · ${a.lucro} días de lucro real` : ''}${a.obs ? ` · "${esc(a.obs)}"` : ''}`));
+    if (MS) filas.push(`📚 Maestro de suertes: ${[esc(MS.variedad || ''), MS.nCorte != null ? `corte <b>${MS.nCorte}</b>` : '', MS.edad != null ? `${frNum(MS.edad, 1)} meses` : '', msProx(MS) ? `próximo corte <b>${msF(msProx(MS))}</b>` : '', MS.tchPpto ? `TCH ppto ${frNum(MS.tchPpto, 1)}` : '', esc(MS.estado || '')].filter(Boolean).join(' · ')}`);
+    if (NF) filas.push(`💧 Nivel freático: pozo ${NF.p[0]} (a ${frNum(NF.d, 0)} m) · <b>${frNum(NF.v)} m</b> (${FR_CLASES[frClase(NF.v)].n.toLowerCase()}) el ${frFecha(NF.u)}`);
     if (Q) filas.push(`📅 Presupuesto 2027: renovación en <b>${MESES[Q.mes - 1] || '—'}</b> · ${esc(Q.vAct || '—')} → ${esc(Q.v1 || '—')}${Q.niv ? ` · nivelación ${Q.niv}` : ''}`);
-    return {area, z, dias, L, P, R, Q, M, P26, html:`<div class="iv-ficha"><div class="iv-ficha-t">Suerte <b>${esc(s)}</b> · ${esc(h)} · Z${z} · ${ha(area)}</div>${lista(filas)}
+    return {area, z, dias, L, P, R, Q, M, P26, MS, NF, html:`<div class="iv-ficha"><div class="iv-ficha-t">Suerte <b>${esc(s)}</b> · ${esc(h)} · Z${z} · ${ha(area)}</div>${lista(filas)}
       ${L.length ? `<button type="button" class="iv-ir" data-iv-sue="${esc(s)}" data-iv-hac="${esc(h)}">Ver en el dashboard →</button>` : ''}</div>`};
   }
 
@@ -404,26 +415,135 @@ const IV = (() => {
       <small>Pendientes con más días: ${pen.slice().sort((a, b) => dl(b) - dl(a)).slice(0, 4).map(l => `${esc(l.s)} (${dl(l)})`).join(', ') || '—'}</small>`;
   }
 
-  // Niveles freáticos: última lectura de los pozos (por hacienda o un pozo concreto)
+  // ── Niveles freáticos, lluvias, maestro de suertes y cosecha vs niveles ──
+  const hayMapa = () => typeof MAPA_FREATICO !== 'undefined' && typeof frHaciendas === 'function';
+  const MESES_L = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const mesEnTxt = t => { const i = MESES_L.findIndex(m => new RegExp('\\b' + m + '\\b').test(t)); return i >= 0 ? i + 1 : 0; };
+  const anioEnTxt = t => { const m = t.match(/\b(20\d\d)\b/); return m ? +m[1] : 0; };
+  // Hacienda de la cartografía / maestro mencionada (LA LUISA 1, LAGUNAS…)
+  function hacGeoEn(t){
+    const K = hayMapa() ? frHaciendas().lista.map(x => x.k) : typeof msFilas === 'function' ? [...new Set(msFilas().map(x => x.hac))] : [];
+    const L = K.map(k => [k, n(k)]).sort((a, b) => b[1].length - a[1].length);
+    const f = L.find(([, k]) => (' ' + t + ' ').includes(' ' + k + ' ')) || L.find(([, k]) => k.length > 4 && t.includes(k.replace(/ \d+$/, '').replace(/^la /, '')));
+    return f ? f[0] : null;
+  }
+  const hacsDeZona = z => hayMapa() ? new Set(frHaciendas().lista.filter(x => x.z === z).map(x => x.k)) : null;
+
   function freaticoTxt(t){
-    const F = freatico(), fe = frFechas(F), u = fe[fe.length - 1], L = F.lecturas[u] || {};
-    const h = hacEn(t), num = (t.match(/pozo\s*(?:no\.?\s*)?(\d{1,3})\b/) || [])[1];
+    const F = freatico(), fe = frFechas(F), u = fe[fe.length - 1], ant = fe[fe.length - 2], L = F.lecturas[u] || {}, La = ant ? F.lecturas[ant] : {};
+    const hg = hacGeoEn(t), z = zonaEn(t), num = (t.match(/pozo\s*(?:no\.?\s*|numero\s*)?(\d{1,3})\b/) || [])[1];
     if (num) {
       const p = F.pozos.find(x => x[0] === +num); if (!p) return `No tengo el pozo ${esc(num)}.`;
-      const hist = fe.map(f => frVal(F.lecturas[f][p[0]])).filter(v => v != null), v = frVal(L[p[0]]);
-      return `<b>Pozo ${p[0]}</b> · ${esc(p[3])} (sector ${esc(p[4])})${lista([
-        `Lectura del ${frFecha(u)}: <b>${v != null ? (L[p[0]] === 'S' ? 'seco (> 2 m)' : frNum(v) + ' m · ' + FR_CLASES[frClase(v)].n) : 'sin lectura'}</b>`,
-        hist.length ? `Promedio histórico: ${frNum(sum(hist, x => x) / hist.length)} m · mínimo ${frNum(Math.min(...hist))} m (${hist.length} lecturas)` : ''].filter(Boolean))}${ir('freat', 'Ver mapa de isobatas')}`;
+      const hist = fe.map(f => ({f, v:frVal(F.lecturas[f][p[0]])})).filter(x => x.v != null), v = frVal(L[p[0]]), va = frVal(La[p[0]]);
+      const peor = hist.slice().sort((a, b) => a.v - b.v)[0];
+      return `<b>Pozo ${p[0]}</b> · ${esc(p[3])} (sector ${esc(p[4])}, zona ${esc(p[5])})${lista([
+        `Lectura del ${frFecha(u)}: <b>${v != null ? (L[p[0]] === 'S' ? 'seco (más de 2 m)' : frNum(v) + ' m · ' + FR_CLASES[frClase(v)].n) : 'sin lectura'}</b>`,
+        v != null && va != null ? `Lectura anterior (${frFecha(ant)}): ${frNum(va)} m → el agua ${v < va ? `<b>subió ${frNum(va - v)} m</b>` : v > va ? `bajó ${frNum(v - va)} m` : 'se mantuvo'}` : '',
+        hist.length ? `Promedio histórico: ${frNum(sum(hist, x => x.v) / hist.length)} m · ${hist.length} lecturas desde ${frFecha(hist[0].f)}` : '',
+        peor ? `Lectura más superficial: ${frNum(peor.v)} m el ${frFecha(peor.f)}` : ''].filter(Boolean))}${ir('freat', 'Ver mapa de isobatas')}`;
     }
-    const P = F.pozos.filter(p => !h || n(p[3]).includes(n(h)) || n(h).includes(n(p[3]))).map(p => ({p, v:frVal(L[p[0]])})).filter(x => x.v != null);
-    if (!P.length) return `No tengo lecturas de pozos${h ? ' en ' + esc(h) : ''} el ${frFecha(u)}.`;
+    const enHac = p => { if (hg && hayMapa()) return frHaciendas().pozoHac[p[0]] === hg; if (z) return +p[5] === z; return true; };
+    const P = F.pozos.filter(enHac).map(p => ({p, v:frVal(L[p[0]]), va:frVal(La[p[0]])})).filter(x => x.v != null);
+    if (!P.length) return `No tengo lecturas de pozos${hg ? ' en ' + esc(frNomHac ? frNomHac(hg) : hg) : ''} el ${frFecha(u)}.`;
     const c = [0, 0, 0, 0]; P.forEach(x => c[frClase(x.v)]++);
-    const malos = P.filter(x => x.v < 0.5).sort((a, b) => a.v - b.v);
-    return `<b>Niveles freáticos${h ? ' · ' + esc(h) : ''}</b> <small>(lectura del ${frFecha(u)})</small>${lista([
-      `${P.length} pozos leídos · promedio <b>${frNum(sum(P, x => x.v) / P.length)} m</b>`,
+    const malos = P.filter(x => x.v < 0.5).sort((a, b) => a.v - b.v), prom = sum(P, x => x.v) / P.length;
+    const conA = P.filter(x => x.va != null), promA = conA.length ? sum(conA, x => x.va) / conA.length : null;
+    const subieron = conA.filter(x => x.v < x.va - 0.2).length;
+    const S = hg ? new Set([hg]) : z ? hacsDeZona(z) : null;
+    const ll = typeof frLluvia15 === 'function' && hayMapa() ? frLluvia15(u, S) : null;
+    // Área por rango (solo para toda el área: con malla gruesa si el mapa aún no se ha calculado)
+    let area = '';
+    if (hayMapa() && !hg && !z) { try { const R = frResumenRapido(F, u), tt = R.total || 1; area = `Área: ${FR_CLASES.map((k, i) => `${k.n.toLowerCase()} <b>${frNum(R.clases[i] / tt * 100, 1)}%</b>`).join(' · ')}`;
+      if (tiene(t, 'suertes', 'cuales suertes', 'que suertes')) { const C = frRes(F, u).suertes.filter(s => s.v < 0.5).sort((a, b) => a.v - b.v);
+        return `<b>Suertes en nivel crítico</b> <small>(${frFecha(u)}, promedio de la suerte &lt; 0,5 m)</small>${C.length ? lista(C.slice(0, 15).map(s => `${esc(s.cod)} ${esc(frNomHac(s.h))} · ${frNum(s.ha)} ha · <b>${frNum(s.v)} m</b>`)) + (C.length > 15 ? `<small>… y ${C.length - 15} más</small>` : '') : '<br>Ninguna suerte en nivel crítico 👍'}${ir('freat', 'Ver mapa')}`; }
+    } catch (e) {} }
+    return `<b>Niveles freáticos${hg ? ' · ' + esc(frNomHac(hg)) : z ? ' · zona ' + z : ''}</b> <small>(lectura del ${frFecha(u)})</small>${lista([
+      `${P.length} pozos leídos · promedio <b>${frNum(prom)} m</b> (${FR_CLASES[frClase(prom)].n.toLowerCase()})${promA != null ? ` · anterior ${frNum(promA)} m` : ''}`,
+      area,
       ...FR_CLASES.map((k, i) => `${k.n} (${k.r} m): <b>${c[i]}</b> pozos`),
+      conA.length ? `Frente a la lectura anterior (${frFecha(ant)}) el agua subió más de 20 cm en ${subieron} pozos` : '',
+      ll != null ? `💧 Lluvia de los 15 días previos: <b>${frNum(ll, 0)} mm</b>` : '',
       malos.length ? `Más superficiales: ${malos.slice(0, 6).map(x => `pozo ${x.p[0]} ${esc(x.p[3])} (${frNum(x.v)} m)`).join(', ')}` : ''].filter(Boolean))}
-      <small>El área por rango (ha) y el mapa IDW están en el módulo.</small>${ir('freat', 'Ver mapa de isobatas')}`;
+      <small>Pregunta por un pozo ("pozo 49"), una hacienda o "qué suertes están críticas". En el módulo puedes generar el informe de isóbatas.</small>${ir('freat', 'Ver mapa de isobatas')}`;
+  }
+
+  // Lluvias: por período (últimos N días, un mes, un año) y por hacienda o zona
+  function lluviaTxt(t){
+    const L = typeof frLluvias === 'function' && frLluvias();
+    if (!L) return `Aún no hay base de lluvias cargada. En <b>💧 Niveles freáticos</b> (modo editor) está la fila <b>💧 Lluvia → 📥 Cargar base de lluvias por hacienda</b>.${ir('freat', 'Abrir niveles freáticos')}`;
+    const base = frDia(L.ini), ult = base + frLargoLluvias(L) - 1;
+    const hg = hacGeoEn(t), z = zonaEn(t), mes = mesEnTxt(t), anio = anioEnTxt(t);
+    let d1, d2, per;
+    const nd = (t.match(/ultim[oa]s?\s+(\d{1,3})\s+dias/) || [])[1];
+    if (mes) { const a = anio || +frDiaF(ult).slice(0, 4) - (mes > +frDiaF(ult).slice(5, 7) ? 1 : 0); d1 = frDia(`${a}-${String(mes).padStart(2, '0')}-01`); d2 = frDia(mes === 12 ? `${a + 1}-01-01` : `${a}-${String(mes + 1).padStart(2, '0')}-01`); per = `${MESES_L[mes - 1]} de ${a}`; }
+    else if (anio) { d1 = frDia(`${anio}-01-01`); d2 = frDia(`${anio + 1}-01-01`); per = `el año ${anio}`; }
+    else { const k = nd ? +nd : tiene(t, 'semana') ? 7 : tiene(t, 'mes') ? 30 : 15; d2 = ult + 1; d1 = d2 - k; per = `los últimos ${k} días con datos (hasta el ${frFecha(frDiaF(ult))})`; }
+    d1 = Math.max(d1, base); d2 = Math.min(d2, ult + 1);
+    if (d2 <= d1) return `No tengo lluvias para ${per}: la base va del ${frFecha(L.ini)} al ${frFecha(frDiaF(ult))}.`;
+    const keys = Object.keys(L.hac).filter(k => hg ? k === hg : z ? (hacsDeZona(z) || new Set()).has(k) : true);
+    const area = k => hayMapa() ? (frHaciendas().area[k] || 200) : 1;
+    const dia = d => { let s = 0, w = 0; keys.forEach(k => { const v = L.hac[k][d - base]; if (v != null) { s += v * area(k); w += area(k); } }); return w ? s / w : null; };
+    let tot = 0, nDias = 0, max = null;
+    for (let d = d1; d < d2; d++) { const v = dia(d); if (v == null) continue; tot += v; nDias++; if (!max || v > max.v) max = {d, v}; }
+    if (!nDias) return `No hay datos de lluvia${hg ? ' en ' + esc(frNomHac(hg)) : ''} para ${per}.`;
+    const porHac = !hg ? Object.keys(L.hac).filter(k => !z || keys.includes(k)).map(k => { let s = 0, c = 0; for (let d = d1; d < d2; d++) { const v = L.hac[k][d - base]; if (v != null) { s += v; c++; } } return {k, s, c}; }).filter(x => x.c).sort((a, b) => b.s - a.s) : [];
+    return `<b>💧 Lluvia${hg ? ' · ' + esc(frNomHac(hg)) : z ? ' · zona ' + z : ''}</b> <small>(${per})</small>${lista([
+      `Acumulado: <b>${frNum(tot, 0)} mm</b> · promedio ${frNum(tot / nDias, 1)} mm/día`,
+      max && max.v > 0 ? `Día más lluvioso: <b>${frFecha(frDiaF(max.d))}</b> con ${frNum(max.v, 0)} mm` : 'No llovió en ese período',
+      porHac.length > 1 ? `Por hacienda: ${porHac.slice(0, 6).map(x => `${esc(frNomHac(x.k))} ${frNum(x.s, 0)} mm`).join(', ')}` : ''].filter(Boolean))}
+      <small>La base de lluvias va del ${frFecha(L.ini)} al ${frFecha(frDiaF(ult))}.</small>${ir('freat', 'Ver con los niveles')}`;
+  }
+
+  // Maestro de suertes: resumen, variedades, próximos cortes, número de corte, edad, producción
+  function maestroTxt(t){
+    const M = typeof maestroSuertes === 'function' && maestroSuertes();
+    if (!M) return `Aún no hay maestro de suertes cargado. Se carga en <b>📚 Maestro de suertes</b> (modo editor).${ir('maes', 'Abrir maestro')}`;
+    const hg = hacGeoEn(t), z = zonaEn(t), emp = tiene(t, 'castilla') ? 'CAST' : 'RIOP';
+    // Hacienda de cada suerte: la de la cartografía (separa La Luisa 1 y 2); si no está, la del maestro
+    const C = hayMapa() && typeof frCentros === 'function' ? frCentros() : {}, hacDe = x => C[x.s] ? C[x.s].h : x.hac;
+    const T = msFilas().filter(x => x.emp === emp && (!z || +x.zona === z) && (!hg || n(hacDe(x)) === n(hg) || n(hacDe(x)).includes(n(hg))));
+    const ha = A => sum(A, x => x.area || 0), pond = (A, k) => { const B = A.filter(x => x[k] != null && x.area); const w = ha(B); return w ? sum(B, x => x[k] * x.area) / w : null; };
+    const donde = `${emp === 'CAST' ? 'Castilla' : 'Riopaila'}${hg ? ' · ' + esc(msHacN(hg)) : ''}${z ? ' · zona ' + z : ''}`;
+    const pie = `<br><small>Maestro: ${esc(M.archivo)}${M.fecha ? ` (${esc(M.fecha)})` : ''}</small>${ir('maes', 'Abrir maestro de suertes')}`;
+    if (!T.length) return `No encontré suertes en el maestro para ${donde}.`;
+    if (tiene(t, 'variedad', 'variedades')) {
+      const V = {}; T.forEach(x => V[x.variedad || '—'] = (V[x.variedad || '—'] || 0) + (x.area || 0)); const L = Object.entries(V).sort((a, b) => b[1] - a[1]), tt = ha(T);
+      return `<b>Variedades · ${donde}</b>${lista(L.slice(0, 10).map(([v, a]) => `${esc(v)}: <b>${frNum(a, 1)} ha</b> (${frNum(a / tt * 100, 1)}%)`))}${L.length > 10 ? `<small>… y ${L.length - 10} más</small>` : ''}${pie}`;
+    }
+    if (tiene(t, 'proximo corte', 'proximos cortes', 'se corta', 'se cortan', 'cortar', 'por cosechar', 'a cosechar', 'cosechar', 'programacion de corte')) {
+      const hoy = new Date(), mes = mesEnTxt(t);
+      const meses = mes ? [`${anioEnTxt(t) || (mes < hoy.getMonth() + 1 ? hoy.getFullYear() + 1 : hoy.getFullYear())}-${String(mes).padStart(2, '0')}`] : [0, 1].map(i => { const d = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; });
+      return `<b>Próximos cortes · ${donde}</b>` + meses.map(m => { const A = T.filter(x => msProx(x).slice(0, 7) === m).sort((a, b) => msProx(a).localeCompare(msProx(b)));
+        return `<br><b>${MESES_L[+m.slice(5) - 1]} ${m.slice(0, 4)}</b>: ${A.length} suertes · ${frNum(ha(A), 1)} ha · ${frNum(sum(A, x => x.tonEst || 0), 0)} t estimadas${lista(A.slice(0, 8).map(x => `${esc(x.s)} ${esc(msHacN(x.hac))} · ${frNum(x.area)} ha · ${msF(msProx(x))} · corte ${x.nCorte ?? '—'}`))}${A.length > 8 ? `<small>… y ${A.length - 8} más</small>` : ''}`; }).join('') + pie;
+    }
+    if (tiene(t, 'numero de corte', 'cortes', 'renovar', 'renovacion', 'candidat', 'soca')) {
+      const C = {}; T.forEach(x => { const k = x.nCorte == null ? '—' : x.nCorte >= 8 ? '8+' : x.nCorte; C[k] = (C[k] || 0) + (x.area || 0); });
+      const viejas = T.filter(x => x.nCorte >= 8).sort((a, b) => b.nCorte - a.nCorte);
+      return `<b>Número de corte · ${donde}</b>${lista([`Corte promedio: <b>${frNum(pond(T, 'nCorte'), 1)}</b>`, Object.entries(C).sort((a, b) => parseInt(a[0]) - parseInt(b[0])).map(([k, a]) => `corte ${k}: ${frNum(a, 0)} ha`).join(' · '),
+        `Con 8 cortes o más (candidatas a renovación): <b>${viejas.length} suertes · ${frNum(ha(viejas), 1)} ha</b>`])}${lista(viejas.slice(0, 8).map(x => `${esc(x.s)} ${esc(msHacN(x.hac))} · corte <b>${x.nCorte}</b> · ${frNum(x.area)} ha · ${esc(x.variedad || '—')}`))}${pie}`;
+    }
+    if (tiene(t, 'edad', 'vieja', 'joven', 'meses')) {
+      const pasadas = T.filter(x => x.edad != null && x.edadStd && x.edad >= x.edadStd).sort((a, b) => b.edad - a.edad);
+      return `<b>Edad de las suertes · ${donde}</b>${lista([`Edad promedio: <b>${frNum(pond(T, 'edad'), 1)} meses</b>`, `Ya cumplieron la edad estándar de corte: <b>${pasadas.length} suertes · ${frNum(ha(pasadas), 1)} ha</b>`])}${lista(pasadas.slice(0, 8).map(x => `${esc(x.s)} ${esc(msHacN(x.hac))} · ${frNum(x.edad, 1)} meses (estándar ${frNum(x.edadStd, 1)}) · próximo corte ${msF(msProx(x))}`))}${pie}`;
+    }
+    if (tiene(t, 'tch', 'toneladas', 'produccion', 'productividad', 'aforo')) {
+      return `<b>Producción · ${donde}</b>${lista([`TCH presupuesto: <b>${frNum(pond(T, 'tchPpto'), 1)}</b> · TCH aforo: <b>${frNum(pond(T, 'tchAforo'), 1)}</b>`,
+        `Toneladas estimadas: <b>${frNum(sum(T, x => x.tonEst || 0), 0)}</b> · presupuesto ${frNum(sum(T, x => x.tonPpto || 0), 0)}`])}${pie}`;
+    }
+    const H = {}; T.forEach(x => H[x.hac] = (H[x.hac] || 0) + (x.area || 0));
+    return `<b>Maestro de suertes · ${donde}</b>${lista([`<b>${T.length}</b> suertes · <b>${frNum(ha(T), 1)} ha</b> netas`, `${new Set(T.map(x => x.variedad)).size} variedades · edad promedio ${frNum(pond(T, 'edad'), 1)} meses · corte promedio ${frNum(pond(T, 'nCorte'), 1)}`,
+      `TCH presupuesto ${frNum(pond(T, 'tchPpto'), 1)} · ${frNum(sum(T, x => x.tonEst || 0), 0)} t estimadas`, !hg ? `Haciendas: ${Object.entries(H).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([h, a]) => `${esc(msHacN(h))} ${frNum(a, 0)} ha`).join(', ')}` : ''].filter(Boolean))}
+      <small>Pregunta por variedades, próximos cortes ("¿qué se corta en noviembre?"), número de cortes, edad o TCH.</small>${pie}`;
+  }
+
+  // Cosecha vs niveles freáticos (sustento de afectación)
+  function cosechaNFTxt(){
+    const A = typeof frCosechaAnalisis === 'function' && hayMapa() ? frCosechaAnalisis() : null;
+    if (!A) return `Para el análisis de cosecha vs niveles se carga el Excel de suertes cosechadas en <b>💧 Niveles freáticos → 🌾 Cosecha vs niveles</b>.${ir('nfcos', 'Abrir cosecha vs niveles')}`;
+    const R = A.resumen, r5 = R.find(x => x.c === 5), r1 = R.find(x => x.c === 1), pct = k => A.total.n ? k.n / A.total.n * 100 : 0;
+    return `<b>Cosecha vs niveles freáticos</b> <small>(${esc(frCosecha().archivo)})</small>${lista([`${A.total.n} suertes evaluadas · ${frNum(A.total.ha, 1)} ha`,
+      ...R.map(k => `Criterio ${k.c} (${k.r}): <b>${k.n}</b> suertes (${frNum(pct(k), 1)}%)${k.tch ? ` · TCH ${frNum(k.tch, 1)}` : ''}`),
+      r5.tch && r1.tch ? `Las suertes con afectación alta produjeron ${frNum(Math.abs(1 - r5.tch / r1.tch) * 100, 1)}% ${r5.tch < r1.tch ? 'menos' : 'más'} TCH que las sin afectación` : ''].filter(Boolean))}${ir('nfcos', 'Ver análisis e informe')}`;
   }
 
   // ── Cómo usar la plataforma (sin datos privados ni el enlace de editor) ──
@@ -470,8 +590,8 @@ const IV = (() => {
     return R.length ? `Esto es lo que encontré en la plataforma:${lista(R.map(([, d]) => d.res))}` : null;
   }
 
-  const AYUDA = `Soy el <b>Inge Virtual</b> 👷. Conozco toda la plataforma: comité APS, presupuesto 2026 y 2027, días de lucro, agronomía, simulador, proyectos, protocolos de emergencia, el equipo y conceptos de ingeniería agrícola y civil. Prueba:`;
-  const EJEMPLOS = ['Resumen de la semana', '¿Cuánto falta del presupuesto 2026?', '¿Qué suertes están atrasadas?', 'Días de lucro de las pendientes', '¿Qué hacer si se rompe un dique?', '¿Quién es el jefe de zona 1?', '¿Cuánto costó el drenaje de San Nicolás?', '¿En qué estado está la 3111-131?', 'Comparación con la semana pasada', '¿Qué es la descepada?'];
+  const AYUDA = `Soy el <b>Inge Virtual</b> 👷. Conozco toda la plataforma: comité APS, presupuesto 2026 y 2027, días de lucro, agronomía, simulador, <b>niveles freáticos</b>, <b>lluvias</b>, <b>maestro de suertes</b>, cosecha vs niveles, proyectos, protocolos de emergencia, el equipo y conceptos de ingeniería agrícola y civil. Prueba:`;
+  const EJEMPLOS = ['Resumen de la semana', '¿Cómo están los niveles freáticos?', '¿Qué suertes están en nivel crítico?', '¿Cuánto llovió en marzo?', '¿Qué se corta en noviembre?', 'Variedades de La Luisa 1', 'Suertes candidatas a renovar', '¿Cuánto falta del presupuesto 2026?', '¿En qué estado está la 3111-131?', '¿Qué hacer si se rompe un dique?', '¿Quién es el jefe de zona 1?', '¿Qué es la descepada?'];
 
   function responder(pregunta){
     const t = n(pregunta);
@@ -528,8 +648,12 @@ const IV = (() => {
       const L = typeof proyectos === 'function' ? proyectos() : [];
       if (L.length) return `<b>Proyectos ejecutados</b> (${L.length} · ${moneyM(sum(L, p => +p.inversion || 0))})${lista(L.map(p => `${esc(p.nombre)} · ${esc(p.estado || '')} <a href="#" class="iv-preg" data-q="proyecto ${esc(p.nombre)}">ver</a>`))}${ir('proy', 'Abrir proyectos')}`;
     }
-    // Niveles freáticos (pozos de observación)
-    if (tiene(t, 'freatic', 'pozo', 'piezometr', 'isobata', 'nivel del agua', 'nivel de agua') && typeof freatico === 'function' && freatico()) return freaticoTxt(t);
+    // Lluvias, cosecha vs niveles y niveles freáticos
+    if (tiene(t, 'lluvi', 'llovi', 'precipit', 'pluvio', 'aguacero') && !definir) return lluviaTxt(t);
+    if (tiene(t, 'cosecha vs', 'cosechadas', 'sustento', 'afectacion por', 'afectacion de cosecha', 'afectacion en cosecha')) return cosechaNFTxt();
+    if (tiene(t, 'freatic', 'pozo', 'piezometr', 'isobata', 'nivel del agua', 'nivel de agua', 'nivel critico', 'niveles critico') && typeof freatico === 'function' && freatico()) return freaticoTxt(t);
+    // Maestro de suertes
+    if (tiene(t, 'maestro', 'variedades', 'variedad', 'proximo corte', 'proximos cortes', 'se corta', 'se cortan', 'cortar', 'por cosechar', 'a cosechar', 'numero de corte', 'cortes', 'edad', 'tch', 'toneladas', 'aforo', 'candidat') && !tiene(t, '2027', 'presupuesto')) return maestroTxt(t);
     // 7) Presupuesto 2026 (cruce) y 2027
     if (tiene(t, '2027', 'renueva', 'renovar') && !tiene(t, '2026')) return ppto27(t);
     if (tiene(t, 'presupuesto', 'ppto', 'atrasad', 'retrasad', 'fuera de presupuesto', 'cumplimiento') && !tiene(t, '2027')) return ppto26Txt(t);
@@ -587,7 +711,7 @@ const IV = (() => {
     if (g) return `<b>${g.t}</b><br>${g.d}`;
     // 15) Búsqueda en toda la plataforma
     const b = buscarTodo(t); if (b) return b;
-    return `No encontré eso todavía 🤔. Puedo responder sobre: <b>suertes</b> (por número y hacienda), <b>haciendas y zonas</b>, <b>resumen de la semana</b>, <b>presupuesto 2026</b> (qué falta, atrasadas), <b>2027</b>, <b>días de lucro</b>, <b>labores</b> y <b>ruta</b>, <b>costos y tarifas</b>, <b>proyectos</b>, <b>protocolos de emergencia</b>, <b>personas y cargos</b>, y conceptos de ingeniería (pregunta "¿qué es…?").`;
+    return `No encontré eso todavía 🤔. Puedo responder sobre: <b>suertes</b> (por número y hacienda), <b>haciendas y zonas</b>, <b>resumen de la semana</b>, <b>presupuesto 2026</b> (qué falta, atrasadas), <b>2027</b>, <b>días de lucro</b>, <b>labores</b> y <b>ruta</b>, <b>costos y tarifas</b>, <b>niveles freáticos</b> (pozos, áreas críticas), <b>lluvias</b> (por mes, hacienda o zona), <b>maestro de suertes</b> (variedades, próximos cortes, edad, cortes, TCH), <b>cosecha vs niveles</b>, <b>proyectos</b>, <b>protocolos de emergencia</b>, <b>personas y cargos</b>, y conceptos de ingeniería (pregunta "¿qué es…?").`;
   }
   return {responder, AYUDA, EJEMPLOS};
 })();
@@ -610,6 +734,8 @@ const IV = (() => {
   function abrir(si){
     win.hidden = !si; btn.classList.toggle('on', si);
     if (si && !iniciado) { iniciado = true; poner(IV.AYUDA + chips(), 'bot'); }
+    // La cartografía (mapa de suertes y pozos) se carga al abrir el chat para responder con áreas y pozos cercanos
+    if (si && typeof frCargarMapa === 'function') frCargarMapa().catch(() => {});
     if (si) setTimeout(() => inp.focus(), 50);
   }
   function preguntar(txt){

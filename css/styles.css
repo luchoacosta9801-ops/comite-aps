@@ -1151,3 +1151,13 @@ tr.fr-sel td{background:#fff3cd}
 .ms-hito span.abajo{bottom:auto;top:26px}
 .ms-hito b{display:block;color:var(--c)}
 @media (max-width:900px){.ms-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ms-datos{grid-template-columns:repeat(2,minmax(0,1fr))}.ms-meses{grid-template-columns:repeat(6,minmax(0,1fr))}.ms-bar{grid-template-columns:90px 1fr 54px 40px}}
+
+/* ── Celular: las tablas anchas se deslizan dentro de su recuadro, sin empujar la página ── */
+@media (max-width:760px){
+  .panel .pb0,.comp-tabla,.sim-tw{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+  .panel .pb0 table,.comp-tabla table{min-width:max-content}
+  body{overflow-x:hidden}
+}
+@media (max-width:760px){
+  .facciones{flex-wrap:wrap;justify-content:flex-end;row-gap:6px;flex-shrink:1;min-width:0;max-width:100%}
+}
