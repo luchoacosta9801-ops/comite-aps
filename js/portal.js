@@ -17,6 +17,8 @@ const VISTAS = {
   maes:       {hash:'#maestro',     titulo:'Maestro de suertes',       sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Maestro de suertes · Ingeniería Agrícola'},
   nfcos:      {hash:'#cosecha-niveles', titulo:'Cosecha vs niveles freáticos', sub:'Ingeniería Agrícola · Riopaila Agrícola', doc:'Cosecha vs niveles freáticos · Ingeniería Agrícola'},
 };
+// Video institucional vigente de la portada (al regrabarlo con otro nombre, cambiar aquí)
+const PORTADA_VIDEO = 'img/portada-institucional-3.mp4';
 const vistaDeHash = h => (Object.entries(VISTAS).find(([, v]) => v.hash === h) || ['portal'])[0];
 let vistaActual = 'portal';
 
@@ -77,7 +79,10 @@ function renderPortal(){
     </button>`;
   // Fondo de la portada: video en bucle (archivo en img/) con la foto como respaldo mientras carga
   const imgPortada = DB.portada && DB.portada.imagen ? DB.portada.imagen : 'img/portada.svg';
-  const vid = DB.portada && /^img\/[\w.-]+\.(mp4|webm)$/i.test(DB.portada.video || '') ? DB.portada.video : '';
+  // El video institucional se regraba con otro nombre (para que no quede el viejo en caché): cualquier versión
+  // guardada en una pestaña vieja (img/portada-institucional*.mp4) se lleva a la vigente, PORTADA_VIDEO
+  const vid0 = DB.portada && /^img\/[\w.-]+\.(mp4|webm)$/i.test(DB.portada.video || '') ? DB.portada.video : '';
+  const vid = /^img\/portada-institucional/.test(vid0) ? PORTADA_VIDEO : vid0;
   q('portal').innerHTML = `
     <div class="pt-banner ${vid ? 'con-video' : ''}">
       <img src="${imgPortada}" alt="Ingeniería Agrícola · Riopaila Agrícola">
