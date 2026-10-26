@@ -65,7 +65,7 @@ function loadDB(){
 }
 // Módulos del portal que solo se editan a mano (no los trae el Excel semanal) y su copia "tal como se
 // cargó", para saber qué se cambió aquí sin publicar
-const MODULOS_LOCALES = ['estructura', 'protocolos', 'proyectos', 'portada', 'agronomia', 'sim', 'ppto2027', 'freatico', 'lluvias', 'cosechaNF', 'maestroSuertes'];
+const MODULOS_LOCALES = ['estructura', 'protocolos', 'proyectos', 'portada', 'agronomia', 'sim', 'ppto2027', 'freatico', 'lluvias', 'cosechaNF', 'maestroSuertes', 'usuarios'];
 const BASE_KEY = 'comite-aps:base';
 function guardarBase(d){
   if (!MODO_EDICION) return;
@@ -129,7 +129,9 @@ const SEED = {
   cosechaNF: ${J(d.cosechaNF)},` : ''}${d.maestroSuertes ? `
   // Maestro de suertes (solo datos agronómicos, sin nombres ni datos de negocio)
   maestroSuertes: { archivo: ${J(d.maestroSuertes.archivo)}, fecha: ${J(d.maestroSuertes.fecha)}, cols: ${J(d.maestroSuertes.cols)},
-    filas: ${lista(d.maestroSuertes.filas, '    ')} },` : ''}${d.portada ? `
+    filas: ${lista(d.maestroSuertes.filas, '    ')} },` : ''}${d.usuarios && d.usuarios.lista && d.usuarios.lista.length ? `
+  // Usuarios para entrar a la página (la contraseña va cifrada con sal, nunca en claro)
+  usuarios: { lista: ${lista(d.usuarios.lista, '    ')} },` : ''}${d.portada ? `
   // Imagen de la portada del portal (foto del equipo o del área)
   portada: ${J(d.portada)},` : ''}
   costos: ${lista(d.costos)},

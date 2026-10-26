@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Comité APS · Dashboard Ejecutivo</title>
 <meta name="theme-color" content="#0077aa">
-<meta name="app-version" content="112">
+<meta name="app-version" content="113">
 <link rel="icon" href="img/icono-192.png" type="image/png">
 <link rel="apple-touch-icon" href="img/icono-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="css/styles.css?v=112">
+<link rel="stylesheet" href="css/styles.css?v=113">
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -106,6 +106,7 @@
   <section class="modulo" id="freaticos"></section>
   <section class="modulo" id="nfcosecha"></section>
   <section class="modulo" id="maestro"></section>
+  <section class="modulo" id="usuarios"></section>
   <section class="modulo" id="pptodet"></section>
 
   <!-- Simulador de costos por suerte (se muestra con el botón 💰 Simulador) -->
@@ -286,21 +287,22 @@
   <div style="text-align:center;padding:12px 0;font-size:9px;color:var(--muted);border-top:1px solid var(--bdr)" id="footer"></div>
 </main>
 
-<script src="js/datos.js?v=112"></script>
-<script src="js/data.js?v=112"></script>
-<script src="js/store.js?v=112"></script>
-<script src="js/importer.js?v=112"></script>
-<script src="js/app.js?v=112"></script>
-<script src="js/exportar.js?v=112"></script>
-<script src="js/gestion.js?v=112"></script>
-<script src="js/sim-datos.js?v=112"></script>
-<script src="js/simulador.js?v=112"></script>
-<script src="js/portal.js?v=112"></script>
-<script src="js/freatico.js?v=112"></script>
-<script src="js/freatico-comp.js?v=112"></script>
-<script src="js/maestro.js?v=112"></script>
-<script src="js/freatico-cosecha.js?v=112"></script>
-<script src="js/inge.js?v=112"></script>
+<script src="js/datos.js?v=113"></script>
+<script src="js/data.js?v=113"></script>
+<script src="js/store.js?v=113"></script>
+<script src="js/importer.js?v=113"></script>
+<script src="js/app.js?v=113"></script>
+<script src="js/exportar.js?v=113"></script>
+<script src="js/gestion.js?v=113"></script>
+<script src="js/sim-datos.js?v=113"></script>
+<script src="js/simulador.js?v=113"></script>
+<script src="js/portal.js?v=113"></script>
+<script src="js/freatico.js?v=113"></script>
+<script src="js/freatico-comp.js?v=113"></script>
+<script src="js/maestro.js?v=113"></script>
+<script src="js/freatico-cosecha.js?v=113"></script>
+<script src="js/inge.js?v=113"></script>
+<script src="js/acceso.js?v=113"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -506,7 +506,7 @@ body.modo-sim .fbtn-sim{background:var(--green);color:#fff}
 /* ── Portal de Ingeniería: un módulo visible a la vez según body[data-vista] ── */
 .modulo{display:none}
 body[data-vista]:not([data-vista="aps"]) .main>*{display:none}
-body[data-vista="portal"] #portal,body[data-vista="estructura"] #estructura,body[data-vista="ppto"] #ppto2027,body[data-vista="simulador"] #simulador,body[data-vista="agro"] #agronomia,body[data-vista="proto"] #protocolos,body[data-vista="proy"] #proyectos,body[data-vista="pptodet"] #pptodet,body[data-vista="freat"] #freaticos,body[data-vista="nfcos"] #nfcosecha,body[data-vista="maes"] #maestro{display:block}
+body[data-vista="portal"] #portal,body[data-vista="estructura"] #estructura,body[data-vista="ppto"] #ppto2027,body[data-vista="simulador"] #simulador,body[data-vista="agro"] #agronomia,body[data-vista="proto"] #protocolos,body[data-vista="proy"] #proyectos,body[data-vista="pptodet"] #pptodet,body[data-vista="freat"] #freaticos,body[data-vista="nfcos"] #nfcosecha,body[data-vista="maes"] #maestro,body[data-vista="usu"] #usuarios{display:block}
 body:not([data-vista="aps"]) .ffiltros,body:not([data-vista="aps"]) .fbtn-filtros,body:not([data-vista="aps"]) #btn-reset{display:none!important}
 body:is([data-vista="portal"],[data-vista="estructura"],[data-vista="ppto"],[data-vista="agro"],[data-vista="proto"],[data-vista="proy"],[data-vista="pptodet"],[data-vista="freat"],[data-vista="nfcos"],[data-vista="maes"]) :is(#btn-excel,#btn-sim,#btn-gestionar,#chip-sem,#results-pill){display:none!important}
 body[data-vista="portal"] #btn-inicio{display:none}
@@ -1181,3 +1181,24 @@ tr.fr-sel td{background:#fff3cd}
 .ms-zoom{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--line,#e2e8f0)}
 .ms-zoom .meta{font-size:11px;margin-left:4px}
 .ms-mapa canvas{cursor:grab}.ms-mapa canvas:active{cursor:grabbing}
+
+/* ── Acceso: pantalla de entrada y administración de usuarios ── */
+html.acc-bloqueado body>*:not(#acc-puerta){display:none!important}
+.acc-puerta{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;background:linear-gradient(160deg,#0b3d2e 0%,#14532d 45%,#0f172a 100%);overflow:auto}
+.acc-caja{width:100%;max-width:360px;background:#fff;border-radius:16px;padding:28px 24px 20px;box-shadow:0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:12px;text-align:center;color:#0f172a}
+.acc-logo{width:96px;height:auto;margin:0 auto 4px}
+.acc-caja h1{font-size:20px;margin:0}
+.acc-caja p{margin:0 0 6px;color:#64748b;font-size:13px}
+.acc-caja label,.acc-nuevo label{display:flex;flex-direction:column;gap:4px;text-align:left;font-size:12px;font-weight:700;color:#334155}
+.acc-caja input,.acc-nuevo input,.acc-nuevo select{font:inherit;font-size:16px;font-weight:400;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;width:100%;box-sizing:border-box}
+.acc-clave{display:flex;gap:6px}
+.acc-clave button{flex:none;border:1px solid #cbd5e1;background:#f8fafc;border-radius:10px;padding:0 12px;cursor:pointer;font-size:16px}
+.acc-err{background:#fef2f2;color:#b91c1c;border-radius:8px;padding:8px;font-size:13px;font-weight:700}
+.acc-entrar{background:#15803d;color:#fff;border:0;border-radius:10px;padding:12px;font-size:16px;font-weight:800;cursor:pointer}
+.acc-entrar:hover{background:#166534}
+.acc-caja small{color:#94a3b8;font-size:11px}
+.acc-aviso{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:10px;padding:10px 12px;font-size:12.5px;margin:0 0 12px}
+.acc-nuevo{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end;padding:12px}
+.acc-creado{margin:0 12px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.6}
+.acc-creado code{display:inline-block;background:#fff;padding:2px 6px;border-radius:6px;word-break:break-all}
+#usuarios .sim-t select{font:inherit;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px}

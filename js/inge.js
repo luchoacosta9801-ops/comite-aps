@@ -548,6 +548,7 @@ const IV = (() => {
 
   // ── Cómo usar la plataforma (sin datos privados ni el enlace de editor) ──
   const COMO = [
+    {k:['usuario','usuarios','contraseña','clave','acceso','entrar a la pagina','iniciar sesion','cerrar sesion'], r:'La página pide <b>usuario y contraseña</b>. Si no tienes, pídeselo al administrador del área. Para salir, botón <b>🔒</b> arriba junto a Inicio. El administrador crea los usuarios (perfil Ver o Editor) en <b>🔐 Usuarios y accesos</b> y luego <b>🚀 Publicar</b>.'},
     {k:['publicar','publico','subir cambios','que vean'], r:'Los cambios los hace el administrador en <b>modo editor</b>: se edita y luego <b>🚀 Publicar</b>. En 1–2 minutos los ven todos y las pestañas abiertas se actualizan solas.'},
     {k:['agregar suerte','agrego una suerte','nueva suerte','añadir suerte'], r:'En modo editor: <b>✏️ Editar → ➕ Agregar suerte</b>. Se escribe el sector-suerte (ej. 3113070) y hacienda, zona, área, cultivo, variedad y días se llenan solos desde el maestro de suertes.'},
     {k:['importar','excel semanal','actualizar comite','cargar comite','semana nueva'], r:'En modo editor: <b>✏️ Editar → 📥 Importar Excel semanal</b>, se elige el .xlsm del comité y luego <b>🚀 Publicar</b>. Trae lotes, ruta, labores, costos y la hoja PPTO 2026.'},

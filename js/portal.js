@@ -14,7 +14,8 @@ const VISTAS = {
   proto:      {hash:'#protocolos', titulo:'Protocolos de emergencia', sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Protocolos de emergencia · Ingeniería Agrícola'},
   proy:       {hash:'#proyectos',  titulo:'Proyectos ejecutados',     sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Proyectos ejecutados · Ingeniería Agrícola'},
   freat:      {hash:'#freaticos',  titulo:'Niveles freáticos',        sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Niveles freáticos · Ingeniería Agrícola'},
-  maes:       {hash:'#maestro',     titulo:'Maestro de suertes',       sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Maestro de suertes · Ingeniería Agrícola'},
+  usu:        {hash:'#usuarios',    titulo:'Usuarios y accesos',       sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Usuarios · Ingeniería Agrícola'},
+  maes:       {hash:'#maestro',    titulo:'Maestro de suertes',       sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Maestro de suertes · Ingeniería Agrícola'},
   nfcos:      {hash:'#cosecha-niveles', titulo:'Cosecha vs niveles freáticos', sub:'Ingeniería Agrícola · Riopaila Agrícola', doc:'Cosecha vs niveles freáticos · Ingeniería Agrícola'},
 };
 // Video institucional vigente de la portada (al regrabarlo con otro nombre, cambiar aquí)
@@ -49,6 +50,7 @@ function renderVista(){
   else if (vistaActual === 'freat' && typeof renderFreatico === 'function') renderFreatico();
   else if (vistaActual === 'nfcos' && typeof renderCosechaNF === 'function') renderCosechaNF();
   else if (vistaActual === 'maes' && typeof renderMaestro === 'function') renderMaestro();
+  else if (vistaActual === 'usu' && typeof renderUsuarios === 'function') renderUsuarios();
 }
 // El simulador ya traía su propio botón: ahora navega con el portal
 function modoSimulador(abrir){ irA(abrir ? 'simulador' : 'aps'); }
@@ -110,6 +112,9 @@ function renderPortal(){
       ${typeof maestroSuertes !== 'function' ? '' : (() => { const M = maestroSuertes(), L = M ? msFilas().filter(x => x.emp === 'RIOP') : [];
         return card('maes', '📚', 'Maestro de suertes', 'El maestro de suertes en versión digital: áreas, variedades, edades, cortes y próximos cortes de cada suerte, con mapa.',
         M ? `<b>${L.length}</b> suertes Riopaila · <b>${f2(sum(L, x => x.area || 0))} ha</b>${M.fecha ? ` · ${esc(M.fecha)}` : ''}` : 'Por cargar', '#7c3aed'); })()}
+      ${!MODO_EDICION || typeof renderUsuarios !== 'function' ? '' : (() => { const n = ((DB.usuarios && DB.usuarios.lista) || []).length;
+        return card('usu', '🔐', 'Usuarios y accesos', 'Crea los usuarios que pueden entrar a la página, con perfil Ver o Editor. Solo lo ve el administrador.',
+        n ? `<b>${n}</b> ${n === 1 ? 'usuario' : 'usuarios'}` : 'Sin usuarios: la página está abierta', '#475569'); })()}
       ${typeof freatico !== 'function' ? '' : (() => { const F = freatico(), fe = F ? frFechas(F) : [], u = fe[fe.length - 1], L = u ? Object.values(F.lecturas[u]).map(frVal) : [];
         return card('freat', '💧', 'Niveles freáticos', 'Lecturas quincenales de los pozos de observación y mapa de isobatas por suerte: crítico, subcrítico, regular y bueno.',
         u ? `Última lectura <b>${frFecha(u)}</b> · ${L.length} pozos · <b>${L.filter(v => v < 1).length}</b> a menos de 1 m` : 'Sin lecturas aún', '#0369a1'); })()}
