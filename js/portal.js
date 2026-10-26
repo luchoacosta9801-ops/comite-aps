@@ -18,7 +18,7 @@ const VISTAS = {
   nfcos:      {hash:'#cosecha-niveles', titulo:'Cosecha vs niveles freáticos', sub:'Ingeniería Agrícola · Riopaila Agrícola', doc:'Cosecha vs niveles freáticos · Ingeniería Agrícola'},
 };
 // Video institucional vigente de la portada (al regrabarlo con otro nombre, cambiar aquí)
-const PORTADA_VIDEO = 'img/portada-institucional-3.mp4';
+const PORTADA_VIDEO = 'img/portada-institucional-4.mp4';
 const vistaDeHash = h => (Object.entries(VISTAS).find(([, v]) => v.hash === h) || ['portal'])[0];
 let vistaActual = 'portal';
 
