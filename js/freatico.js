@@ -108,7 +108,7 @@ function frResumen(V, ok = null){
 
 // ── Estado de la vista ──
 // f: filtros (z zonas, h haciendas de la cartografía, a años, m meses); modo 'una' lectura o 'comp' comparar varias (sel)
-const frE = {fecha:'', capas:{pozos:true, suertes:true, agua:true, etiquetas:false}, pozo:null, vista:null, cache:{}, evol:{}, evolV:{}, evolFechas:'',
+const frE = {fecha:'', capas:{pozos:true, suertes:true, numeros:true, agua:true, etiquetas:false}, pozo:null, vista:null, cache:{}, evol:{}, evolV:{}, evolFechas:'',
   f:{z:[], h:[], a:[], m:[]}, modo:'una', sel:[]};
 function frCalculo(F, fecha){
   if (frE.cache[fecha]) return frE.cache[fecha];
@@ -196,7 +196,7 @@ function renderFreatico(){
     <div class="fr-grid">
       <div class="sim-card abierta fr-mapa-card">
         <div class="fr-capas">
-          ${[['pozos', 'Pozos'], ['suertes', 'Límites de suertes'], ['agua', 'Red hídrica'], ['etiquetas', 'Lecturas en el mapa']].map(([k, l]) => `<label><input type="checkbox" data-fr-capa="${k}" ${frE.capas[k] ? 'checked' : ''}> ${l}</label>`).join('')}
+          ${[['pozos', 'Pozos'], ['suertes', 'Límites de suertes'], ['numeros', 'Números de suerte'], ['agua', 'Red hídrica'], ['etiquetas', 'Lecturas en el mapa']].map(([k, l]) => `<label><input type="checkbox" data-fr-capa="${k}" ${frE.capas[k] ? 'checked' : ''}> ${l}</label>`).join('')}
           <span class="fr-zoom"><button type="button" class="plegar-todo" data-fr-zoom="1.5" title="Acercar">＋</button><button type="button" class="plegar-todo" data-fr-zoom="0.667" title="Alejar">－</button>
           <button type="button" class="plegar-todo" data-fr-ajustar title="Ver todo el mapa">⤢ Ver todo</button></span>
         </div>
@@ -319,6 +319,33 @@ function frRaster(V, ok = null){
 }
 // Raster de una lectura con el filtro actual (se guarda por filtro)
 function frRasterDe(C){ const k = frFiltroClave(); return C.rasters[k] = C.rasters[k] || frRaster(C.V, frOK()); }
+// Números de suerte sobre un mapa (sx, sy: metros → pantalla; s: px por metro). Cada suerte muestra su número
+// (ej. 010) si cabe y el código completo (3106-010) si hay espacio; las que no caben no se rotulan.
+let FRB = null;   // caja de cada suerte de la cartografía (se calcula una vez)
+function frCajasSuertes(){
+  if (FRB) return FRB;
+  return FRB = MAPA_FREATICO.suertes.map(su => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, ax = 0, ay = 0, n = 0;
+    su[3].forEach(r => { for (let k = 0; k < r.length; k += 2) { const x = r[k], y = r[k + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; ax += x; ay += y; n++; } });
+    return {cod:su[0], x0, y0, x1, y1, cx:n ? ax / n : (x0 + x1) / 2, cy:n ? ay / n : (y0 + y1) / 2}; });
+}
+let FRB1 = null;   // por código de suerte, solo su pedazo más grande (las suertes vienen partidas en varios polígonos)
+function frEtiquetasSuertes(g, sx, sy, s, ancho, alto){
+  if (!FRB1) { const m = {}; frCajasSuertes().forEach(b => { const a = (b.x1 - b.x0) * (b.y1 - b.y0); if (!m[b.cod] || a > m[b.cod].a) m[b.cod] = {...b, a}; }); FRB1 = Object.values(m).sort((x, y) => y.a - x.a); }
+  const puestos = [];   // rectángulos ya rotulados, para no encimar textos
+  g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  for (const b of FRB1) {
+    const w = (b.x1 - b.x0) * s, h = (b.y1 - b.y0) * s; if (h < 9 || w < 14) continue;
+    const x = sx(b.cx), y = sy(b.cy); if (x < -40 || y < -20 || x > ancho + 40 || y > alto + 20) continue;
+    const corto = b.cod.split('-')[1], fz = Math.max(8, Math.min(13, h * 0.45));
+    g.font = `700 ${fz}px system-ui,Segoe UI,Arial`;
+    const t = g.measureText(b.cod).width + 4 <= w ? b.cod : g.measureText(corto).width + 2 <= w ? corto : null; if (!t) continue;
+    const tw = g.measureText(t).width / 2 + 2, th = fz / 2 + 1;
+    if (puestos.some(r => Math.abs(r[0] - x) < r[2] + tw && Math.abs(r[1] - y) < r[3] + th)) continue;
+    puestos.push([x, y, tw, th]);
+    g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(t, x, y); g.fillStyle = '#0f172a'; g.fillText(t, x, y);
+  }
+  g.restore();
+}
 function frMapaIniciar(){
   const caja = q('fr-mapa'), cv = q('fr-cv'); if (!caja || !cv) return;
   const F = freatico(), C = frCalculo(F, frE.fecha), M = MAPA_FREATICO;
@@ -345,6 +372,7 @@ function frMapaIniciar(){
     }
     if (frE.capas.suertes) { g.strokeStyle = 'rgba(15,23,42,.55)'; g.lineWidth = V.s > 0.12 ? 0.8 : 0.45; g.beginPath(); M.suertes.forEach(s => s[3].forEach(r => linea(r, true))); g.stroke(); }
     if (frE.suerteSel != null) { const s = M.suertes[frE.suerteSel]; g.strokeStyle = '#0f172a'; g.lineWidth = 2.5; g.beginPath(); s[3].forEach(r => linea(r, true)); g.stroke(); }
+    if (frE.capas.numeros) frEtiquetasSuertes(g, sx, sy, V.s, ancho, alto);
     if (frE.capas.pozos) {
       const r = Math.max(3, Math.min(7, V.s * 25));
       C.P.forEach(p => {

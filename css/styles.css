@@ -1178,3 +1178,6 @@ tr.fr-sel td{background:#fff3cd}
 .ms-ciclo-f b{display:block;font-size:13px}
 .ms-hist{margin-top:12px;font-size:13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:8px 12px}
 @media (max-width:760px){.ms-fondo{padding:8px}.ms-ficha{max-height:calc(100vh - 16px)}.ms-fh{padding:10px 50px 10px 12px}.ms-cuerpo{padding:12px}.ms-cod{font-size:16px;padding:6px 9px}}
+.ms-zoom{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--line,#e2e8f0)}
+.ms-zoom .meta{font-size:11px;margin-left:4px}
+.ms-mapa canvas{cursor:grab}.ms-mapa canvas:active{cursor:grabbing}

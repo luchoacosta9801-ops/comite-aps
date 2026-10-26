@@ -151,9 +151,10 @@ function renderMaestro(){
     <div class="fr-grid">
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Mapa de suertes</b>
         <span class="ms-vistas">${Object.entries(MS_VISTAS).map(([k, v]) => `<button type="button" class="fr-ch ${msE.color === k ? 'on' : ''}" data-ms-color="${k}">${v.n}</button>`).join('')}</span></div>
+        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa">⤢ Ver todo</button><span class="meta">Acércate para ver el número de cada suerte</span></div>
         <div class="ms-mapa" id="ms-mapa"><canvas id="ms-cv"></canvas><div class="fr-tip" id="ms-tip" hidden></div></div>
         <div class="fr-cley" id="ms-ley"></div>
-        <div class="meta" style="padding:0 12px 10px">Pasa el ratón por una suerte para ver sus datos; clic para abrir su ficha. Solo se dibujan las suertes que están en la cartografía.</div></div>
+        <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha. Solo se dibujan las suertes que están en la cartografía.</div></div>
       <div class="fr-lado">
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por variedad</b></div>${barras(msCuenta(L, 'variedad'), area, v => v, 10, '#7c3aed')}</div>
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por estado</b></div>${barras(msCuenta(L, 'estado'), area, v => v, 8, '#0891b2')}</div>
@@ -176,7 +177,8 @@ function renderMaestro(){
   if (msE.ficha) msFicha(msE.ficha);
 }
 
-// Mapa: las suertes de la cartografía coloreadas según la vista elegida
+// Mapa: las suertes de la cartografía coloreadas según la vista elegida, con zoom (＋/－, Ctrl + rueda, dos
+// dedos), arrastre y el número de cada suerte cuando cabe (al acercarse aparece el código completo)
 function msMapa(L){
   const caja = q('ms-mapa'), cv = q('ms-cv'); if (!caja || !cv) return;
   if (typeof MAPA_FREATICO === 'undefined') { caja.insertAdjacentHTML('afterbegin', '<div class="meta" style="padding:12px">Cargando cartografía…</div>'); frCargarMapa().then(() => vistaActual === 'maes' && renderMaestro()); return; }
@@ -185,31 +187,60 @@ function msMapa(L){
   const top = msCuenta(L, 'variedad').slice(0, 9).map(x => x[0]);
   const cats = V.cats || [...new Set(L.map(x => V.cat(x, top)))].sort((a, b) => a === 'Otras' ? 1 : b === 'Otras' ? -1 : 0);
   const color = c => V.esc ? (V.esc[cats.indexOf(c)] || '#cbd5e1') : (c === 'Otras' || c === '—' ? '#cbd5e1' : MS_PAL[cats.indexOf(c) % MS_PAL.length]);
+  const fila = su => { const xs = porCod[su[0]]; return xs && (xs.find(y => norm(y.hac).includes(norm(su[1])) || norm(su[1]).includes(norm(y.hac))) || xs[0]); };
   const dpr = window.devicePixelRatio || 1, ancho = caja.clientWidth, alto = Math.min(Math.round(ancho * M.alto / M.ancho), Math.round(window.innerHeight * 0.72));
   cv.width = ancho * dpr; cv.height = alto * dpr; cv.style.height = alto + 'px';
-  const s = Math.min(ancho / M.ancho, alto / M.alto) * 0.96, ox = (ancho - M.ancho * s) / 2, oy = (alto - M.alto * s) / 2;
-  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#eef2f6'; g.fillRect(0, 0, ancho, alto);
-  const linea = (r, cerrar) => { for (let k = 0; k < r.length; k += 2) { const x = ox + r[k] * s, y = oy + (M.alto - r[k + 1]) * s; k ? g.lineTo(x, y) : g.moveTo(x, y); } if (cerrar) g.closePath(); };
-  g.strokeStyle = '#7fb3e6'; g.lineWidth = 1.2; g.beginPath(); M.rios.forEach(r => linea(r)); g.stroke();
+  // Vista (se conserva al cambiar filtros mientras el tamaño sea el mismo)
+  const ajustar = () => { const s = Math.min(ancho / M.ancho, alto / M.alto) * 0.96; msE.vista = {s, ox:(ancho - M.ancho * s) / 2, oy:(alto - M.alto * s) / 2, ancho, alto}; };
+  if (!msE.vista || msE.vista.ancho !== ancho || msE.vista.alto !== alto) ajustar();
+  const g = cv.getContext('2d'), Vw = () => msE.vista;
+  const sx = x => Vw().ox + x * Vw().s, sy = y => Vw().oy + (M.alto - y) * Vw().s;
+  const linea = (r, cerrar) => { for (let k = 0; k < r.length; k += 2) { const x = sx(r[k]), y = sy(r[k + 1]); k ? g.lineTo(x, y) : g.moveTo(x, y); } if (cerrar) g.closePath(); };
   const cuenta = {};
-  M.suertes.forEach(su => {
-    const xs = porCod[su[0]], x = xs && (xs.find(y => norm(y.hac).includes(norm(su[1])) || norm(su[1]).includes(norm(y.hac))) || xs[0]);
-    g.beginPath(); su[3].forEach(r => linea(r, true));
-    if (x) { const c = V.cat(x, top); g.fillStyle = color(c); cuenta[c] = (cuenta[c] || 0) + su[2]; } else g.fillStyle = '#f1f5f9';
-    g.fill('evenodd'); g.strokeStyle = 'rgba(15,23,42,.35)'; g.lineWidth = 0.5; g.stroke();
-  });
+  M.suertes.forEach(su => { const x = fila(su); if (x) { const c = V.cat(x, top); cuenta[c] = (cuenta[c] || 0) + su[2]; } });
+  function dibujar(){
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#eef2f6'; g.fillRect(0, 0, ancho, alto);
+    g.strokeStyle = '#7fb3e6'; g.lineWidth = 1.2; g.beginPath(); M.rios.forEach(r => linea(r)); g.stroke();
+    M.suertes.forEach(su => {
+      const x = fila(su);
+      g.beginPath(); su[3].forEach(r => linea(r, true));
+      g.fillStyle = x ? color(V.cat(x, top)) : '#f1f5f9';
+      g.fill('evenodd'); g.strokeStyle = 'rgba(15,23,42,.35)'; g.lineWidth = Vw().s > 0.15 ? 0.9 : 0.5; g.stroke();
+    });
+    if (msE.sel) { const su = M.suertes.filter(x => x[0] === msE.sel); g.strokeStyle = '#0f172a'; g.lineWidth = 3; g.beginPath(); su.forEach(x => x[3].forEach(r => linea(r, true))); g.stroke(); }
+    frEtiquetasSuertes(g, sx, sy, Vw().s, ancho, alto);
+  }
+  msE.dibujar = dibujar;
+  msE.zoom = f => zoom(f, ancho / 2, alto / 2);
+  msE.ajustar = () => { ajustar(); dibujar(); };
+  dibujar();
   q('ms-ley').innerHTML = cats.filter(c => cuenta[c]).map(c => `<span><i style="background:${color(c)}"></i>${esc(c)} <small class="meta">${msN(cuenta[c], 0)} ha</small></span>`).join('') + '<span><i style="background:#f1f5f9;border:1px solid #cbd5e1"></i>Sin datos con este filtro</span>';
+  const zoom = (f, px, py) => { const W = Vw(), ns = Math.max(0.02, Math.min(4, W.s * f)), k = ns / W.s; W.ox = px - (px - W.ox) * k; W.oy = py - (py - W.oy) * k; W.s = ns; dibujar(); };
   // Globo y ficha: celda de la malla → suerte de la cartografía → fila del maestro
   const G = frMalla(), tip = q('ms-tip');
-  const enPunto = e => { const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, wx = (px - ox) / s, wy = M.alto - (py - oy) / s;
+  const enPunto = (cx, cy) => { const r = cv.getBoundingClientRect(), px = cx - r.left, py = cy - r.top, W = Vw(), wx = (px - W.ox) / W.s, wy = M.alto - (py - W.oy) / W.s;
     const gx = Math.floor(wx / FR_CELDA), gy = Math.floor((M.alto - wy) / FR_CELDA); if (gx < 0 || gy < 0 || gx >= G.W || gy >= G.H) return null;
-    const c = G.celda[gy * G.W + gx]; if (c < 0) return null; const su = M.suertes[G.sue[c]], xs = porCod[su[0]];
-    return {px, py, su, x:xs && (xs.find(y => norm(y.hac).includes(norm(su[1])) || norm(su[1]).includes(norm(y.hac))) || xs[0])}; };
-  cv.onmousemove = e => { const p = enPunto(e); if (!p) { tip.hidden = true; return; }
+    const c = G.celda[gy * G.W + gx]; if (c < 0) return null; const su = M.suertes[G.sue[c]];
+    return {px, py, su, x:fila(su)}; };
+  const globo = (cx, cy) => { const p = enPunto(cx, cy); if (!p) { tip.hidden = true; return; }
     const x = p.x; tip.innerHTML = `<b>${esc(p.su[0])}</b> · ${esc(msHacN(p.su[1]))}${x ? `<br>${esc(x.variedad || '—')} · corte ${msN(x.nCorte)} · ${msN(x.edad, 1)} meses<br>${msN(x.area, 2)} ha · próximo corte ${msF(msProx(x))}` : '<br><span style="opacity:.8">Sin datos con este filtro</span>'}`;
-    tip.hidden = false; tip.style.left = Math.min(p.px + 14, ancho - tip.offsetWidth - 4) + 'px'; tip.style.top = (p.py + 14 + tip.offsetHeight > alto ? p.py - tip.offsetHeight - 10 : p.py + 14) + 'px'; };
-  cv.onmouseleave = () => tip.hidden = true;
-  cv.onclick = e => { const p = enPunto(e); if (p && p.x) msFicha(p.x.s + '|' + p.x.hac); };
+    tip.hidden = false; tip.style.left = Math.max(4, Math.min(p.px + 14, ancho - tip.offsetWidth - 4)) + 'px'; tip.style.top = (p.py + 14 + tip.offsetHeight > alto ? p.py - tip.offsetHeight - 10 : p.py + 14) + 'px'; };
+  cv.onwheel = e => { if (!e.ctrlKey) return; e.preventDefault(); const r = cv.getBoundingClientRect(); zoom(e.deltaY < 0 ? 1.25 : 0.8, e.clientX - r.left, e.clientY - r.top); };
+  const toques = new Map(); let arr = null, movido = false, pinza = null;
+  cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); const r = cv.getBoundingClientRect(); toques.set(e.pointerId, [e.clientX - r.left, e.clientY - r.top]); movido = false;
+    if (toques.size === 1) arr = [e.clientX, e.clientY, Vw().ox, Vw().oy];
+    if (toques.size === 2) { const [a, b] = [...toques.values()]; pinza = {d:Math.hypot(a[0] - b[0], a[1] - b[1]), s:Vw().s}; arr = null; } };
+  cv.onpointermove = e => { const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
+    if (toques.has(e.pointerId)) toques.set(e.pointerId, [px, py]);
+    if (pinza && toques.size === 2) { const [a, b] = [...toques.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom(pinza.s * d / pinza.d / Vw().s, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); movido = true; return; }
+    if (arr) { const dx = e.clientX - arr[0], dy = e.clientY - arr[1]; if (Math.abs(dx) + Math.abs(dy) > 5) movido = true; if (movido) { Vw().ox = arr[2] + dx; Vw().oy = arr[3] + dy; dibujar(); tip.hidden = true; } return; }
+    if (e.pointerType === 'mouse') globo(e.clientX, e.clientY); };
+  const soltar = e => { toques.delete(e.pointerId); if (toques.size < 2) pinza = null;
+    if (arr && !movido && e.type === 'pointerup') { const p = enPunto(e.clientX, e.clientY); if (p) { msE.sel = p.su[0]; dibujar(); if (p.x) msFicha(p.x.s + '|' + p.x.hac); else globo(e.clientX, e.clientY); } }
+    if (!toques.size) arr = null; };
+  cv.onpointerup = soltar; cv.onpointercancel = soltar;
+  cv.onpointerleave = e => { if (e.pointerType === 'mouse') tip.hidden = true; };
+  cv.style.touchAction = 'none';
 }
 
 // Ficha de una suerte: ventana sobre la página (con su título fijo, se desplaza por dentro y se puede arrastrar)
@@ -264,6 +295,8 @@ q('maestro').addEventListener('click', e => {
   const or = t.closest('[data-ms-orden]'); if (or) { const k = or.dataset.msOrden; msE.asc = msE.orden === k ? !msE.asc : true; msE.orden = k; renderMaestro(); return; }
   if (t.closest('[data-ms-limpiar]')) { msE.zona = msE.hac = msE.uso = msE.estado = msE.variedad = msE.txt = ''; renderMaestro(); return; }
   if (t.closest('[data-ms-mas]')) { msE.mas = true; renderMaestro(); return; }
+  const zb = t.closest('[data-ms-zoom]'); if (zb) { msE.zoom && msE.zoom(+zb.dataset.msZoom); return; }
+  if (t.closest('[data-ms-ajustar]')) { msE.sel = null; msE.ajustar && msE.ajustar(); return; }
   if (t.closest('.ms-x') || (t.classList && t.classList.contains('ms-fondo'))) { msE.ficha = null; q('ms-ficha').innerHTML = ''; return; }
   const fi = t.closest('[data-ms-ficha]'); if (fi) msFicha(fi.dataset.msFicha);
 });
