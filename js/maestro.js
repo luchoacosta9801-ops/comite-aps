@@ -212,27 +212,48 @@ function msMapa(L){
   cv.onclick = e => { const p = enPunto(e); if (p && p.x) msFicha(p.x.s + '|' + p.x.hac); };
 }
 
-// Ficha de una suerte: datos y línea de tiempo (siembra → último corte → hoy → próximo corte)
+// Ficha de una suerte: ventana sobre la página (con su título fijo, se desplaza por dentro y se puede arrastrar)
+// con los datos y el ciclo actual (último corte → hoy → próximo corte)
 function msFicha(clave){
   const [s, h] = clave.split('|'), x = msFilas().find(y => y.s === s && y.hac === h) || msFilas().find(y => y.s === s);
   const el = q('ms-ficha'); if (!el) return;
   if (!x) { el.innerHTML = ''; msE.ficha = null; return; }
   msE.ficha = clave;
-  const hoy = new Date().toISOString().slice(0, 10), pts = [['Siembra', x.siembra, '#16a34a'], ['Último corte', x.ultCorte, '#d97706'], ['Hoy', hoy, '#0f172a'], ['Próximo corte', msProx(x), '#dc2626']].filter(p => p[1]);
-  const t = p => Date.parse(p), t0 = Math.min(...pts.map(p => t(p[1]))), t1 = Math.max(...pts.map(p => t(p[1]))), X = d => 4 + (t(d) - t0) / ((t1 - t0) || 1) * 92;
+  const dia = d => Math.round(Date.parse(d + 'T00:00:00Z') / 864e5), hoyS = new Date().toISOString().slice(0, 10), hoy = dia(hoyS);
+  const ult = x.ultCorte, prox = msProx(x);
+  // Ciclo actual: del último corte (o la siembra si aún no tiene cortes) al próximo corte
+  const ini = ult || x.siembra, fin = prox;
+  let ciclo = '';
+  if (ini && fin && dia(fin) > dia(ini)) {
+    const tot = dia(fin) - dia(ini), va = Math.max(0, Math.min(tot, hoy - dia(ini))), pct = va / tot * 100, faltan = dia(fin) - hoy;
+    const estado = faltan < 0 ? `<b style="color:#dc2626">Vencido hace ${-faltan} días</b>` : faltan === 0 ? '<b style="color:#dc2626">Se corta hoy</b>' : `Faltan <b>${faltan} días</b>`;
+    ciclo = `<div class="ms-ciclo"><div class="ms-ciclo-t"><b>Ciclo actual</b><span>${estado}</span></div>
+      <div class="ms-ciclo-bar"><i style="width:${pct}%;background:${faltan < 0 ? '#dc2626' : faltan <= 30 ? '#f59e0b' : '#16a34a'}"></i><em style="left:${pct}%" title="Hoy"></em></div>
+      <div class="ms-ciclo-f"><div><small>${ult ? 'Último corte' : 'Siembra'}</small><b>${msF(ini)}</b></div>
+        <div style="text-align:center"><small>Hoy</small><b>${msF(hoyS)}</b><small>${msN(x.edad, 1)} meses de edad</small></div>
+        <div style="text-align:right"><small>Próximo corte${x.proxEst ? ' (estimado)' : ''}</small><b>${msF(fin)}</b>${x.proxPpto && x.proxEst && x.proxPpto !== x.proxEst ? `<small>ppto ${msF(x.proxPpto)}</small>` : ''}</div></div></div>`;
+  }
   const otros = msFilas().filter(y => y.s === s && y !== x);
   const dato = (l, v) => `<div><small>${l}</small><b>${v}</b></div>`;
-  el.innerHTML = `<div class="ms-fondo" data-ms-cerrar><div class="ms-ficha" role="dialog">
-    <button type="button" class="ms-x" data-ms-cerrar title="Cerrar">✕</button>
-    <div class="ms-fh"><span class="ms-cod">${esc(x.s)}</span><div><b>${esc(msHacN(x.hac))}</b><small>Zona ${esc(x.zona ?? '—')} · ${esc(x.emp ?? '')} · ${esc(x.uso ?? '')} · ${esc(x.estado ?? '')}</small></div></div>
+  el.innerHTML = `<div class="ms-fondo" data-ms-cerrar><div class="ms-ficha" role="dialog" aria-label="Ficha de la suerte ${esc(x.s)}">
+    <div class="ms-fh" title="Arrastra para mover la ventana"><span class="ms-cod">${esc(x.s)}</span><div><b>${esc(msHacN(x.hac))}</b><small>Zona ${esc(x.zona ?? '—')} · ${esc(x.emp ?? '')} · ${esc(x.uso ?? '')} · ${esc(x.estado ?? '')}</small></div>
+      <button type="button" class="ms-x" data-ms-cerrar title="Cerrar (Esc)">✕</button></div>
+    <div class="ms-cuerpo">
+    ${ciclo}
     <div class="ms-datos">${dato('Área neta', msN(x.area, 2) + ' ha')}${dato('Variedad', esc(x.variedad || '—'))}${dato('N° de corte', msN(x.nCorte))}${dato('Ciclo de vida', msN(x.ciclo))}
       ${dato('Edad hoy', msN(x.edad, 1) + ' meses')}${dato('Edad estándar de corte', msN(x.edadStd, 1) + ' meses')}${dato('TCH presupuesto', msN(x.tchPpto, 1))}${dato('TCH aforo', msN(x.tchAforo, 1))}
       ${dato('Toneladas ppto', msN(x.tonPpto))}${dato('Toneladas estimadas', msN(x.tonEst))}${dato('Tipo de finca', esc(x.tipoFinca || '—'))}${dato('Zona agroecológica', esc(x.zonaAgro || '—'))}
       ${x.lucro ? dato('Días lucro cesante', msN(x.lucro)) : ''}${x.quema ? dato('Restricción de quema', esc(x.quema)) : ''}</div>
-    ${x.edad != null && x.edadStd ? `<div class="ms-edad"><small>Edad hoy frente a la edad estándar de corte</small><div><i style="width:${Math.min(100, x.edad / x.edadStd * 100)}%;background:${x.edad >= x.edadStd ? '#dc2626' : '#16a34a'}"></i></div><span>${msN(x.edad / x.edadStd * 100)}%${x.edad >= x.edadStd ? ' · ya cumplió la edad de corte' : ''}</span></div>` : ''}
-    <div class="ms-linea"><div class="ms-eje"></div>${pts.map(([l, d, c], i) => `<div class="ms-hito" style="left:${X(d)}%;--c:${c}"><i></i><span class="${i % 2 ? 'abajo' : ''}"><b>${l}</b>${msF(d)}</span></div>`).join('')}</div>
+    ${x.edad != null && x.edadStd ? `<div class="ms-edad"><small>Edad hoy frente a la edad estándar de corte (${msN(x.edadStd, 1)} meses)</small><div><i style="width:${Math.min(100, x.edad / x.edadStd * 100)}%;background:${x.edad >= x.edadStd ? '#dc2626' : '#16a34a'}"></i></div><span>${msN(x.edad / x.edadStd * 100)}%${x.edad >= x.edadStd ? ' · ya cumplió la edad de corte' : ''}</span></div>` : ''}
+    <div class="ms-hist">🌱 Sembrada el <b>${msF(x.siembra)}</b>${x.nCorte != null ? ` · va en el corte <b>${x.nCorte}</b>` : ''}${x.ciclo ? ` · ciclo de vida previsto ${x.ciclo} cortes` : ''}${x.nCorte >= 8 ? ' · <b style="color:#b45309">candidata a renovación</b>' : ''}</div>
     ${otros.length ? `<div class="meta">También aparece en el maestro como: ${otros.map(o => `${esc(msHacN(o.hac))} (${esc(o.uso || '')}, ${msN(o.area, 2)} ha)`).join(', ')}</div>` : ''}
-  </div></div>`;
+    </div></div></div>`;
+  // Arrastrar la ventana desde su título
+  const f = el.querySelector('.ms-ficha'), barra = el.querySelector('.ms-fh');
+  let ini0 = null, dx = 0, dy = 0;
+  barra.onpointerdown = e => { if (e.target.closest('button')) return; ini0 = [e.clientX - dx, e.clientY - dy]; barra.setPointerCapture(e.pointerId); barra.classList.add('arrastrando'); };
+  barra.onpointermove = e => { if (!ini0) return; dx = e.clientX - ini0[0]; dy = e.clientY - ini0[1]; f.style.transform = `translate(${dx}px, ${dy}px)`; };
+  barra.onpointerup = barra.onpointercancel = () => { ini0 = null; barra.classList.remove('arrastrando'); };
 }
 
 q('maestro').addEventListener('click', e => {
