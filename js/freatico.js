@@ -330,19 +330,22 @@ function frCajasSuertes(){
 }
 let FRB1 = null;   // por código de suerte, solo su pedazo más grande (las suertes vienen partidas en varios polígonos)
 function frEtiquetasSuertes(g, sx, sy, s, ancho, alto){
-  if (!FRB1) { const m = {}; frCajasSuertes().forEach(b => { const a = (b.x1 - b.x0) * (b.y1 - b.y0); if (!m[b.cod] || a > m[b.cod].a) m[b.cod] = {...b, a}; }); FRB1 = Object.values(m).sort((x, y) => y.a - x.a); }
+  // Una caja por suerte (todas sus franjas juntas) y el número en su centro real (promedio de sus celdas)
+  if (!FRB1) { const m = {}, C = typeof frCentros === 'function' ? frCentros() : {};
+    frCajasSuertes().forEach(b => { const o = m[b.cod]; if (!o) m[b.cod] = {...b}; else { o.x0 = Math.min(o.x0, b.x0); o.y0 = Math.min(o.y0, b.y0); o.x1 = Math.max(o.x1, b.x1); o.y1 = Math.max(o.y1, b.y1); } });
+    FRB1 = Object.values(m).map(b => { const c = C[b.cod]; if (c) { b.cx = c.x; b.cy = c.y; } else { b.cx = (b.x0 + b.x1) / 2; b.cy = (b.y0 + b.y1) / 2; } b.a = (b.x1 - b.x0) * (b.y1 - b.y0); return b; }).sort((x, y) => y.a - x.a); }
   const puestos = [];   // rectángulos ya rotulados, para no encimar textos
   g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
   for (const b of FRB1) {
-    const w = (b.x1 - b.x0) * s, h = (b.y1 - b.y0) * s; if (h < 9 || w < 14) continue;
+    const w = (b.x1 - b.x0) * s, h = (b.y1 - b.y0) * s; if (h < 7 || w < 11) continue;
     const x = sx(b.cx), y = sy(b.cy); if (x < -40 || y < -20 || x > ancho + 40 || y > alto + 20) continue;
-    const corto = b.cod.split('-')[1], fz = Math.max(8, Math.min(13, h * 0.45));
+    const corto = b.cod.split('-')[1], fz = Math.max(7, Math.min(13, h * 0.4));
     g.font = `700 ${fz}px system-ui,Segoe UI,Arial`;
     const t = g.measureText(b.cod).width + 4 <= w ? b.cod : g.measureText(corto).width + 2 <= w ? corto : null; if (!t) continue;
     const tw = g.measureText(t).width / 2 + 2, th = fz / 2 + 1;
     if (puestos.some(r => Math.abs(r[0] - x) < r[2] + tw && Math.abs(r[1] - y) < r[3] + th)) continue;
     puestos.push([x, y, tw, th]);
-    g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(t, x, y); g.fillStyle = '#0f172a'; g.fillText(t, x, y);
+    g.lineWidth = fz < 9 ? 2.2 : 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(t, x, y); g.fillStyle = '#0f172a'; g.fillText(t, x, y);
   }
   g.restore();
 }
