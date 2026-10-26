@@ -62,6 +62,8 @@ function guardarMaestroLocal(M,nombre){
 }
 function maestroLocal(){
   if(maestroCache===undefined){try{maestroCache=JSON.parse(localStorage.getItem(MAESTRO_KEY)||'null');}catch(e){maestroCache=null;}}
+  // Sin maestro en este navegador: se arma con el publicado en el módulo Maestro de suertes (DB.maestroSuertes)
+  if(!maestroCache&&typeof maestroSuertes==='function'&&maestroSuertes()){const s={};msFilas().forEach(x=>(s[x.s]=s[x.s]||[]).push([norm(x.hac),parseInt(x.zona,10)||null,String(x.uso||'').toUpperCase(),String(x.variedad||'').toUpperCase(),x.area||0,x.siembra||'',x.ultCorte||'']));return{nombre:maestroSuertes().archivo,cargado:'',s};}
   return maestroCache;
 }
 // Hacienda del comité que corresponde a la finca del maestro

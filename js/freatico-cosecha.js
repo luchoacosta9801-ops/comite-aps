@@ -291,4 +291,4 @@ q('nfcosecha').addEventListener('change', e => {
 });
 
 // Este es el último script del módulo: si la página abrió en #freaticos, #cosecha-niveles o en la portada, redibujar
-if (vistaActual === 'freat' || vistaActual === 'nfcos' || vistaActual === 'portal') renderVista();
+if (['freat', 'nfcos', 'maes', 'portal'].includes(vistaActual)) renderVista();
