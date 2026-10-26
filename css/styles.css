@@ -956,6 +956,8 @@ body.pz-abierta{overflow:hidden}
 @media(max-width:760px){.pz-acc.dos{grid-template-columns:1fr}.pz-alerta.pz-portada{background:linear-gradient(180deg,rgba(40,10,10,.4) 0%,rgba(40,10,10,.9) 50%,rgba(40,10,10,.98) 100%),var(--bg,none) center/cover no-repeat}}
 .pt-banner video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .pt-banner.con-video .pt-banner-acc{z-index:1}
+/* Con video institucional el banner va en 16:9 para que se lean los títulos del video */
+.pt-banner.con-video img{height:auto;aspect-ratio:16/9;max-height:72vh}
 @media(prefers-reduced-motion:reduce){.pt-banner video{display:none}}
 .kd2{display:flex;align-items:flex-end;gap:18px}
 .kd2>span{display:flex;flex-direction:column;line-height:1}

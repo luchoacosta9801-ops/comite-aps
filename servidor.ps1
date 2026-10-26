@@ -7,7 +7,7 @@ $raiz = $PSScriptRoot
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $tipos = @{
   '.html'='text/html; charset=utf-8'; '.css'='text/css; charset=utf-8'; '.js'='text/javascript; charset=utf-8'
-  '.json'='application/json'; '.webmanifest'='application/manifest+json'; '.svg'='image/svg+xml'; '.png'='image/png'; '.jpg'='image/jpeg'; '.mp4'='video/mp4'
+  '.json'='application/json'; '.webmanifest'='application/manifest+json'; '.svg'='image/svg+xml'; '.png'='image/png'; '.jpg'='image/jpeg'; '.mp4'='video/mp4'; '.webm'='video/webm'
 }
 
 function Responder($res, [int]$codigo, $obj) {
@@ -120,6 +120,21 @@ function Freatico($ctx) {
   $res.OutputStream.Write($bytes, 0, $bytes.Length)
 }
 
+# POST /api/guardar-video: guarda el video institucional de la portada (lo graba _privado/video/componer.html)
+# Solo ese archivo, solo MP4 o WebM y hasta 60 MB.
+function GuardarVideo($ctx) {
+  $req = $ctx.Request; $res = $ctx.Response
+  $origen = $req.Headers['Origin']
+  if ($req.Headers['X-Comite'] -ne '1' -or ($origen -and $permitidos -notcontains $origen)) { return Responder $res 403 @{ ok = $false; error = 'Origen no permitido' } }
+  $ext = if ($req.ContentType -like 'video/webm*') { 'webm' } elseif ($req.ContentType -like 'video/mp4*') { 'mp4' } else { $null }
+  if (-not $ext) { return Responder $res 400 @{ ok = $false; error = 'Solo video MP4 o WebM' } }
+  if ($req.ContentLength64 -le 0 -or $req.ContentLength64 -gt 60MB) { return Responder $res 400 @{ ok = $false; error = 'Tamaño no válido' } }
+  $ms = New-Object IO.MemoryStream; $req.InputStream.CopyTo($ms)
+  $destino = Join-Path $raiz "img\portada-institucional.$ext"
+  [IO.File]::WriteAllBytes($destino, $ms.ToArray())
+  Responder $res 200 @{ ok = $true; archivo = "img/portada-institucional.$ext"; bytes = $ms.Length }
+}
+
 $http = New-Object System.Net.HttpListener
 $http.Prefixes.Add("http://localhost:$Puerto/")
 $http.Start()
@@ -144,6 +159,8 @@ while ($http.IsListening) {
       Responder $res 200 @{ ok = $true; edicion = $true }
     } elseif ($ruta -eq 'api/maestro') {
       Maestro $ctx
+    } elseif ($ruta -eq 'api/guardar-video' -and $ctx.Request.HttpMethod -eq 'POST') {
+      GuardarVideo $ctx
     } elseif ($ruta -eq 'api/freatico') {
       Freatico $ctx
     } elseif ($ruta -eq 'api/publicar' -and $ctx.Request.HttpMethod -eq 'POST') {
