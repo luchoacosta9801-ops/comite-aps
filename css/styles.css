@@ -1103,3 +1103,9 @@ tr.fr-sel td{background:#fff3cd}
 .frc-dato{padding:6px 12px 12px;font-size:13px;line-height:1.5}
 #frc-mes{font:inherit;padding:3px 6px;border:1px solid #cbd5e1;border-radius:6px}
 @media (max-width:900px){.fr-cambios{grid-template-columns:1fr}.fr-fg>span{min-width:100%}}
+.fr-hac:has(.fr-hll){grid-template-columns:120px 1fr 38px 52px}
+.fr-hll{font-style:normal;font-size:11px;color:#1d4ed8;text-align:right;white-space:nowrap}
+.fr-flluvia{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:6px 8px}
+.fr-flluvia .fr-llinfo{font-size:12px;flex:1 1 260px}
+.fr-llbtn{cursor:pointer;background:#1d4ed8;color:#fff;border-color:#1d4ed8;padding:6px 12px;font-size:13px}
+@media (max-width:900px){.fr-hac:has(.fr-hll){grid-template-columns:95px 1fr 34px 46px}}

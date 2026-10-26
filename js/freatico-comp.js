@@ -71,7 +71,7 @@ function frFiltrosHTML(F){
     <div class="fr-fg"><span>Año</span>${anios.map(a => chip('a', a, a, f.a.includes(a))).join('')}</div>
     <div class="fr-fg"><span>Mes</span>${frMes.map((m, i) => chip('m', i + 1, m, f.m.includes(i + 1))).join('')}</div>
     <div class="fr-fg fr-flluvia"><span>💧 Lluvia</span>
-      ${L ? `<span class="fr-llinfo">Base cargada: <b>${esc((L.archivos || []).join(' + '))}</b> · ${Object.keys(L.hac).length} haciendas/pluviómetros · ${frFecha(L.ini)} – <b>${frFecha(frDiaF(frDia(L.ini) + frLargoLluvias(L) - 1))}</b></span>` : '<span class="fr-llinfo">Sin base de lluvias: carga la lluvia de cada hacienda para cruzarla con los mapas y el informe</span>'}
+      ${L ? `<div class="fr-llinfo">Base cargada: <b>${esc((L.archivos || []).join(' + '))}</b> · ${Object.keys(L.hac).length} haciendas/pluviómetros · ${frFecha(L.ini)} – <b>${frFecha(frDiaF(frDia(L.ini) + frLargoLluvias(L) - 1))}</b></div>` : '<div class="fr-llinfo">Sin base de lluvias: carga la lluvia de cada hacienda para cruzarla con los mapas y el informe</div>'}
       ${MODO_EDICION ? `<label class="mbtn fr-llbtn" title="Excel o CSV con Hacienda, Fecha y Lluvia (mm). También sirven el Reporte de lluvias (por pluviómetro) y el Ponderado de Precipitaciones (una hoja por mes). Lo nuevo se suma a lo ya cargado.">📥 ${L ? 'Agregar' : 'Cargar'} base de lluvias por hacienda<input type="file" id="fr-lluvias" accept=".xlsx,.xls,.xlsm,.csv" hidden></label>
         <button type="button" class="plegar-todo" data-fr-plantilla title="Descarga una plantilla (CSV para Excel) con las haciendas y las columnas Hacienda, Fecha, Lluvia (mm)">⬇ Plantilla</button>
         ${L ? '<button type="button" class="plegar-todo" data-fr-sin-lluvias title="Quitar los datos de lluvia">✕ Quitar</button>' : ''}` : ''}</div>
@@ -115,6 +115,18 @@ function frTextoLluvia(fecha){
     (tot < 40 ? 'Estos valores evidencian una escasa oferta hídrica proveniente de las lluvias, por lo que el aporte natural de agua al perfil del suelo fue mínimo' : tot < 90 ? 'Estos valores representan un aporte moderado de agua al perfil del suelo' : 'Estos valores representan un aporte importante de agua al perfil del suelo, que favorece el ascenso de los niveles freáticos') +
     (ult3 != null && ult3 >= 15 ? `. Sin embargo, en los 3 días previos a la lectura se registraron ${frNum(ult3, 0)} mm, que pueden haber elevado temporalmente los niveles observados` : '') +
     (ant != null ? `. En la quincena anterior se habían registrado ${frNum(ant, 0)} mm, ${ant > tot * 1.2 ? 'por lo que el período evaluado fue más seco' : ant < tot * 0.8 ? 'por lo que el período evaluado fue más lluvioso' : 'un comportamiento similar'}` : '') + '.';
+}
+// Tabla del informe: lluvia de los 15 días previos por hacienda junto al % de área crítica + subcrítica
+function frTablaLluviaHac(fecha, R){
+  if (!frLluvias()) return '';
+  const filas = Object.entries(R.hac).map(([h, c]) => { const t = c.reduce((a, b) => a + b, 0); return {h, p:t ? (c[0] + c[1]) / t * 100 : 0, l:frLluvia15(fecha, new Set([h]))}; })
+    .filter(x => x.l != null).sort((a, b) => b.l - a.l);
+  if (!filas.length) return '';
+  const top = filas.slice(0, 3), mal = filas.filter(x => x.p >= 15);
+  return `<p class="ed" contenteditable="true">Por hacienda, las mayores lluvias se registraron en ${top.map(x => `<b>${esc(frNomHac(x.h))}</b> (${frNum(x.l, 0)} mm)`).join(', ').replace(/, ([^,]*)$/, ' y $1')}.${mal.length ? ` Las haciendas con más del 15% del área en condición crítica y subcrítica recibieron en promedio ${frNum(sum(mal, x => x.l) / mal.length, 0)} mm, frente a ${frNum(sum(filas.filter(x => x.p < 15), x => x.l) / Math.max(1, filas.filter(x => x.p < 15).length), 0)} mm en las demás.` : ''}</p>
+  <p class="cap"><b>Tabla.</b> Lluvia acumulada en los 15 días previos a la lectura y área con niveles críticos y subcríticos por hacienda.</p>
+  <table><tr><th>Hacienda</th><th>Lluvia 15 días (mm)</th><th>Crítico + subcrítico (%)</th></tr>
+  ${filas.map(x => `<tr><td style="text-align:left">${esc(frNomHac(x.h))}</td><td>${frNum(x.l, 0)}</td><td>${frNum(x.p, 1)}</td></tr>`).join('')}</table>`;
 }
 // Lectura del Excel de lluvias con SheetJS: formato largo (Hacienda/Pluviómetro, Fecha, Precipitación) o
 // "Ponderado de Precipitaciones" (una hoja por mes con los días 1-31 en columnas)

@@ -218,10 +218,10 @@ function renderFreatico(){
     <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Evolución del área por rango</b> <span class="meta">· % del área en cada lectura (${frE.f.a.length || frE.f.m.length ? 'lecturas del filtro de año / mes' : 'último año'}) · clic en una barra para verla</span></div>
       <div id="fr-evol" class="fr-evol"><div class="meta" style="padding:10px">Calculando…</div></div></div>
     <div class="fr-grid2">
-      <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Por hacienda</b> <span class="meta">· ordenadas de más a menos área crítica + subcrítica</span></div>
+      <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Por hacienda</b> <span class="meta">· ordenadas de más a menos área crítica + subcrítica${ll != null ? ' · 💧 lluvia de los 15 días previos (mm)' : ''}</span></div>
         <div class="fr-hacs">${hacs.map(x => `<div class="fr-hac" title="${esc(x.h)}: ${FR_CLASES.map((c, k) => `${c.n} ${frNum(x.c[k], 1)} ha`).join(' · ')}"><b>${esc(frNomHac(x.h))}</b>
           <div class="fr-bar">${x.c.map((v, k) => v ? `<div style="flex:${v};background:${FR_CLASES[k].c}"></div>` : '').join('')}</div>
-          <span>${frNum((x.c[0] + x.c[1]) / x.t * 100, 0)}%</span></div>`).join('')}</div></div>
+          <span>${frNum((x.c[0] + x.c[1]) / x.t * 100, 0)}%</span>${ll != null ? (() => { const l = frLluvia15(frE.fecha, new Set([x.h])); return `<i class="fr-hll" title="Lluvia de los 15 días previos en ${esc(frNomHac(x.h))}">${l != null ? '💧' + frNum(l, 0) : '—'}</i>`; })() : ''}</div>`).join('')}</div></div>
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Suertes en nivel crítico</b> <span class="meta">· promedio de la suerte &lt; 0,5 m</span></div>
         <div class="sim-tw" style="max-height:340px"><table class="sim-t"><thead><tr><th>Suerte</th><th>Hacienda</th><th class="n">Área (ha)</th><th class="n">Nivel (m)</th></tr></thead>
         <tbody>${criticas.map(s => `<tr data-fr-sue="${s.i}" style="cursor:pointer"><td class="lab" style="font-family:var(--mono)">${esc(s.cod)}</td><td>${esc(frNomHac(s.h))}</td><td class="n">${frNum(s.ha)}</td><td class="n b" style="color:var(--red)">${frNum(s.v)}</td></tr>`).join('') || '<tr><td colspan="4" class="nores">Ninguna suerte en nivel crítico 👍</td></tr>'}</tbody>
@@ -375,7 +375,7 @@ function frMapaIniciar(){
     const p = pozoEn(px, py); let h = '';
     if (p) h = `<b>Pozo ${p.n}</b> · ${esc(p.h)}<br>${p.raw === 'S' ? 'Seco (más de 2 m)' : p.v != null ? `Nivel: <b>${frNum(p.v)} m</b> · ${FR_CLASES[frClase(p.v)].n}` : 'Sin lectura en esta fecha'}`;
     else { const c = suerteEn(px, py); if (c != null) { const G = frMalla(), si = G.sue[c], s = M.suertes[si], R = C.R.suertes.find(x => x.i === si), v = C.V[c];
-      h = `<b>${esc(s[0])}</b> · ${esc(s[1])} · ${frNum(s[2])} ha<br>Aquí: <b>${frNum(v)} m</b> (${FR_CLASES[frClase(v)].n})${R ? `<br>Promedio suerte: ${frNum(R.v)} m` : ''}`; } }
+      h = `<b>${esc(s[0])}</b> · ${esc(s[1])} · ${frNum(s[2])} ha<br>Aquí: <b>${frNum(v)} m</b> (${FR_CLASES[frClase(v)].n})${R ? `<br>Promedio suerte: ${frNum(R.v)} m` : ''}${(() => { const l = frLluvia15(frE.fecha, new Set([s[1]])); return l != null ? `<br>💧 Lluvia 15 días previos (${esc(frNomHac(s[1]))}): ${frNum(l, 0)} mm` : ''; })()}`; } }
     if (!h) { tip.hidden = true; return; }
     tip.innerHTML = h; tip.hidden = false;
     const L = Math.min(px + 14, ancho - tip.offsetWidth - 4), T = py + 14 + tip.offsetHeight > alto ? py - tip.offsetHeight - 10 : py + 14;
@@ -597,7 +597,7 @@ ${FR_INF.map((c, k) => `<tr><td>${c.n}</td><td>${c.d}</td><td>${FR_CLASES[k].r.r
 <div class="pie"><img src="${logo}" alt=""><span>1</span></div></div>
 
 <div class="hoja"><h2>Análisis de precipitaciones</h2>
-${frTextoLluvia(fecha) ? `<p class="ed" contenteditable="true">${frTextoLluvia(fecha)}</p>` : ''}${editable('', `Escribe aquí ${frTextoLluvia(fecha) ? 'más detalles sobre' : ''} las lluvias de los 15 días previos a la lectura del ${frFechaL(fecha)} (acumulado por zona y su efecto en los niveles)…`)}
+${frTextoLluvia(fecha) ? `<p class="ed" contenteditable="true">${frTextoLluvia(fecha)}</p>` : ''}${frTablaLluviaHac(fecha, R)}${editable('', `Escribe aquí ${frTextoLluvia(fecha) ? 'más detalles sobre' : ''} las lluvias de los 15 días previos a la lectura del ${frFechaL(fecha)} (acumulado por zona y su efecto en los niveles)…`)}
 <h2>Análisis de niveles freáticos del ${frFechaL(fecha).replace(/ de \d{4}$/, '')}</h2>
 <p class="ed" contenteditable="true">El mapa de zonificación elaborado a partir de las lecturas, bajo el nombre de Mapa de Isóbatas ${frFechaCorta(fecha)}, muestra la distribución espacial de las distintas condiciones de nivel freático presentes en las haciendas evaluadas. El procesamiento geoespacial del mapa de zonificación del ${frFechaL(fecha)} arrojó una superficie total evaluada de ${ha2(tot)} ha. Los resultados consolidados y sus respectivas proporciones porcentuales se exponen en la Tabla 2.</p>
 <img class="plano" src="${plano}" alt="Mapa de isóbatas">
