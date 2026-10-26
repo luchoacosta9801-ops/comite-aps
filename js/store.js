@@ -7,9 +7,25 @@ const STORE_KEY = 'comite-aps:v1';
 // Es una comodidad, no seguridad: publicar exige servidor.ps1 en su PC y su acceso a GitHub.
 const EDITOR_KEY = 'comite-aps:editor';
 const EDITOR_HASH = '0d61b39d450f6f876d221f11fd3aa5e782f0abfda293e1180f0354750a13437f';
-const ES_LOCAL = location.protocol === 'file:' || ['localhost','127.0.0.1'].includes(location.hostname);
+// ?visitante=1 en este PC: la pestaña se ve como la ve un visitante de la página publicada (pide usuario y
+// contraseña, sin modo editor); ?visitante=0 vuelve al normal. Sirve para probar los perfiles de usuario.
+const COMO_VISITANTE = (() => { try { const p = new URLSearchParams(location.search).get('visitante');
+  if (p !== null) sessionStorage.setItem('comite-aps:visitante', p === '1' ? '1' : ''); return sessionStorage.getItem('comite-aps:visitante') === '1'; } catch (e) { return false; } })();
+const ES_LOCAL = (location.protocol === 'file:' || ['localhost','127.0.0.1'].includes(location.hostname)) && !COMO_VISITANTE;
 function editorActivado(){ try { return localStorage.getItem(EDITOR_KEY) === EDITOR_HASH; } catch (e) { return false; } }
-const MODO_EDICION = ES_LOCAL || editorActivado();
+const EDITOR_TOTAL = ES_LOCAL || editorActivado();
+// Usuario con perfil "editor por panel" (js/acceso.js): solo edita las vistas de su lista. MODO_EDICION se
+// recalcula al cambiar de vista (renderVista); GUARDA_LOCAL deja guardar sus cambios en el navegador.
+const SESION_KEY = 'comite-aps:sesion';
+const PANELES_EDICION = (() => { if (EDITOR_TOTAL) return []; try {
+  const s = JSON.parse(localStorage.getItem(SESION_KEY) || 'null'), L = (SEED.usuarios && SEED.usuarios.lista) || [];
+  const x = s && s.exp > Date.now() && L.find(y => y.u === s.u && y.h === s.h);
+  return x && x.rol === 'panel' ? (x.paneles || []) : []; } catch (e) { return []; } })();
+const GUARDA_LOCAL = EDITOR_TOTAL || PANELES_EDICION.length > 0;
+// Sin sesión válida la página se oculta desde ya (js/acceso.js pone luego la pantalla de entrada)
+(() => { try { const L = (SEED.usuarios && SEED.usuarios.lista) || [], s = JSON.parse(localStorage.getItem(SESION_KEY) || 'null');
+  if (L.length && !EDITOR_TOTAL && !(s && s.exp > Date.now() && L.some(y => y.u === s.u && y.h === s.h))) document.documentElement.classList.add('acc-bloqueado'); } catch (e) {} })();
+let MODO_EDICION = EDITOR_TOTAL;
 // Dónde está servidor.ps1: el mismo sitio si se abrió desde él; si no, el del PC
 const API_BASE = ES_LOCAL && location.protocol.startsWith('http') ? '' : 'http://localhost:8080/';
 let DB;
@@ -31,7 +47,7 @@ let DB;
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 
 function loadDB(){
-  if (!MODO_EDICION) { DB = clone(SEED); return; }
+  if (!GUARDA_LOCAL) { DB = clone(SEED); return; }
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
@@ -68,13 +84,13 @@ function loadDB(){
 const MODULOS_LOCALES = ['estructura', 'protocolos', 'proyectos', 'portada', 'agronomia', 'sim', 'ppto2027', 'freatico', 'lluvias', 'cosechaNF', 'maestroSuertes', 'usuarios'];
 const BASE_KEY = 'comite-aps:base';
 function guardarBase(d){
-  if (!MODO_EDICION) return;
+  if (!GUARDA_LOCAL) return;
   const b = {}; MODULOS_LOCALES.forEach(k => { b[k] = JSON.stringify(d[k] === undefined ? null : d[k]); });
   try { localStorage.setItem(BASE_KEY, JSON.stringify(b)); } catch (e) {}
 }
 
 function save(){
-  if (!MODO_EDICION) return;
+  if (!GUARDA_LOCAL) return;
   DB.meta.actualizado = new Date().toISOString();
   try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); }
   catch (e) { toast('⚠ No se pudo guardar en este navegador'); }

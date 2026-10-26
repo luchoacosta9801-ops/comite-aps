@@ -39,6 +39,7 @@ function irA(vista, {historial = true} = {}){
   ajustarBarra(); window.scrollTo(0, 0);
 }
 function renderVista(){
+  MODO_EDICION = EDITOR_TOTAL || PANELES_EDICION.includes(vistaActual);   // editor por panel: solo en sus vistas
   if (vistaActual === 'portal') renderPortal();
   else if (vistaActual === 'simulador') renderSimulador();
   else if (vistaActual === 'estructura') renderEstructura();
@@ -553,7 +554,7 @@ function renderAgronomia(){
   q('agronomia').innerHTML = `
     <div class="mod-top">
       <div><div class="sim-tit">🌱 Gestión Agronomía · Suertes cerradas</div>
-        <div class="sim-subt">Se traen solas del Dashboard APS (sembradas, surcadas y en ruta de siembra) · ${DB.meta.semana ? esc(DB.meta.semana) : ''}${ed ? ' · escribe y se guarda solo; luego 🚀 Publicar' : ' · solo lectura'}${DB.agronomia && DB.agronomia.maestro ? ` · Maestro: ${esc(DB.agronomia.maestro)}` : ''}</div></div>
+        <div class="sim-subt">Se traen solas del Dashboard APS (sembradas, surcadas y en ruta de siembra) · ${DB.meta.semana ? esc(DB.meta.semana) : ''}${ed ? ' · escribe y se guarda solo; luego ' + (EDITOR_TOTAL ? '🚀 Publicar' : '📤 Enviar cambios') : ' · solo lectura'}${DB.agronomia && DB.agronomia.maestro ? ` · Maestro: ${esc(DB.agronomia.maestro)}` : ''}</div></div>
       ${ed ? '<label class="mbtn mbtn-ghost pt-file">📥 Cargar maestro<input type="file" id="ag-maestro" accept=".xlsx,.xlsm,.xls" hidden></label>' : ''}
     </div>
     <div class="sim-bar pp-filtros">
