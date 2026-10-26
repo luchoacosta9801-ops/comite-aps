@@ -70,11 +70,14 @@ function frFiltrosHTML(F){
     <div class="fr-fg"><span>Zona</span>${[1, 2].map(z => chip('z', z, 'Zona ' + z, f.z.includes(z))).join('')}</div>
     <div class="fr-fg"><span>Año</span>${anios.map(a => chip('a', a, a, f.a.includes(a))).join('')}</div>
     <div class="fr-fg"><span>Mes</span>${frMes.map((m, i) => chip('m', i + 1, m, f.m.includes(i + 1))).join('')}</div>
+    <div class="fr-fg fr-flluvia"><span>💧 Lluvia</span>
+      ${L ? `<span class="fr-llinfo">Base cargada: <b>${esc((L.archivos || []).join(' + '))}</b> · ${Object.keys(L.hac).length} haciendas/pluviómetros · ${frFecha(L.ini)} – <b>${frFecha(frDiaF(frDia(L.ini) + frLargoLluvias(L) - 1))}</b></span>` : '<span class="fr-llinfo">Sin base de lluvias: carga la lluvia de cada hacienda para cruzarla con los mapas y el informe</span>'}
+      ${MODO_EDICION ? `<label class="mbtn fr-llbtn" title="Excel o CSV con Hacienda, Fecha y Lluvia (mm). También sirven el Reporte de lluvias (por pluviómetro) y el Ponderado de Precipitaciones (una hoja por mes). Lo nuevo se suma a lo ya cargado.">📥 ${L ? 'Agregar' : 'Cargar'} base de lluvias por hacienda<input type="file" id="fr-lluvias" accept=".xlsx,.xls,.xlsm,.csv" hidden></label>
+        <button type="button" class="plegar-todo" data-fr-plantilla title="Descarga una plantilla (CSV para Excel) con las haciendas y las columnas Hacienda, Fecha, Lluvia (mm)">⬇ Plantilla</button>
+        ${L ? '<button type="button" class="plegar-todo" data-fr-sin-lluvias title="Quitar los datos de lluvia">✕ Quitar</button>' : ''}` : ''}</div>
     <details class="fr-fhac" ${f.h.length ? 'open' : ''}><summary>Haciendas${f.h.length ? ` · <b>${f.h.length} elegidas</b>` : ''}</summary>
       ${[1, 2].map(z => `<div class="fr-fg"><span>Zona ${z}</span>${H.lista.filter(x => x.z === z).map(x => chip('h', x.k, x.n, f.h.includes(x.k), `${frNum(x.ha, 0)} ha`)).join('')}</div>`).join('')}</details>
-    <div class="fr-fpie">${algo ? '<button type="button" class="plegar-todo" data-fr-limpiar>✕ Quitar filtros</button>' : '<span class="meta">Puedes marcar varias opciones en cada filtro</span>'}
-      <span class="fr-llinfo">${L ? `💧 Lluvias: <b>${esc((L.archivos || []).join(', '))}</b> · ${frFecha(L.ini)} – ${frFecha(frDiaF(frDia(L.ini) + frLargoLluvias(L) - 1))}` : '💧 Sin datos de lluvia'}
-      ${MODO_EDICION ? `<label class="plegar-todo" title="Reporte de lluvias (Hacienda, Pluviómetro, Fecha, Precipitación) o Ponderado de Precipitaciones (una hoja por mes)">📥 ${L ? 'Agregar' : 'Cargar'} lluvias<input type="file" id="fr-lluvias" accept=".xlsx,.xls,.xlsm,.csv" hidden></label>${L ? '<button type="button" class="plegar-todo" data-fr-sin-lluvias title="Quitar los datos de lluvia">✕</button>' : ''}` : ''}</span></div>
+    <div class="fr-fpie">${algo ? '<button type="button" class="plegar-todo" data-fr-limpiar>✕ Quitar filtros</button>' : '<span class="meta">Puedes marcar varias opciones en cada filtro</span>'}</div>
   </div>`;
 }
 
@@ -144,7 +147,7 @@ async function frLeerLluvias(file){
       const cH = n.findIndex(x => x.startsWith('hacienda')), cP = n.findIndex(x => x.startsWith('pluv')), cA = n.findIndex(x => x.startsWith('area'));
       // Formato largo
       if (cF >= 0 && cMm >= 0 && (cH >= 0 || cP >= 0)) {
-        for (let i = r + 1; i < R.length; i++) { const x = R[i]; if (!x) continue; const v = +x[cMm]; if (x[cMm] == null || isNaN(v)) continue;
+        for (let i = r + 1; i < R.length; i++) { const x = R[i]; if (!x) continue; const v = +String(x[cMm] ?? '').trim().replace(',', '.'); if (x[cMm] == null || x[cMm] === '' || isNaN(v)) continue;
           poner(cH >= 0 ? x[cH] : 'PLUV ' + x[cP], fechaDe(x[cF]), v, 1); filas++; }
         return;
       }
@@ -182,6 +185,15 @@ function frGuardarLluvias(nuevo, nombre){
   Object.entries(dict).forEach(([k, D]) => { const a = new Array(max - min + 1).fill(null); let n = 0; Object.entries(D).forEach(([f, v]) => { const d = frDia(f); if (d >= min && d <= max) { a[d - min] = v; n++; } }); if (n) hac[k] = a; });
   const archivos = [...new Set([...(viejo && viejo.archivos || []), nombre])];
   return {archivos, ini:frDiaF(min), hac};
+}
+// Plantilla para llenar la lluvia diaria de cada hacienda (CSV con ; que Excel abre directo)
+function frPlantillaLluvias(){
+  const H = frHaciendas(), hoy = new Date().toISOString().slice(0, 10);
+  const filas = ['Hacienda;Fecha;Lluvia (mm)', ...H.lista.map(x => `${x.n};${hoy};`)];
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + filas.join('\r\n')], {type:'text/csv;charset=utf-8'}));
+  a.download = 'Plantilla lluvias por hacienda.csv'; a.click();
+  toast('⬇ Plantilla descargada: una fila por hacienda y día (Fecha AAAA-MM-DD o DD/MM/AAAA, lluvia en mm)');
 }
 function frCargarLluvias(file){
   if (!file) return;
@@ -396,6 +408,7 @@ q('freaticos').addEventListener('click', e => {
   if (sf) { const f = sf.dataset.frSel, i = frE.sel.indexOf(f); if (i >= 0) frE.sel.splice(i, 1); else if (frE.sel.length >= FR_MAX_COMP) { toast(`Máximo ${FR_MAX_COMP} lecturas: quita una primero`); return; } else frE.sel.push(f); renderFreatico(); return; }
   const rp = t.closest('[data-fr-rapido]'); if (rp) { frSelRapido(freatico(), rp.dataset.frRapido); renderFreatico(); return; }
   if (t.closest('[data-fr-informe-comp]')) { frInformeComparativo(); return; }
+  if (t.closest('[data-fr-plantilla]')) { frPlantillaLluvias(); return; }
   if (t.closest('[data-fr-sin-lluvias]')) { if (confirm('¿Quitar los datos de lluvia del panel?')) { frE.evolFechas = ''; modCambio(() => { DB.lluvias = null; }); } }
 });
 q('freaticos').addEventListener('change', e => { if (e.target.id === 'fr-lluvias') { frCargarLluvias(e.target.files[0]); e.target.value = ''; } });
