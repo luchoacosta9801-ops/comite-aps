@@ -693,10 +693,43 @@ function frFuenteHTML(){
       ${MODO_EDICION && frE.avisos && (frE.avisos.fechas.length || frE.avisos.sinCoord.length) ? `<details class="fr-f-det"><summary>🛠 Revisión del Excel: ${frE.avisos.fechas.length} fechas corregidas${frE.avisos.sinCoord.length ? ` · ${frE.avisos.sinCoord.length} pozos sin coordenadas` : ''}</summary>
         <ul>${frE.avisos.fechas.map(a => `<li>${esc(a)}</li>`).join('')}${frE.avisos.sinCoord.length ? `<li>Pozos sin coordenadas (no salen en el mapa): ${frE.avisos.sinCoord.join(', ')}</li>` : ''}</ul>
         <small class="meta">Las fechas mal escritas en el Excel se corrigen solas según el orden de las columnas y las fechas de campaña. Conviene corregirlas también en el Excel.</small></details>` : ''}</div>
-    ${MODO_EDICION ? `<div class="fr-f-btns">
+    <div class="fr-f-btns">${MODO_EDICION ? `
       <button type="button" class="mbtn" data-fr-act title="Toma el Excel más reciente de Documentos\\SIG\\LECTURA NIVEL FREATICO">📥 Cargar último Excel de la carpeta</button>
-      <label class="mbtn mbtn-ghost" title="Elegir un Excel de niveles freáticos de cualquier carpeta (se lee aquí mismo, sin servidor)">📂 Elegir Excel…<input type="file" id="fr-archivo" accept=".xlsx,.xlsm" hidden></label></div>` : ''}
+      <label class="mbtn mbtn-ghost" title="Elegir un Excel de niveles freáticos de cualquier carpeta (se lee aquí mismo, sin servidor)">📂 Elegir Excel…<input type="file" id="fr-archivo" accept=".xlsx,.xlsm" hidden></label>` : ''}
+      ${F ? `<button type="button" class="mbtn mbtn-ghost" data-fr-base title="Excel con todas las lecturas históricas de todos los pozos">⬇ Descargar base de datos (Excel)</button>` : ''}</div>
   </div>`;
+}
+// Base de datos histórica en Excel (para quien no tenga el archivo): lecturas una por fila, tabla pozo × fecha y pozos
+async function frDescargarBase(){
+  const F = freatico(); if (!F) return;
+  toast('⏳ Armando el Excel…');
+  let XLSX; try { XLSX = await cargarXLSX(); } catch (e) { toast('⚠ ' + e.message); return; }
+  const fe = frFechas(F), P = F.pozos.slice().sort((a, b) => a[0] - b[0]);
+  const fechaX = f => frDia(f) + 25569;   // número de fecha de Excel
+  const orig = v => v === 'S' ? 'Seco (S)' : v;
+  const largo = [['Fecha', 'Año', 'Mes', 'Pozo', 'Hacienda', 'Zona', 'Lectura original', 'Nivel freático (m)', 'Rango']];
+  fe.forEach(f => P.forEach(p => { const raw = F.lecturas[f][p[0]], v = frVal(raw); if (raw == null) return;
+    largo.push([fechaX(f), +f.slice(0, 4), frMesL[+f.slice(5, 7) - 1], p[0], p[3] || '', p[5] ? +p[5] : '', orig(raw), v, v == null ? '' : `${FR_CLASES[frClase(v)].n} (${FR_CLASES[frClase(v)].r} m)`]); }));
+  const ancho = [['Pozo', 'Hacienda', 'Zona', ...fe.map(fechaX)], ...P.map(p => [p[0], p[3] || '', p[5] ? +p[5] : '', ...fe.map(f => frVal(F.lecturas[f][p[0]]) ?? '')])];
+  const pozos = [['Pozo', 'Hacienda', 'Sector', 'Zona', 'Latitud', 'Longitud', 'Lecturas', 'Primera lectura', 'Última lectura', 'Último nivel (m)'],
+    ...P.map(p => { const fs = fe.filter(f => F.lecturas[f][p[0]] != null), u = fs[fs.length - 1];
+      return [p[0], p[3] || '', p[4] || '', p[5] ? +p[5] : '', p[1] ?? '', p[2] ?? '', fs.length, fs[0] ? fechaX(fs[0]) : '', u ? fechaX(u) : '', u ? frVal(F.lecturas[u][p[0]]) : '']; })];
+  const leeme = [['Base de datos de niveles freáticos · Riopaila Agrícola S.A. · Área de Ingeniería Agrícola'], [],
+    ['Fuente', F.archivo || ''], ['Lecturas', `${fe.length} fechas, del ${frFechaL(fe[0])} al ${frFechaL(fe[fe.length - 1])}`], ['Pozos', P.length], ['Descargado', new Date().toLocaleString('es-CO')], [],
+    ['Hojas'], ['Lecturas', 'Una fila por pozo y fecha (sirve para tablas dinámicas y filtros)'], ['Tabla por pozo', 'Pozos en filas y fechas en columnas, nivel en metros'], ['Pozos', 'Ubicación (WGS84) y resumen de cada pozo'], [],
+    ['Notas'], ['Nivel freático', 'Profundidad del agua desde la superficie, en metros. Los valores mayores a 2 m se toman como 2 m'], ['Seco (S)', 'Pozo seco: se toma como 2 m'], ['Vacío', 'Sin lectura en esa fecha'],
+    ['Rangos', FR_CLASES.map(c => `${c.n} ${c.r} m`).join(' · ')]];
+  const wb = XLSX.utils.book_new(), hoja = (filas, nombre, anchos, fmt) => { const ws = XLSX.utils.aoa_to_sheet(filas); ws['!cols'] = anchos.map(w => ({wch:w}));
+    if (fmt) Object.keys(ws).forEach(k => { const c = ws[k], z = c && c.t === 'n' && fmt(k); if (z) { c.z = z; delete c.w; } });
+    XLSX.utils.book_append_sheet(wb, ws, nombre); };
+  const F2 = '0.00', FD = 'dd/mm/yyyy';
+  hoja(leeme, 'Léeme', [22, 90]);
+  hoja(largo, 'Lecturas', [12, 6, 11, 7, 20, 6, 15, 17, 24], k => /^A\d/.test(k) ? FD : /^H\d/.test(k) ? F2 : null);
+  hoja(ancho, 'Tabla por pozo', [7, 20, 6, ...fe.map(() => 11)], k => /^[ABC]\d/.test(k) ? null : /^[A-Z]+1$/.test(k) ? FD : F2);
+  hoja(pozos, 'Pozos', [7, 20, 8, 6, 11, 11, 9, 14, 14, 15], k => /^[HI]\d/.test(k) ? FD : /^J\d/.test(k) ? F2 : null);
+  const u = fe[fe.length - 1];
+  XLSX.writeFile(wb, `Base niveles freaticos ${fe[0].slice(0, 4)}-${u}.xlsx`);
+  toast('⬇ Excel descargado con todo el histórico');
 }
 const frPintarFuente = () => { const el = q('fr-fuente'); if (el) el.outerHTML = frFuenteHTML(); };
 
@@ -930,6 +963,7 @@ function frElegirArchivo(file){
 q('freaticos').addEventListener('click', e => {
   const t = e.target;
   if (t.closest('[data-fr-act]')) { frRevisarServidor(true); return; }
+  if (t.closest('[data-fr-base]')) { frDescargarBase(); return; }
   if (t.closest('[data-fr-png]')) { frDescargarPNG(); return; }
   if (t.closest('[data-fr-informe]')) { frInforme(); return; }
   if (t.closest('[data-fr-cosecha]')) { irA('nfcos'); return; }
