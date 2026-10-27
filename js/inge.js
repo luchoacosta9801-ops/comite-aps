@@ -542,7 +542,7 @@ const IV = (() => {
     if (!A) return `Para el análisis de cosecha vs niveles se carga el Excel de suertes cosechadas en <b>💧 Niveles freáticos → 🌾 Cosecha vs niveles</b>.${ir('nfcos', 'Abrir cosecha vs niveles')}`;
     const R = A.resumen, r5 = R.find(x => x.c === 5), r1 = R.find(x => x.c === 1), pct = k => A.total.n ? k.n / A.total.n * 100 : 0;
     return `<b>Cosecha vs niveles freáticos</b> <small>(${esc(frCosecha().archivo)})</small>${lista([`${A.total.n} suertes evaluadas · ${frNum(A.total.ha, 1)} ha`,
-      ...R.map(k => `Criterio ${k.c} (${k.r}): <b>${k.n}</b> suertes (${frNum(pct(k), 1)}%)${k.tch ? ` · TCH ${frNum(k.tch, 1)}` : ''}`),
+      ...R.map(k => `Criterio ${k.c} (${k.r}): <b>${k.n}</b> suertes (${frNum(pct(k), 1)}%)${k.nivel != null ? ` · nivel ${frNum(k.nivel)} m` : ''}${k.lluvia != null ? ` · lluvia ${frNum(k.lluvia, 0)} mm` : ''}${k.tch ? ` · TCH ${frNum(k.tch, 1)}` : ''}`),
       r5.tch && r1.tch ? `Las suertes con afectación alta produjeron ${frNum(Math.abs(1 - r5.tch / r1.tch) * 100, 1)}% ${r5.tch < r1.tch ? 'menos' : 'más'} TCH que las sin afectación` : ''].filter(Boolean))}${ir('nfcos', 'Ver análisis e informe')}`;
   }
 
