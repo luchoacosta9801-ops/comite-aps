@@ -320,7 +320,8 @@ const IV = (() => {
       const z = t.match(/zona\s*([12])/); if (z && C.includes('zona ' + z[1])) s += 3;
       if (tiene(t, 'jefe') && C.includes('jefe')) s += 1; if (tiene(t, 'coordinador', 'coordinadora') && C.includes('coordinador')) s += 1; if (tiene(t, 'analista') && C.includes('analista')) s += 1;
       return s; };
-    const R = G.map(p => [puntua(p), p]).filter(([s]) => s >= 2).sort((a, b) => b[0] - a[0]);
+    const minimo = W.some(w => w.length > 3) ? 2 : 1;   // "¿quién es el jefe?" sin más palabras: basta el cargo
+    const R = G.map(p => [puntua(p), p]).filter(([s]) => s >= minimo).sort((a, b) => b[0] - a[0]);
     if (!R.length) return null;
     const top = R[0][0], vistos = new Set();
     const lineas = R.filter(([s]) => s >= top - 1).map(([, p]) => p).filter(p => { const k = n(p.nombre + p.cargo); if (vistos.has(k)) return false; vistos.add(k); return true; }).slice(0, 6)
