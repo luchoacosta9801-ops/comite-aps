@@ -17,14 +17,17 @@ const EDITOR_TOTAL = ES_LOCAL || editorActivado();
 // Usuario con perfil "editor por panel" (js/acceso.js): solo edita las vistas de su lista. MODO_EDICION se
 // recalcula al cambiar de vista (renderVista); GUARDA_LOCAL deja guardar sus cambios en el navegador.
 const SESION_KEY = 'comite-aps:sesion';
+// Usuario con fecha límite (x.hasta = 'AAAA-MM-DD'): vale hasta la medianoche de ese día (hora del equipo)
+const accVence = x => { if (!x || !x.hasta) return Infinity; const [a, m, d] = x.hasta.split('-').map(Number); return new Date(a, m - 1, d + 1).getTime(); };
+const accVigente = x => !!x && Date.now() < accVence(x);
 const PANELES_EDICION = (() => { if (EDITOR_TOTAL) return []; try {
   const s = JSON.parse(localStorage.getItem(SESION_KEY) || 'null'), L = (SEED.usuarios && SEED.usuarios.lista) || [];
-  const x = s && s.exp > Date.now() && L.find(y => y.u === s.u && y.h === s.h);
+  const x = s && s.exp > Date.now() && L.find(y => y.u === s.u && y.h === s.h && accVigente(y));
   return x && x.rol === 'panel' ? (x.paneles || []) : []; } catch (e) { return []; } })();
 const GUARDA_LOCAL = EDITOR_TOTAL || PANELES_EDICION.length > 0;
 // Sin sesión válida la página se oculta desde ya (js/acceso.js pone luego la pantalla de entrada)
 (() => { try { const L = (SEED.usuarios && SEED.usuarios.lista) || [], s = JSON.parse(localStorage.getItem(SESION_KEY) || 'null');
-  if (L.length && !EDITOR_TOTAL && !(s && s.exp > Date.now() && L.some(y => y.u === s.u && y.h === s.h))) document.documentElement.classList.add('acc-bloqueado'); } catch (e) {} })();
+  if (L.length && !EDITOR_TOTAL && !(s && s.exp > Date.now() && L.some(y => y.u === s.u && y.h === s.h && accVigente(y)))) document.documentElement.classList.add('acc-bloqueado'); } catch (e) {} })();
 let MODO_EDICION = EDITOR_TOTAL;
 // Dónde está servidor.ps1: el mismo sitio si se abrió desde él; si no, el del PC
 const API_BASE = ES_LOCAL && location.protocol.startsWith('http') ? '' : 'http://localhost:8080/';
