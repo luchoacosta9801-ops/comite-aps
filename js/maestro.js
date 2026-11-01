@@ -7,7 +7,7 @@
 const MS_COLS = ['s', 'emp', 'zona', 'hac', 'uso', 'estado', 'variedad', 'area', 'siembra', 'ultCorte', 'nCorte', 'ciclo', 'edad', 'edadStd',
   'proxPpto', 'proxEst', 'tchPpto', 'tchAforo', 'tonPpto', 'tonEst', 'tipoFinca', 'zonaAgro', 'lucro', 'rangoEdad', 'sector', 'quema'];
 const MS_PAL = ['#0f766e', '#2563eb', '#d97706', '#7c3aed', '#dc2626', '#16a34a', '#db2777', '#0891b2', '#65a30d', '#9333ea', '#ea580c', '#475569'];
-const msE = {emp:'RIOP', zona:'', hac:'', uso:'', estado:'', variedad:'', txt:'', color:'variedad', orden:'s', asc:true, mas:false, ficha:null};
+const msE = {emp:'RIOP', zona:'', hac:'', uso:'', estado:'', variedad:'', txt:'', color:'variedad', orden:'s', asc:true, mas:false, ficha:null, med:{modo:null, figs:[], cur:null}};
 
 function maestroSuertes(){
   if (DB.maestroSuertes === undefined && typeof SEED !== 'undefined' && SEED.maestroSuertes) DB.maestroSuertes = clone(SEED.maestroSuertes);
@@ -151,10 +151,13 @@ function renderMaestro(){
     <div class="fr-grid">
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Mapa de suertes</b>
         <span class="ms-vistas">${Object.entries(MS_VISTAS).map(([k, v]) => `<button type="button" class="fr-ch ${msE.color === k ? 'on' : ''}" data-ms-color="${k}">${v.n}</button>`).join('')}</span></div>
-        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa">⤢ Ver todo</button><span class="meta">Acércate para ver el número de cada suerte</span></div>
-        <div class="ms-mapa" id="ms-mapa"><canvas id="ms-cv"></canvas><div class="fr-tip" id="ms-tip" hidden></div></div>
+        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa">⤢ Ver todo</button>
+          <span class="ms-medir"><button type="button" class="plegar-todo ${msE.med.modo === 'lin' ? 'on' : ''}" data-ms-med="lin" title="Toca puntos en el mapa para medir una distancia o trazar una línea">📏 Distancia</button><button type="button" class="plegar-todo ${msE.med.modo === 'area' ? 'on' : ''}" data-ms-med="area" title="Toca los vértices para trazar una figura y medir su área">⬛ Área / figura</button>
+          ${msE.med.modo || msE.med.figs.length ? `<button type="button" class="plegar-todo" data-ms-med="deshacer" title="Quitar el último punto">↶</button><button type="button" class="plegar-todo" data-ms-med="fin" title="Terminar esta medida y empezar otra">✔ Terminar</button><button type="button" class="plegar-todo" data-ms-med="borrar" title="Borrar todas las medidas">🗑</button>` : ''}</span></div>
+        <div class="ms-mapa ${msE.med.modo ? 'midiendo' : ''}" id="ms-mapa"><canvas id="ms-cv"></canvas><div class="fr-tip" id="ms-tip" hidden></div></div>
+        <div class="ms-medidas" id="ms-med"></div>
         <div class="fr-cley" id="ms-ley"></div>
-        <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha. Solo se dibujan las suertes que están en la cartografía.</div></div>
+        <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha · 📏 Distancia y ⬛ Área / figura miden sobre el mapa (en metros, hectáreas y m²). Solo se dibujan las suertes que están en la cartografía.</div></div>
       <div class="fr-lado">
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por variedad</b></div>${barras(msCuenta(L, 'variedad'), area, v => v, 10, '#7c3aed')}</div>
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por estado</b></div>${barras(msCuenta(L, 'estado'), area, v => v, 8, '#0891b2')}</div>
@@ -209,8 +212,11 @@ function msMapa(L){
     });
     if (msE.sel) { const su = M.suertes.filter(x => x[0] === msE.sel); g.strokeStyle = '#0f172a'; g.lineWidth = 3; g.beginPath(); su.forEach(x => x[3].forEach(r => linea(r, true))); g.stroke(); }
     frEtiquetasSuertes(g, sx, sy, Vw().s, ancho, alto);
+    msMedDibujar(g, sx, sy);
   }
   msE.dibujar = dibujar;
+  msE.aMundo = (cx, cy) => { const r = cv.getBoundingClientRect(), W = Vw(); return [(cx - r.left - W.ox) / W.s, M.alto - (cy - r.top - W.oy) / W.s]; };
+  msMedPintar();
   msE.zoom = f => zoom(f, ancho / 2, alto / 2);
   msE.ajustar = () => { ajustar(); dibujar(); };
   dibujar();
@@ -234,13 +240,52 @@ function msMapa(L){
     if (toques.has(e.pointerId)) toques.set(e.pointerId, [px, py]);
     if (pinza && toques.size === 2) { const [a, b] = [...toques.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom(pinza.s * d / pinza.d / Vw().s, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); movido = true; return; }
     if (arr) { const dx = e.clientX - arr[0], dy = e.clientY - arr[1]; if (Math.abs(dx) + Math.abs(dy) > 5) movido = true; if (movido) { Vw().ox = arr[2] + dx; Vw().oy = arr[3] + dy; dibujar(); tip.hidden = true; } return; }
+    if (msE.med.modo && e.pointerType === 'mouse') { msE.med.cursor = msE.aMundo(e.clientX, e.clientY); dibujar(); return; }
     if (e.pointerType === 'mouse') globo(e.clientX, e.clientY); };
   const soltar = e => { toques.delete(e.pointerId); if (toques.size < 2) pinza = null;
-    if (arr && !movido && e.type === 'pointerup') { const p = enPunto(e.clientX, e.clientY); if (p) { msE.sel = p.su[0]; dibujar(); if (p.x) msFicha(p.x.s + '|' + p.x.hac); else globo(e.clientX, e.clientY); } }
+    if (arr && !movido && e.type === 'pointerup' && msE.med.modo) { msMedPunto(msE.aMundo(e.clientX, e.clientY), Vw().s); dibujar(); msMedPintar(); }
+    else if (arr && !movido && e.type === 'pointerup') { const p = enPunto(e.clientX, e.clientY); if (p) { msE.sel = p.su[0]; dibujar(); if (p.x) msFicha(p.x.s + '|' + p.x.hac); else globo(e.clientX, e.clientY); } }
     if (!toques.size) arr = null; };
   cv.onpointerup = soltar; cv.onpointercancel = soltar;
-  cv.onpointerleave = e => { if (e.pointerType === 'mouse') tip.hidden = true; };
+  cv.onpointerleave = e => { if (e.pointerType === 'mouse') { tip.hidden = true; if (msE.med.cursor) { msE.med.cursor = null; dibujar(); } } };
   cv.style.touchAction = 'none';
+}
+
+// ── Medir sobre el mapa: distancias (líneas) y áreas (figuras). La cartografía está en metros (MAGNA Colombia Oeste),
+// así que las medidas salen directas: longitud por suma de tramos y área por la fórmula del polígono (Gauss) ──
+const msLargo = (pts, cerrar) => { let s = 0; for (let i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); if (cerrar && pts.length > 2) s += Math.hypot(pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]); return s; };
+const msArea = pts => { let s = 0; for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; s += a[0] * b[1] - b[0] * a[1]; } return Math.abs(s) / 2; };
+const msMetros = m => m >= 1000 ? `${msN(m / 1000, 2)} km` : `${msN(m, 0)} m`;
+function msMedPunto(p, escala){
+  const M = msE.med; let f = M.cur != null ? M.figs[M.cur] : null;
+  if (!f || f.tipo !== M.modo || f.fin) { f = {tipo:M.modo, pts:[]}; M.figs.push(f); M.cur = M.figs.length - 1; }
+  // En una figura, tocar cerca del primer punto la cierra
+  if (f.tipo === 'area' && f.pts.length >= 3 && Math.hypot(p[0] - f.pts[0][0], p[1] - f.pts[0][1]) * escala < 14) { f.fin = true; M.cur = null; return; }
+  f.pts.push(p);
+}
+function msMedDibujar(g, sx, sy){
+  const M = msE.med; if (!M.figs.length) return;
+  M.figs.forEach((f, i) => {
+    const activa = i === M.cur, pts = activa && M.cursor && M.modo === f.tipo ? [...f.pts, M.cursor] : f.pts, col = f.tipo === 'area' ? '#7c3aed' : '#ea580c';
+    if (!pts.length) return;
+    g.beginPath(); pts.forEach((p, k) => k ? g.lineTo(sx(p[0]), sy(p[1])) : g.moveTo(sx(p[0]), sy(p[1])));
+    if (f.tipo === 'area' && pts.length > 2) { g.closePath(); g.fillStyle = 'rgba(124,58,237,.18)'; g.fill(); }
+    g.setLineDash(activa ? [6, 4] : []); g.strokeStyle = '#fff'; g.lineWidth = 5; g.stroke(); g.strokeStyle = col; g.lineWidth = 2.5; g.stroke(); g.setLineDash([]);
+    f.pts.forEach((p, k) => { g.beginPath(); g.arc(sx(p[0]), sy(p[1]), k === 0 ? 5 : 4, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 2; g.strokeStyle = col; g.stroke(); });
+    // Rótulo con la medida
+    const txt = f.tipo === 'area' && pts.length > 2 ? `${msN(msArea(pts) / 1e4, 2)} ha` : msMetros(msLargo(pts));
+    const ult = f.tipo === 'area' && pts.length > 2 ? [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length] : pts[pts.length - 1];
+    if (pts.length > 1) { g.font = '700 13px Arial'; const w = g.measureText(txt).width, x = sx(ult[0]) + (f.tipo === 'area' ? -w / 2 : 8), y = sy(ult[1]) + (f.tipo === 'area' ? 5 : -8);
+      g.fillStyle = 'rgba(255,255,255,.92)'; g.fillRect(x - 4, y - 13, w + 8, 18); g.fillStyle = col; g.fillText(txt, x, y); }
+  });
+}
+function msMedPintar(){
+  const el = q('ms-med'); if (!el) return;
+  const M = msE.med, F = M.figs.filter(f => f.pts.length > 1);
+  el.innerHTML = M.modo && !F.length ? `<div class="meta">${M.modo === 'area' ? '⬛ Toca los vértices de la figura sobre el mapa. Para cerrarla toca el primer punto o ✔ Terminar.' : '📏 Toca los puntos de la línea sobre el mapa. ✔ Terminar para empezar otra.'} Arrastra para moverte sin marcar.</div>` :
+    F.map((f, i) => f.tipo === 'area' && f.pts.length > 2
+      ? `<span class="ms-m-a">⬛ Figura ${i + 1}: <b>${msN(msArea(f.pts) / 1e4, 2)} ha</b> <small>(${msN(msArea(f.pts), 0)} m²) · perímetro ${msMetros(msLargo(f.pts, true))}</small></span>`
+      : `<span class="ms-m-l">📏 Línea ${i + 1}: <b>${msMetros(msLargo(f.pts))}</b> <small>· ${f.pts.length - 1} tramo${f.pts.length > 2 ? 's' : ''}</small></span>`).join('');
 }
 
 // Ficha de una suerte: ventana sobre la página (con su título fijo, se desplaza por dentro y se puede arrastrar)
@@ -296,6 +341,13 @@ q('maestro').addEventListener('click', e => {
   if (t.closest('[data-ms-limpiar]')) { msE.zona = msE.hac = msE.uso = msE.estado = msE.variedad = msE.txt = ''; renderMaestro(); return; }
   if (t.closest('[data-ms-mas]')) { msE.mas = true; renderMaestro(); return; }
   const zb = t.closest('[data-ms-zoom]'); if (zb) { msE.zoom && msE.zoom(+zb.dataset.msZoom); return; }
+  const md = t.closest('[data-ms-med]');
+  if (md) { const M = msE.med, a = md.dataset.msMed;
+    if (a === 'lin' || a === 'area') { M.modo = M.modo === a ? null : a; M.cur = null; M.cursor = null; }
+    else if (a === 'deshacer') { const f = M.cur != null ? M.figs[M.cur] : M.figs[M.figs.length - 1]; if (f) { if (f.fin) f.fin = false; else f.pts.pop(); if (!f.pts.length) { M.figs.splice(M.figs.indexOf(f), 1); M.cur = null; } else M.cur = M.figs.indexOf(f); } }
+    else if (a === 'fin') { const f = M.figs[M.cur]; if (f) f.fin = true; M.cur = null; M.figs = M.figs.filter(x => x.pts.length > 1); }
+    else if (a === 'borrar') { M.figs = []; M.cur = null; }
+    renderMaestro(); return; }
   if (t.closest('[data-ms-ajustar]')) { msE.sel = null; msE.ajustar && msE.ajustar(); return; }
   if (t.closest('.ms-x') || (t.classList && t.classList.contains('ms-fondo'))) { msE.ficha = null; q('ms-ficha').innerHTML = ''; return; }
   const fi = t.closest('[data-ms-ficha]'); if (fi) msFicha(fi.dataset.msFicha);
