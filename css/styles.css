@@ -1222,7 +1222,7 @@ html.acc-bloqueado body>*:not(#acc-puerta){display:none!important}
 .ms-capa.on{opacity:1;color:var(--text);border-color:#94a3b8;background:#f8fafc}
 .ms-capa i{width:16px;height:4px;border-radius:2px;background:var(--c)}
 .ms-capa i.ms-capa-agua{height:10px;border:1px solid #2b7bd6}
-.ms-capa i.ms-capa-drensec{background:repeating-linear-gradient(90deg,var(--c) 0 5px,transparent 5px 8px)}
+.ms-capa i.ms-capa-drensec,.ms-capa i.ms-capa-vias{background:repeating-linear-gradient(90deg,var(--c) 0 5px,transparent 5px 8px)}
 .ms-capa i.ms-capa-surcos{height:auto;width:auto;background:none;font-style:normal;color:var(--c)}
 .ms-capa i.ms-capa-surcos::before{content:"➜";font-size:12px}
 .ms-mapa.midiendo canvas{cursor:crosshair}

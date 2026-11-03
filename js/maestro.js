@@ -13,9 +13,9 @@ const msE = {emp:'RIOP', zona:'', hac:'', uso:'', estado:'', variedad:'', txt:''
 const MS_CAPAS = [
   ['red', 'Ríos y quebradas', '#2b7bd6', 'Red hídrica (ríos, quebradas, zanjones y acequias)'],
   ['agua', 'Cuerpos de agua', '#8ec5f5', 'Reservorios y lagos'],
-  ['canales', 'Canales de riego y drenaje', '#1d4ed8', 'Canales de riego y drenaje'],
+  ['canales', 'Canales de riego y drenaje', '#dc2626', 'Canales de riego y drenaje'],
   ['drensec', 'Drenaje secundario', '#0891b2', 'Drenajes secundarios (línea punteada)'],
-  ['vias', 'Vías', '#92400e', 'Vías de acceso y vías principales'],
+  ['vias', 'Vías', '#111827', 'Vías de acceso y vías principales'],
   ['surcos', 'Sentido de surco', '#0c4a6e', 'Flechas: hacia dónde corre el agua en cada suerte'],
 ];
 
@@ -227,9 +227,9 @@ function msMapa(L){
     const trazo = (rs, col, w, guion) => { g.strokeStyle = col; g.lineWidth = w; g.setLineDash(guion || []); g.beginPath(); rs.forEach(r => linea(r)); g.stroke(); g.setLineDash([]); };
     if (C.agua) { g.fillStyle = '#8ec5f5'; g.strokeStyle = '#2b7bd6'; g.lineWidth = 0.8; g.beginPath(); frMalla().agua.forEach(r => linea(r, true)); g.fill(); g.stroke(); }
     if (C.red) trazo(M.rios, '#2b7bd6', s > 0.3 ? 2.2 : 1.4);
-    if (C.canales) trazo(M.canales || [], '#1d4ed8', s > 0.3 ? 1.8 : 1);
+    if (C.canales) trazo(M.canales || [], '#dc2626', s > 0.3 ? 2 : 1.2);
     if (C.drensec) trazo(M.drensec || [], '#0891b2', s > 0.3 ? 1.8 : 1.2, [6, 3]);
-    if (C.vias) { const V2 = (M.vias || []).map(v => v[1]); trazo(V2, 'rgba(255,255,255,.9)', (s > 0.3 ? 2.4 : 1.4) + 2); trazo(V2, '#92400e', s > 0.3 ? 2.4 : 1.4); }
+    if (C.vias) { const V2 = (M.vias || []).map(v => v[1]), w = s > 0.3 ? 2.2 : 1.4, gu = s > 0.3 ? [9, 5] : [6, 4]; trazo(V2, 'rgba(255,255,255,.85)', w + 2, gu); trazo(V2, '#111827', w, gu); }
     if (C.surcos) msSurcosDibujar(g, sx, sy, s);
     msCapasEtiquetas(g, sx, sy, s, ancho, alto);
     frEtiquetasSuertes(g, sx, sy, Vw().s, ancho, alto);
@@ -279,7 +279,7 @@ function msCapasEtiquetas(g, sx, sy, s, ancho, alto){
   // De lejos solo los ríos y los reservorios con nombre; al acercarse, quebradas, acequias y canales
   if (C.agua && s >= 0.03) (M.agua_nom || []).forEach(a => a[0] && E.push([a[0], a[2], a[3], '#1e3a8a']));
   if (C.red && s >= 0.03) (M.rios_nom || []).forEach(r => (s >= 0.08 || /^Río /.test(r[0])) && E.push([r[0], r[1], r[2], '#1d4ed8']));
-  if (C.vias && s >= 0.2) (M.vias || []).forEach(v => { if (!v[0] || /^vía (principal|de acceso)$/i.test(v[0])) return; const r = v[1], k = Math.floor(r.length / 4) * 2; E.push([v[0], r[k], r[k + 1], '#78350f']); });
+  if (C.vias && s >= 0.2) (M.vias || []).forEach(v => { if (!v[0] || /^vía (principal|de acceso)$/i.test(v[0])) return; const r = v[1], k = Math.floor(r.length / 4) * 2; E.push([v[0], r[k], r[k + 1], '#111827']); });
   if (!E.length) return;
   const usados = []; g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
   g.font = `italic 600 ${s > 0.3 ? 12 : 11}px Inter, system-ui, sans-serif`;
