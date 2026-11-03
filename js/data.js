@@ -25,6 +25,17 @@ const MESES_LARGOS = {ENE:"Enero",FEB:"Febrero",MAR:"Marzo",ABR:"Abril",MAY:"May
   JUL:"Julio",AGO:"Agosto",SEP:"Septiembre",OCT:"Octubre",NOV:"Noviembre",DIC:"Diciembre"};
 
 function zonaDe(hac){ return Z1_HACS.has(hac) ? 1 : 2; }
+// Presupuesto 2026 acumulado (ha) de enero hasta el mes de referencia (la fecha fijada 📌 o hoy), sumando
+// DB.pptoMensual; así el "% vs presupuesto" se pone al día solo al cambiar de mes. z = 1 | 2 para una zona
+function pptoAlMes(z){
+  const P = DB.pptoMensual, ks = Object.keys(MESES_LARGOS);
+  if (!P || !P.z1) return {ha:DB.meta.pptoTotal || 0, mes:null, nom:''};
+  const f = DB.meta.fechaFija || '', mf = /\b([A-Za-z]{3})\b/.exec(f), af = /\b(20\d\d)\b/.exec(f), hoy = new Date();
+  let mes = mf && ks.includes(mf[1].toUpperCase()) ? ks.indexOf(mf[1].toUpperCase()) : hoy.getMonth();
+  if ((af ? +af[1] : hoy.getFullYear()) > 2026) mes = 11;
+  const ha = (z ? ['z' + z] : ['z1', 'z2']).reduce((s, k) => s + (P[k] || []).slice(0, mes + 1).reduce((a, v) => a + (+v || 0), 0), 0);
+  return {ha:+ha.toFixed(2), mes, nom:MESES_LARGOS[ks[mes]].toLowerCase()};
+}
 // "7 Sep 2026" → "7 Septiembre 2026" (otros formatos se dejan igual)
 function fechaLarga(f){
   return String(f).replace(/\b([A-Za-zÁÉÍÓÚáéíóú]{3})\b/, m => MESES_LARGOS[m.toUpperCase()] || m);

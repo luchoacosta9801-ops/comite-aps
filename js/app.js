@@ -111,7 +111,7 @@ q('btn-filtros').addEventListener('click',()=>{
 
 function render(){
   contarFiltros();
-  const data=filtered(),PPTO_TOTAL=DB.meta.pptoTotal;
+  const data=filtered(),PA=pptoAlMes(),PPTO_TOTAL=PA.ha;
   const sembL=data.filter(l=>l.e==='SEMBRADA'),pendL=data.filter(l=>l.e!=='SEMBRADA');
   const tot=sum(data,l=>l.a),semb=sum(sembL,l=>l.a);
   const pend=tot-semb,av=tot>0?semb/tot:0,aC=avC(av);
@@ -125,7 +125,7 @@ function render(){
   q('k-semb').textContent=f2(semb);q('k-pend').textContent=f2(pend);
   q('k-pend-s').textContent=`${pendL.length} lotes por sembrar`;
   q('k-av').textContent=(avPpto*100).toFixed(1)+'%';q('k-av').style.color=avPptoC;
-  q('k-av-s').textContent=`${f2(semb)} / ${f2(PPTO_TOTAL)} ha ppto`;
+  q('k-av-s').textContent=`${f2(semb)} / ${f2(PPTO_TOTAL)} ha ppto${PA.nom?" a "+PA.nom:""}`;
   // Dos datos: promedio de todas las suertes y de las pendientes (corte del maestro → hoy, porque aún no se siembran)
   const diasP=pendL.length?Math.round(sum(pendL,dl)/pendL.length):null;
   q('k-dias').innerHTML=`<span class="kd2"><span>${dias}<small>todas · ${data.length}</small></span>${diasP!=null?`<span style="color:var(--amber)">${diasP}<small>pendientes · ${pendL.length}</small></span>`:''}</span>`;

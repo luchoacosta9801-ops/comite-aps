@@ -30,7 +30,7 @@ function exportarExcel(){
   cargarXLSX().then(XLSX => {
     const data = filtered(), wb = XLSX.utils.book_new();
     const semb = data.filter(l => l.e === 'SEMBRADA'), tot = sum(data, l => l.a), s = sum(semb, l => l.a);
-    const { fecha, semana, pptoTotal } = DB.meta;
+    const { fecha, semana } = DB.meta, PA = pptoAlMes(), pptoTotal = PA.ha;
 
     // RESUMEN
     XLSX.utils.book_append_sheet(wb, hoja(XLSX, [
@@ -45,7 +45,7 @@ function exportarExcel(){
       ['Sembradas (ha)', r2(s)],
       ['Pendientes (ha)', r2(tot - s)],
       ['% sembrado del área APS', tot > 0 ? r2(s / tot * 100) : 0],
-      ['Presupuesto total (ha)', r2(pptoTotal)],
+      [`Presupuesto acumulado a ${PA.nom || 'la fecha'} (ha)`, r2(pptoTotal)],
       ['% vs presupuesto', pptoTotal > 0 ? r2(s / pptoTotal * 100) : 0],
       ['Días lucro promedio (maestro)', data.length ? Math.round(sum(data, dl) / data.length) : 0],
       ['Caña sembrada (ha)', r2(sum(semb.filter(l => l.c === 'CAÑA'), l => l.a))],

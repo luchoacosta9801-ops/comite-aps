@@ -69,7 +69,7 @@ function modCambio(fn){ if (!MODO_EDICION) return; fn(); save(); renderVista(); 
 // ── Portada ──
 function renderPortal(){
   const semb = DB.lotes.filter(l => l.e === 'SEMBRADA'), ha = sum(semb, l => l.a);
-  const pct = DB.meta.pptoTotal ? (ha / DB.meta.pptoTotal * 100).toFixed(1) : '—';
+  const pa = pptoAlMes().ha, pct = pa ? (ha / pa * 100).toFixed(1) : '—';
   const S = simSuertes(), simTot = sum(S, s => s.total), simDifT = sum(S, s => s.pptoTotal) - simTot;
   const E = estructura(), P = ppto2027(), haP = haTotal2027(P);
   const card = (vista, icono, titulo, desc, dato, color) => `
@@ -527,7 +527,12 @@ function agroFilas(){
       lucro:diasEntre(g.corte, g.fecha), mCorte:g.mCorte || '', mFecha:g.mFecha || '', mLucro:diasEntre(g.mCorte, g.mFecha), mArea:+g.mArea || 0});
   }).sort((a, b) => a.h.localeCompare(b.h) || a.s.localeCompare(b.s));
 }
-function fechaLarga(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[3]} ${MESES[+m[2] - 1]} ${m[1]}` : ''; }
+// Reemplaza la de data.js, así que acepta los dos formatos: AAAA-MM-DD y "7 Sep 2026" (si no, el encabezado
+// "Indicadores generales" quedaba sin fecha)
+function fechaLarga(f){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(f || ''); if (m) return `${+m[3]} ${MESES[+m[2] - 1]} ${m[1]}`;
+  return f ? String(f).replace(/\b([A-Za-zÁÉÍÓÚáéíóú]{3})\b/, x => MESES_LARGOS[x.toUpperCase()] || x) : '';
+}
 // Días de lucro cesante: de la fecha de corte (cosecha) a la fecha de siembra de esta tabla
 function diasEntre(desde, hasta){
   const a = Date.parse(desde || ''), b = Date.parse(hasta || '');

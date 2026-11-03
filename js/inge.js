@@ -263,7 +263,7 @@ const IV = (() => {
 
   function totales(z){
     const L = DB.lotes.filter(l => !z || l.z === z), sem = L.filter(l => l.e === 'SEMBRADA'), pen = L.filter(l => l.e !== 'SEMBRADA');
-    const hs = sum(sem, l => l.a), pptoZ = z ? sum(DB.pptoMensual['z' + z]) : DB.meta.pptoTotal;
+    const hs = sum(sem, l => l.a), pptoZ = pptoAlMes(z).ha;
     const dT = L.length ? Math.round(sum(L, dl) / L.length) : 0, dP = pen.length ? Math.round(sum(pen, dl) / pen.length) : null;
     return `<b>${z ? 'Zona ' + z : 'Resumen'} · ${esc(DB.meta.semana)} (${esc(DB.meta.fecha)})</b>${lista([
       `Sembradas: <b>${ha(hs)}</b> en ${sem.length} suertes (caña ${ha(sum(sem.filter(l => l.c === 'CAÑA'), l => l.a))} · arroz ${ha(sum(sem.filter(l => l.c === 'ARROZ'), l => l.a))})`,
@@ -563,6 +563,7 @@ const IV = (() => {
     {k:['descargar','excel','exportar'], r:'En el dashboard, botón <b>📊 Excel</b>: descarga el resumen con los filtros que tengas puestos. En <b>💧 Niveles freáticos</b> está <b>⬇ Descargar base de datos (Excel)</b> con todo el histórico de lecturas, y el informe de cosecha vs niveles se exporta a <b>📊 PowerPoint</b>.'},
     {k:['filtro','filtrar'], r:'En la barra superior del dashboard hay filtros por zona, hacienda, cultivo, estado, presupuesto y días de lucro. <b>✕ Limpiar</b> los quita.'},
     {k:['presentacion','diapositiva'], r:'En <b>Proyectos ejecutados</b> y <b>Protocolos de emergencia</b>, cada tarjeta tiene <b>▶ Ver presentación</b>: se pasa con las flechas, deslizando en el celular, y Esc para cerrar.'},
+    {k:['% vs presupuesto','porcentaje vs presupuesto','avance vs presupuesto','presupuesto acumulado'], r:'El recuadro <b>% vs Presupuesto</b> compara las hectáreas sembradas con el <b>presupuesto 2026 acumulado de enero hasta el mes actual</b> (suma del presupuesto mensual de las dos zonas). Al cambiar de mes se actualiza solo; si se fija una fecha a mano 📌, usa el mes de esa fecha.'},
     {k:['ver detalle','cruce','presupuesto vs'], r:'En el dashboard, recuadro <b>% vs Presupuesto → 🔎 Ver detalle</b>: cruza la hoja PPTO 2026 con lo sembrado y en proceso (qué se hizo y qué falta, por mes y por suerte).'},
     {k:['buscar','buscador'], r:'Arriba está el <b>buscador del portal</b>: temas, personas, procesos, haciendas y suertes.'},
     {k:['editar protocolo','directorio','telefono','cambiar nombre'], r:'En modo editor, en <b>Protocolos de emergencia</b> se abre la tarjeta y se editan pasos, insumos, mapas y el <b>directorio</b> (nombre, cargo, teléfono); luego 🚀 Publicar.'},
