@@ -7,7 +7,17 @@
 const MS_COLS = ['s', 'emp', 'zona', 'hac', 'uso', 'estado', 'variedad', 'area', 'siembra', 'ultCorte', 'nCorte', 'ciclo', 'edad', 'edadStd',
   'proxPpto', 'proxEst', 'tchPpto', 'tchAforo', 'tonPpto', 'tonEst', 'tipoFinca', 'zonaAgro', 'lucro', 'rangoEdad', 'sector', 'quema'];
 const MS_PAL = ['#0f766e', '#2563eb', '#d97706', '#7c3aed', '#dc2626', '#16a34a', '#db2777', '#0891b2', '#65a30d', '#9333ea', '#ea580c', '#475569'];
-const msE = {emp:'RIOP', zona:'', hac:'', uso:'', estado:'', variedad:'', txt:'', color:'variedad', orden:'s', asc:true, mas:false, ficha:null, med:{modo:null, figs:[], cur:null}, surcos:true};
+const msE = {emp:'RIOP', zona:'', hac:'', uso:'', estado:'', variedad:'', txt:'', color:'variedad', orden:'s', asc:true, mas:false, ficha:null, med:{modo:null, figs:[], cur:null},
+  capas:{red:true, agua:true, canales:true, drensec:true, vias:true, surcos:true}};
+// Capas del mapa del maestro (MAPA_FREATICO): [clave, nombre, color de la muestra, ayuda]
+const MS_CAPAS = [
+  ['red', 'Ríos y quebradas', '#2b7bd6', 'Red hídrica (ríos, quebradas, zanjones y acequias)'],
+  ['agua', 'Cuerpos de agua', '#8ec5f5', 'Reservorios y lagos'],
+  ['canales', 'Canales de riego y drenaje', '#1d4ed8', 'Canales de riego y drenaje'],
+  ['drensec', 'Drenaje secundario', '#0891b2', 'Drenajes secundarios (línea punteada)'],
+  ['vias', 'Vías', '#92400e', 'Vías de acceso y vías principales'],
+  ['surcos', 'Sentido de surco', '#0c4a6e', 'Flechas: hacia dónde corre el agua en cada suerte'],
+];
 
 function maestroSuertes(){
   if (DB.maestroSuertes === undefined && typeof SEED !== 'undefined' && SEED.maestroSuertes) DB.maestroSuertes = clone(SEED.maestroSuertes);
@@ -151,13 +161,14 @@ function renderMaestro(){
     <div class="fr-grid">
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Mapa de suertes</b>
         <span class="ms-vistas">${Object.entries(MS_VISTAS).map(([k, v]) => `<button type="button" class="fr-ch ${msE.color === k ? 'on' : ''}" data-ms-color="${k}">${v.n}</button>`).join('')}</span></div>
-        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa">⤢ Ver todo</button><button type="button" class="plegar-todo ${msE.surcos ? 'on' : ''}" data-ms-surcos title="Mostrar u ocultar las flechas del sentido de surco (hacia dónde corre el agua)">➜ Sentido de surco</button>
+        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa">⤢ Ver todo</button>
           <span class="ms-medir"><button type="button" class="plegar-todo ${msE.med.modo === 'lin' ? 'on' : ''}" data-ms-med="lin" title="Toca puntos en el mapa para medir una distancia o trazar una línea">📏 Distancia</button><button type="button" class="plegar-todo ${msE.med.modo === 'area' ? 'on' : ''}" data-ms-med="area" title="Toca los vértices para trazar una figura y medir su área">⬛ Área / figura</button>
           ${msE.med.modo || msE.med.figs.length ? `<button type="button" class="plegar-todo" data-ms-med="deshacer" title="Quitar el último punto">↶</button><button type="button" class="plegar-todo" data-ms-med="fin" title="Terminar esta medida y empezar otra">✔ Terminar</button><button type="button" class="plegar-todo" data-ms-med="borrar" title="Borrar todas las medidas">🗑</button>` : ''}</span></div>
+        <div class="ms-capas"><span class="meta">Capas:</span>${MS_CAPAS.map(([k, n, c, t]) => `<button type="button" class="ms-capa ${msE.capas[k] ? 'on' : ''}" data-ms-capa="${k}" title="${t}"><i style="--c:${c}" class="ms-capa-${k}"></i>${n}</button>`).join('')}</div>
         <div class="ms-mapa ${msE.med.modo ? 'midiendo' : ''}" id="ms-mapa"><canvas id="ms-cv"></canvas><div class="fr-tip" id="ms-tip" hidden></div></div>
         <div class="ms-medidas" id="ms-med"></div>
         <div class="fr-cley" id="ms-ley"></div>
-        <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha · ➜ Sentido de surco: las flechas muestran hacia dónde corre el agua en cada suerte · 📏 Distancia y ⬛ Área / figura miden sobre el mapa (en metros, hectáreas y m²). Solo se dibujan las suertes que están en la cartografía.</div></div>
+        <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha · en «Capas» se prenden o apagan ríos, reservorios, canales, drenaje secundario, vías y el sentido de surco (las flechas muestran hacia dónde corre el agua) · 📏 Distancia y ⬛ Área / figura miden sobre el mapa (en metros, hectáreas y m²). Solo se dibujan las suertes que están en la cartografía.</div></div>
       <div class="fr-lado">
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por variedad</b></div>${barras(msCuenta(L, 'variedad'), area, v => v, 10, '#7c3aed')}</div>
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por estado</b></div>${barras(msCuenta(L, 'estado'), area, v => v, 8, '#0891b2')}</div>
@@ -203,7 +214,8 @@ function msMapa(L){
   M.suertes.forEach(su => { const x = fila(su); if (x) { const c = V.cat(x, top); cuenta[c] = (cuenta[c] || 0) + su[2]; } });
   function dibujar(){
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#eef2f6'; g.fillRect(0, 0, ancho, alto);
-    g.strokeStyle = '#7fb3e6'; g.lineWidth = 1.2; g.beginPath(); M.rios.forEach(r => linea(r)); g.stroke();
+    const C = msE.capas, s = Vw().s;
+    if (C.red) { g.strokeStyle = '#7fb3e6'; g.lineWidth = 1.2; g.beginPath(); M.rios.forEach(r => linea(r)); g.stroke(); }
     M.suertes.forEach(su => {
       const x = fila(su);
       g.beginPath(); su[3].forEach(r => linea(r, true));
@@ -211,7 +223,15 @@ function msMapa(L){
       g.fill('evenodd'); g.strokeStyle = 'rgba(15,23,42,.35)'; g.lineWidth = Vw().s > 0.15 ? 0.9 : 0.5; g.stroke();
     });
     if (msE.sel) { const su = M.suertes.filter(x => x[0] === msE.sel); g.strokeStyle = '#0f172a'; g.lineWidth = 3; g.beginPath(); su.forEach(x => x[3].forEach(r => linea(r, true))); g.stroke(); }
-    if (msE.surcos) msSurcosDibujar(g, sx, sy, Vw().s);
+    // Capas de la cartografía sobre las suertes (cada una se prende o apaga en la barra «Capas»)
+    const trazo = (rs, col, w, guion) => { g.strokeStyle = col; g.lineWidth = w; g.setLineDash(guion || []); g.beginPath(); rs.forEach(r => linea(r)); g.stroke(); g.setLineDash([]); };
+    if (C.agua) { g.fillStyle = '#8ec5f5'; g.strokeStyle = '#2b7bd6'; g.lineWidth = 0.8; g.beginPath(); frMalla().agua.forEach(r => linea(r, true)); g.fill(); g.stroke(); }
+    if (C.red) trazo(M.rios, '#2b7bd6', s > 0.3 ? 2.2 : 1.4);
+    if (C.canales) trazo(M.canales || [], '#1d4ed8', s > 0.3 ? 1.8 : 1);
+    if (C.drensec) trazo(M.drensec || [], '#0891b2', s > 0.3 ? 1.8 : 1.2, [6, 3]);
+    if (C.vias) { const V2 = (M.vias || []).map(v => v[1]); trazo(V2, 'rgba(255,255,255,.9)', (s > 0.3 ? 2.4 : 1.4) + 2); trazo(V2, '#92400e', s > 0.3 ? 2.4 : 1.4); }
+    if (C.surcos) msSurcosDibujar(g, sx, sy, s);
+    msCapasEtiquetas(g, sx, sy, s, ancho, alto);
     frEtiquetasSuertes(g, sx, sy, Vw().s, ancho, alto);
     msMedDibujar(g, sx, sy);
   }
@@ -251,6 +271,22 @@ function msMapa(L){
   cv.onpointerup = soltar; cv.onpointercancel = soltar;
   cv.onpointerleave = e => { if (e.pointerType === 'mouse') { tip.hidden = true; if (msE.med.cursor) { msE.med.cursor = null; dibujar(); } } };
   cv.style.touchAction = 'none';
+}
+
+// Nombres de reservorios, ríos y quebradas, y vías con nombre propio; se saltan los que se taparían entre sí
+function msCapasEtiquetas(g, sx, sy, s, ancho, alto){
+  const M = MAPA_FREATICO, C = msE.capas, E = [];
+  // De lejos solo los ríos y los reservorios con nombre; al acercarse, quebradas, acequias y canales
+  if (C.agua && s >= 0.03) (M.agua_nom || []).forEach(a => a[0] && E.push([a[0], a[2], a[3], '#1e3a8a']));
+  if (C.red && s >= 0.03) (M.rios_nom || []).forEach(r => (s >= 0.08 || /^Río /.test(r[0])) && E.push([r[0], r[1], r[2], '#1d4ed8']));
+  if (C.vias && s >= 0.2) (M.vias || []).forEach(v => { if (!v[0] || /^vía (principal|de acceso)$/i.test(v[0])) return; const r = v[1], k = Math.floor(r.length / 4) * 2; E.push([v[0], r[k], r[k + 1], '#78350f']); });
+  if (!E.length) return;
+  const usados = []; g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  g.font = `italic 600 ${s > 0.3 ? 12 : 11}px Inter, system-ui, sans-serif`;
+  E.forEach(([t, x, y, col]) => { const px = sx(x), py = sy(y); if (px < 0 || py < 0 || px > ancho || py > alto) return;
+    const w = g.measureText(t).width + 8; if (usados.some(b => Math.abs(b[0] - px) < (b[2] + w) / 2 && Math.abs(b[1] - py) < 15)) return;
+    usados.push([px, py, w]); g.strokeStyle = 'rgba(255,255,255,.92)'; g.lineWidth = 3.5; g.strokeText(t, px, py); g.fillStyle = col; g.fillText(t, px, py); });
+  g.restore();
 }
 
 // ── Sentido de surco: capa Direccion_de_Surco.shp (MAPA_FREATICO.surcos_lonlat, flechas en lon/lat). Cada flecha
@@ -396,7 +432,8 @@ q('maestro').addEventListener('click', e => {
     else if (a === 'borrar') { M.figs = []; M.cur = null; }
     renderMaestro(); return; }
   if (t.closest('[data-ms-ajustar]')) { msE.sel = null; msE.ajustar && msE.ajustar(); return; }
-  if (t.closest('[data-ms-surcos]')) { msE.surcos = !msE.surcos; t.closest('[data-ms-surcos]').classList.toggle('on', msE.surcos); msE.dibujar && msE.dibujar(); return; }
+  const cp = t.closest('[data-ms-capa]');
+  if (cp) { const k = cp.dataset.msCapa; msE.capas[k] = !msE.capas[k]; cp.classList.toggle('on', msE.capas[k]); msE.dibujar && msE.dibujar(); return; }
   if (t.closest('.ms-x') || (t.classList && t.classList.contains('ms-fondo'))) { msE.ficha = null; q('ms-ficha').innerHTML = ''; return; }
   const fi = t.closest('[data-ms-ficha]'); if (fi) msFicha(fi.dataset.msFicha);
 });

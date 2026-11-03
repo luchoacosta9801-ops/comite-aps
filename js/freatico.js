@@ -371,6 +371,7 @@ function frMapaIniciar(){
     if (frE.capas.agua) {
       g.strokeStyle = '#2b7bd6'; g.lineWidth = 1.6; g.beginPath(); M.rios.forEach(r => linea(r)); g.stroke();
       g.strokeStyle = '#4f9ae8'; g.lineWidth = 0.9; g.beginPath(); M.canales.forEach(r => linea(r)); g.stroke();
+      g.setLineDash([5, 3]); g.strokeStyle = '#0891b2'; g.lineWidth = 1; g.beginPath(); (M.drensec || []).forEach(r => linea(r)); g.stroke(); g.setLineDash([]);
       g.fillStyle = '#8ec5f5'; g.beginPath(); frMalla().agua.forEach(r => linea(r, true)); g.fill();
     }
     if (frE.capas.suertes) { g.strokeStyle = 'rgba(15,23,42,.55)'; g.lineWidth = V.s > 0.12 ? 0.8 : 0.45; g.beginPath(); M.suertes.forEach(s => s[3].forEach(r => linea(r, true))); g.stroke(); }
@@ -451,6 +452,7 @@ function frPlano(C, W, pieH = 0, conPozos = false){
   g.imageSmoothingEnabled = false; g.drawImage(raster, ox, oy, raster.width * FR_CELDA * s, raster.height * FR_CELDA * s);
   g.strokeStyle = '#2b7bd6'; g.lineWidth = 2.2 * k; g.beginPath(); M.rios.forEach(r => linea(r)); g.stroke();
   g.strokeStyle = '#4f9ae8'; g.lineWidth = 1.2 * k; g.beginPath(); M.canales.forEach(r => linea(r)); g.stroke();
+  g.setLineDash([5 * k, 3 * k]); g.strokeStyle = '#0891b2'; g.lineWidth = 1.2 * k; g.beginPath(); (M.drensec || []).forEach(r => linea(r)); g.stroke(); g.setLineDash([]);
   g.fillStyle = '#8ec5f5'; g.beginPath(); frMalla().agua.forEach(r => linea(r, true)); g.fill();
   g.strokeStyle = 'rgba(15,23,42,.6)'; g.lineWidth = 0.6 * k; g.beginPath(); M.suertes.forEach(x => x[3].forEach(r => linea(r, true))); g.stroke();
   if (conPozos) C.P.forEach(p => {
