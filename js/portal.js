@@ -23,9 +23,16 @@ const PORTADA_VIDEO = 'img/portada-institucional-4.mp4';
 const vistaDeHash = h => (Object.entries(VISTAS).find(([, v]) => v.hash === h) || ['portal'])[0];
 let vistaActual = 'portal';
 
+// Usuario con acceso restringido (VISTAS_SOLO, store.js): solo abre sus paneles (cada uno con sus subpáginas). Con
+// un solo panel entra directo a él y no ve la portada; si escribe la dirección de otro panel, vuelve a los suyos
+const VISTA_PADRE = {pptodet:'aps', nfcos:'freat'};
+const vistaPermitida = v => !VISTAS_SOLO || (v === 'portal' ? VISTAS_SOLO.length > 1 : VISTAS_SOLO.includes(VISTA_PADRE[v] || v));
 function irA(vista, {historial = true} = {}){
   vistaActual = VISTAS[vista] ? vista : 'portal';
+  if (!vistaPermitida(vistaActual)) vistaActual = VISTAS_SOLO.length === 1 ? VISTAS_SOLO[0] : 'portal';
   const V = VISTAS[vistaActual];
+  if (VISTAS_SOLO) { q('btn-inicio').style.display = vistaPermitida('portal') ? '' : 'none';
+    q('btn-sim').style.display = vistaPermitida('aps') && vistaPermitida('simulador') ? '' : 'none'; }
   document.body.dataset.vista = vistaActual;
   document.body.classList.toggle('modo-sim', vistaActual === 'simulador');   // estilos del simulador
   document.querySelector('.hdr-title').textContent = V.titulo;
@@ -34,7 +41,7 @@ function irA(vista, {historial = true} = {}){
   const bs = q('btn-sim');
   bs.textContent = vistaActual === 'simulador' ? '📊 Dashboard' : '💰 Simulador';
   bs.title = vistaActual === 'simulador' ? 'Ir al dashboard del Comité APS' : 'Simulador de costos por suerte';
-  if (historial && location.hash !== V.hash) history.pushState(null, '', V.hash);
+  if (location.hash !== V.hash) history[historial ? 'pushState' : 'replaceState'](null, '', V.hash);
   renderVista();
   ajustarBarra(); window.scrollTo(0, 0);
 }
@@ -72,7 +79,7 @@ function renderPortal(){
   const pa = pptoAlMes().ha, pct = pa ? (ha / pa * 100).toFixed(1) : '—';
   const S = simSuertes(), simTot = sum(S, s => s.total), simDifT = sum(S, s => s.pptoTotal) - simTot;
   const E = estructura(), P = ppto2027(), haP = haTotal2027(P);
-  const card = (vista, icono, titulo, desc, dato, color) => `
+  const card = (vista, icono, titulo, desc, dato, color) => !vistaPermitida(vista) ? '' : `
     <button type="button" class="pt-card" data-ir="${vista}" style="--c:${color}">
       <span class="pt-ico">${icono}</span>
       <span class="pt-tit">${titulo}</span>

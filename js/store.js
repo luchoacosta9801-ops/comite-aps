@@ -25,6 +25,13 @@ const PANELES_EDICION = (() => { if (EDITOR_TOTAL) return []; try {
   const x = s && s.exp > Date.now() && L.find(y => y.u === s.u && y.h === s.h && accVigente(y));
   return x && x.rol === 'panel' ? (x.paneles || []) : []; } catch (e) { return []; } })();
 const GUARDA_LOCAL = EDITOR_TOTAL || PANELES_EDICION.length > 0;
+// Usuario con acceso solo a algunos paneles (x.solo = ['maes', …], js/acceso.js): null = ve todo el portal.
+// La clase acc-solo oculta el buscador general y el Inge Virtual (responden sobre todos los módulos)
+const VISTAS_SOLO = (() => { if (EDITOR_TOTAL) return null; try {
+  const s = JSON.parse(localStorage.getItem(SESION_KEY) || 'null'), L = (SEED.usuarios && SEED.usuarios.lista) || [];
+  const x = s && s.exp > Date.now() && L.find(y => y.u === s.u && y.h === s.h && accVigente(y));
+  return x && Array.isArray(x.solo) && x.solo.length ? x.solo : null; } catch (e) { return null; } })();
+if (VISTAS_SOLO) document.documentElement.classList.add('acc-solo');
 // Sin sesión válida la página se oculta desde ya (js/acceso.js pone luego la pantalla de entrada)
 (() => { try { const L = (SEED.usuarios && SEED.usuarios.lista) || [], s = JSON.parse(localStorage.getItem(SESION_KEY) || 'null');
   if (L.length && !EDITOR_TOTAL && !(s && s.exp > Date.now() && L.some(y => y.u === s.u && y.h === s.h && accVigente(y)))) document.documentElement.classList.add('acc-bloqueado'); } catch (e) {} })();

@@ -136,17 +136,26 @@ async function accRecibir(file){
 // ── Administración de usuarios (solo editor): #usuarios, vista 'usu' ──
 const accE = {nuevo:null};
 const accPanelesHTML = (x, attr) => `<div class="acc-paneles">${ACC_PANELES.map(p => `<label><input type="checkbox" ${attr} value="${p.v}" ${(x.paneles || []).includes(p.v) ? 'checked' : ''}>${p.t}</label>`).join('')}</div>`;
+// Paneles que puede VER un usuario (x.solo); sin marcar ninguno ve todo el portal. Cada panel incluye sus subpáginas
+// (Dashboard → detalle del presupuesto 2026; Niveles freáticos → cosecha vs niveles). El control está en portal.js (irA)
+const ACC_VER = [
+  {v:'aps', t:'📊 Dashboard Comité APS'}, {v:'simulador', t:'💰 Simulador'}, {v:'maes', t:'📚 Maestro de suertes'},
+  {v:'freat', t:'💧 Niveles freáticos'}, {v:'ppto', t:'📅 Presupuesto 2027'}, {v:'agro', t:'🌱 Gestión Agronomía'},
+  {v:'proy', t:'🏗️ Proyectos'}, {v:'proto', t:'🚨 Protocolos'}, {v:'estructura', t:'👥 Estructura'},
+];
+const accVerTxt = x => x.solo && x.solo.length ? `Solo ${x.solo.length === 1 ? (ACC_VER.find(p => p.v === x.solo[0]) || {t:x.solo[0]}).t : x.solo.length + ' paneles'}` : 'Todo el portal';
+const accVerHTML = (x, attr) => `<div class="acc-paneles">${ACC_VER.map(p => `<label><input type="checkbox" ${attr} value="${p.v}" ${(x.solo || []).includes(p.v) ? 'checked' : ''}>${p.t}</label>`).join('')}</div>`;
 function renderUsuarios(){
   const cont = q('usuarios');
   if (!EDITOR_TOTAL) { cont.innerHTML = '<div class="nores">Solo el administrador puede ver esta sección.</div>'; return; }
-  const L = accLista(), pub = accPublicados(), clave = x => [x.u, x.h, x.rol, (x.paneles || []).join(), x.hasta || ''].join('|'), pubK = new Set(pub.map(clave));
+  const L = accLista(), pub = accPublicados(), clave = x => [x.u, x.h, x.rol, (x.paneles || []).join(), x.hasta || '', (x.solo || []).join()].join('|'), pubK = new Set(pub.map(clave));
   const nr = (q('an-r') || {}).value || 'ver';
   cont.innerHTML = `
     <div class="mod-top"><div><div class="sim-tit">🔐 Usuarios y accesos</div>
       <div class="sim-subt">${pub.length ? `La página pide usuario y contraseña (${pub.length} usuarios publicados).` : 'Aún no hay usuarios publicados: la página está abierta para todos. Al publicar el primer usuario empieza a pedir clave.'}</div></div>
       <label class="mbtn mbtn-ghost pt-file" title="Archivo .json que te mandó un usuario con el botón 📤 Enviar cambios">📥 Recibir cambios de un usuario<input type="file" id="acc-recibir" accept=".json,application/json" hidden></label></div>
     <div class="acc-aviso">ℹ️ Es una <b>puerta de entrada</b>: evita que cualquiera con el enlace vea la página, pero los datos siguen en el repositorio público de GitHub. Las contraseñas no se guardan, solo una huella cifrada. Después de crear, cambiar o quitar usuarios, dale <b>🚀 Publicar</b>.<br>
-      <b>Perfiles:</b> 👁 Ver = solo mirar · 🧩 Editor por panel = edita solo los paneles marcados · ✏️ Editor = edita todo. Solo este PC publica: quien edita desde otro equipo usa <b>📤 Enviar cambios</b> y tú los recibes aquí con <b>📥 Recibir cambios</b>.</div>
+      <b>Perfiles:</b> 👁 Ver = solo mirar · 🧩 Editor por panel = edita solo los paneles marcados · ✏️ Editor = edita todo. Con <b>Paneles que puede ver</b> limitas a qué partes entra (por ejemplo, alguien externo solo al Maestro de suertes): no ve la portada, el buscador general ni el Inge Virtual. Solo este PC publica: quien edita desde otro equipo usa <b>📤 Enviar cambios</b> y tú los recibes aquí con <b>📥 Recibir cambios</b>.</div>
     <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Nuevo usuario</b></div>
       <form class="acc-nuevo" id="acc-nuevo">
         <label>Usuario<input id="an-u" placeholder="ej. jperez" autocapitalize="none" spellcheck="false" required pattern="[a-zA-Z0-9._-]{3,30}" title="3 a 30 letras, números, punto, guion"></label>
@@ -155,16 +164,18 @@ function renderUsuarios(){
         <label title="Déjalo vacío si no vence. El acceso deja de servir a la medianoche de ese día.">Válido hasta (opcional)<input type="date" id="an-h"></label>
         <label>Contraseña<span class="acc-clave"><input id="an-c" required minlength="6"><button type="button" id="an-gen" title="Generar una contraseña">🎲</button></span></label>
         <div class="acc-np" id="an-pan" ${nr === 'panel' ? '' : 'hidden'}><b>Paneles que puede editar</b>${accPanelesHTML({}, 'data-an-pan')}</div>
+        <div class="acc-np"><b>Paneles que puede ver</b> <span class="meta">· sin marcar ninguno ve todo el portal; si marcas uno, entra directo a ese panel (sirve para personas externas)</span>${accVerHTML({}, 'data-an-ver')}</div>
         <button type="submit" class="mbtn">➕ Crear usuario</button>
       </form>
       ${accE.nuevo ? `<div class="acc-creado">✓ Usuario <b>${esc(accE.nuevo.u)}</b> listo. Envíale estos datos (la contraseña no se vuelve a mostrar):<br><code>Página: https://luchoacosta9801-ops.github.io/comite-aps/ · Usuario: ${esc(accE.nuevo.u)} · Contraseña: ${esc(accE.nuevo.c)}</code> <button type="button" class="plegar-todo" data-acc-copiar>📋 Copiar</button></div>` : ''}</div>
     <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Usuarios</b> <span class="meta">· ${L.length}</span></div>
-      <div class="sim-tw"><table class="sim-t"><thead><tr><th>Usuario</th><th>Nombre</th><th>Perfil</th><th title="El acceso deja de servir a la medianoche de ese día; vacío = no vence">Válido hasta</th><th>Estado</th><th></th></tr></thead>
+      <div class="sim-tw"><table class="sim-t"><thead><tr><th>Usuario</th><th>Nombre</th><th>Perfil</th><th>Puede ver</th><th title="El acceso deja de servir a la medianoche de ese día; vacío = no vence">Válido hasta</th><th>Estado</th><th></th></tr></thead>
       <tbody>${L.map(x => `<tr><td class="b" style="font-family:var(--mono)">${esc(x.u)}</td><td>${esc(x.nombre)}</td>
         <td><select data-acc-rol="${esc(x.u)}">${accRolOpts(x.rol)}</select>${x.rol === 'panel' ? accPanelesHTML(x, `data-acc-pan="${esc(x.u)}"`) : ''}</td>
+        <td><details class="acc-ver"><summary>${esc(accVerTxt(x))}</summary>${accVerHTML(x, `data-acc-ver="${esc(x.u)}"`)}</details></td>
         <td><input type="date" data-acc-hasta="${esc(x.u)}" value="${esc(x.hasta || '')}">${x.hasta && !accVigente(x) ? '<br><b style="color:#b91c1c">⛔ vencido</b>' : ''}</td>
         <td>${pubK.has(clave(x)) ? '<span class="meta">publicado</span>' : '<b style="color:#b45309">sin publicar</b>'}</td>
-        <td style="white-space:nowrap"><button type="button" class="plegar-todo" data-acc-clave="${esc(x.u)}" title="Poner una contraseña nueva">🔑 Nueva clave</button> <button type="button" class="plegar-todo" data-acc-borrar="${esc(x.u)}" title="Quitar el acceso">🗑</button></td></tr>`).join('') || '<tr><td colspan="6" class="nores">Aún no hay usuarios.</td></tr>'}</tbody></table></div></div>`;
+        <td style="white-space:nowrap"><button type="button" class="plegar-todo" data-acc-clave="${esc(x.u)}" title="Poner una contraseña nueva">🔑 Nueva clave</button> <button type="button" class="plegar-todo" data-acc-borrar="${esc(x.u)}" title="Quitar el acceso">🗑</button></td></tr>`).join('') || '<tr><td colspan="7" class="nores">Aún no hay usuarios.</td></tr>'}</tbody></table></div></div>`;
 }
 const accClaveAzar = () => { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; return [...crypto.getRandomValues(new Uint8Array(10))].map(b => a[b % a.length]).join(''); };
 function accGuardar(fn){ modCambio(() => { DB.usuarios = DB.usuarios || {lista:[]}; fn(DB.usuarios.lista); if (!DB.usuarios.lista.length) delete DB.usuarios; }); }
@@ -173,11 +184,12 @@ q('usuarios').addEventListener('submit', async e => {
   const u = q('an-u').value.trim().toLowerCase(), nombre = q('an-n').value.trim(), rol = q('an-r').value, c = q('an-c').value;
   const paneles = [...document.querySelectorAll('[data-an-pan]:checked')].map(i => i.value);
   const hasta = q('an-h').value;
+  const solo = [...document.querySelectorAll('[data-an-ver]:checked')].map(i => i.value);
   if (accLista().some(x => x.u === u)) { toast('⚠ Ese usuario ya existe'); return; }
   if (rol === 'panel' && !paneles.length) { toast('⚠ Marca al menos un panel que pueda editar'); return; }
   const sal = accSal(), h = await accHash(sal, u, c);
   accE.nuevo = {u, c};
-  accGuardar(L => L.push(Object.assign({u, nombre, rol, sal, h, creado:new Date().toISOString().slice(0, 10)}, rol === 'panel' ? {paneles} : {}, hasta ? {hasta} : {})));
+  accGuardar(L => L.push(Object.assign({u, nombre, rol, sal, h, creado:new Date().toISOString().slice(0, 10)}, rol === 'panel' ? {paneles} : {}, hasta ? {hasta} : {}, solo.length ? {solo} : {})));
   toast(`✓ Usuario ${u} creado · recuerda 🚀 Publicar`);
 });
 q('usuarios').addEventListener('click', async e => {
@@ -198,6 +210,9 @@ q('usuarios').addEventListener('change', e => {
   if (s) { accGuardar(L => { const x = L.find(y => y.u === s.dataset.accRol); x.rol = s.value; if (x.rol === 'panel') x.paneles = x.paneles || []; else delete x.paneles; }); return; }
   const hh = t.closest('[data-acc-hasta]');
   if (hh) { accGuardar(L => { const x = L.find(y => y.u === hh.dataset.accHasta); if (hh.value) x.hasta = hh.value; else delete x.hasta; }); return; }
+  const vv = t.closest('[data-acc-ver]');
+  if (vv) { const u = vv.dataset.accVer, v = [...document.querySelectorAll(`[data-acc-ver="${CSS.escape(u)}"]:checked`)].map(i => i.value);
+    accGuardar(L => { const x = L.find(y => y.u === u); if (v.length) x.solo = v; else delete x.solo; }); return; }
   const p = t.closest('[data-acc-pan]');
   if (p) { const u = p.dataset.accPan, v = [...document.querySelectorAll(`[data-acc-pan="${CSS.escape(u)}"]:checked`)].map(i => i.value);
     accGuardar(L => { L.find(y => y.u === u).paneles = v; }); }

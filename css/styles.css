@@ -1230,3 +1230,7 @@ html.acc-bloqueado body>*:not(#acc-puerta){display:none!important}
 .ms-medidas:empty{display:none}
 .ms-m-l b{color:#ea580c}.ms-m-a b{color:#7c3aed}
 @media (max-width:760px){.ms-medir{margin-left:0;width:100%}}
+/* Usuario con acceso solo a algunos paneles: sin buscador general ni Inge Virtual (responden sobre todo el portal) */
+html.acc-solo .search-wrap,html.acc-solo .iv-fab,html.acc-solo .iv-win{display:none!important}
+.acc-ver summary{cursor:pointer;white-space:nowrap;font-size:12px}
+.acc-ver .acc-paneles{min-width:210px;margin-top:6px}
