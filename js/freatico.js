@@ -328,24 +328,53 @@ function frCajasSuertes(){
     su[3].forEach(r => { for (let k = 0; k < r.length; k += 2) { const x = r[k], y = r[k + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; ax += x; ay += y; n++; } });
     return {cod:su[0], x0, y0, x1, y1, cx:n ? ax / n : (x0 + x1) / 2, cy:n ? ay / n : (y0 + y1) / 2}; });
 }
-let FRB1 = null;   // por código de suerte, solo su pedazo más grande (las suertes vienen partidas en varios polígonos)
+// ¿La celda i de la malla tiene al menos 2 vecinas de su misma suerte? En los bordes la malla trae celdas sueltas
+// con el código de otra suerte (mezcla de colores al dibujarla); se descartan para centros y etiquetas
+function frCeldaFirme(G, i){
+  const k = G.idx[i], gx = k % G.W, su = G.sue[i], misma = j => { const c = G.celda[j]; return c >= 0 && G.sue[c] === su; };
+  return (gx > 0 && misma(k - 1)) + (gx < G.W - 1 && misma(k + 1)) + (k >= G.W && misma(k - G.W)) + (k + G.W < G.celda.length && misma(k + G.W)) >= 2;
+}
+let FRB1 = null;   // por código de suerte: dónde y cómo va su número (se calcula una vez)
+// Número de cada suerte sobre su pedazo más grande, con las celdas de la malla: se toma la celda más cercana al
+// centro (siempre cae dentro, aunque la suerte sea diagonal o tenga forma de L) y el eje largo de la suerte (las
+// franjas angostas se rotulan a lo largo, girando el texto). Solo el número de suerte, sin el sector.
 function frEtiquetasSuertes(g, sx, sy, s, ancho, alto){
-  // Una caja por suerte (todas sus franjas juntas) y el número en su centro real (promedio de sus celdas)
-  if (!FRB1) { const m = {}, C = typeof frCentros === 'function' ? frCentros() : {};
-    frCajasSuertes().forEach(b => { const o = m[b.cod]; if (!o) m[b.cod] = {...b}; else { o.x0 = Math.min(o.x0, b.x0); o.y0 = Math.min(o.y0, b.y0); o.x1 = Math.max(o.x1, b.x1); o.y1 = Math.max(o.y1, b.y1); } });
-    FRB1 = Object.values(m).map(b => { const c = C[b.cod]; if (c) { b.cx = c.x; b.cy = c.y; } else { b.cx = (b.x0 + b.x1) / 2; b.cy = (b.y0 + b.y1) / 2; } b.a = (b.x1 - b.x0) * (b.y1 - b.y0); return b; }).sort((x, y) => y.a - x.a); }
-  const puestos = [];   // rectángulos ya rotulados, para no encimar textos
+  if (!FRB1) {
+    const G = frMalla(), M = MAPA_FREATICO, porPol = {};
+    // Solo celdas firmes (frCeldaFirme): las sueltas corrían el centro y alargaban la suerte
+    for (let i = 0; i < G.idx.length; i++) if (frCeldaFirme(G, i)) (porPol[G.sue[i]] = porPol[G.sue[i]] || []).push(i);
+    const mejor = {};
+    Object.keys(porPol).forEach(p => { const cod = M.suertes[p][0]; if (!mejor[cod] || porPol[p].length > mejor[cod].length) mejor[cod] = porPol[p]; });
+    FRB1 = Object.entries(mejor).map(([cod, I]) => {
+      let mx = 0, my = 0; I.forEach(i => { mx += G.cx[i]; my += G.cy[i]; }); mx /= I.length; my /= I.length;
+      let sxx = 0, syy = 0, sxy = 0; I.forEach(i => { const dx = G.cx[i] - mx, dy = G.cy[i] - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; });
+      const th = Math.atan2(2 * sxy, sxx - syy) / 2, ux = Math.cos(th), uy = Math.sin(th);
+      let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity, c = I[0], dmin = Infinity;
+      I.forEach(i => { const dx = G.cx[i] - mx, dy = G.cy[i] - my, u = dx * ux + dy * uy, v = -dx * uy + dy * ux;
+        if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v; const d = dx * dx + dy * dy; if (d < dmin) { dmin = d; c = i; } });
+      const largo = u1 - u0 + FR_CELDA, ancho2 = v1 - v0 + FR_CELDA;
+      return {cod, x:G.cx[c], y:G.cy[c], th, largo, ancho:ancho2, n:I.length};
+    }).sort((a, b) => b.n - a.n);
+  }
+  const puestos = [];   // cajas ya rotuladas, para no encimar textos
   g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
   for (const b of FRB1) {
-    const w = (b.x1 - b.x0) * s, h = (b.y1 - b.y0) * s; if (h < 7 || w < 11) continue;
-    const x = sx(b.cx), y = sy(b.cy); if (x < -40 || y < -20 || x > ancho + 40 || y > alto + 20) continue;
-    const corto = b.cod.split('-')[1], fz = Math.max(7, Math.min(13, h * 0.4));
+    const x = sx(b.x), y = sy(b.y); if (x < -40 || y < -20 || x > ancho + 40 || y > alto + 20) continue;
+    // Alargada: texto a lo largo de la suerte (girado, nunca de cabeza); casi cuadrada: horizontal
+    let a = 0, dispW, dispH;
+    if (b.largo / b.ancho >= 1.6) { a = -b.th; if (a > Math.PI / 2) a -= Math.PI; if (a < -Math.PI / 2) a += Math.PI; if (Math.abs(a) < 0.12) a = 0; dispW = b.largo * s * 0.85; dispH = b.ancho * s; }
+    else { dispW = dispH = Math.min(b.largo, b.ancho) * s * 0.9; }
+    if (dispH < 8 || dispW < 12) continue;
+    const fz = Math.max(7, Math.min(10.5, dispH * 0.45)), corto = b.cod.includes('-') ? b.cod.split('-')[1] : b.cod;
     g.font = `700 ${fz}px system-ui,Segoe UI,Arial`;
-    const t = g.measureText(b.cod).width + 4 <= w ? b.cod : g.measureText(corto).width + 2 <= w ? corto : null; if (!t) continue;
-    const tw = g.measureText(t).width / 2 + 2, th = fz / 2 + 1;
-    if (puestos.some(r => Math.abs(r[0] - x) < r[2] + tw && Math.abs(r[1] - y) < r[3] + th)) continue;
-    puestos.push([x, y, tw, th]);
-    g.lineWidth = fz < 9 ? 2.2 : 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(t, x, y); g.fillStyle = '#0f172a'; g.fillText(t, x, y);
+    const t = corto; if (g.measureText(t).width + 2 > dispW) continue;
+    const tw = g.measureText(t).width / 2 + 1.5, th = fz / 2 + 1, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a));
+    const hx = ca * tw + sa * th, hy = sa * tw + ca * th;
+    if (puestos.some(r => Math.abs(r[0] - x) < r[2] + hx && Math.abs(r[1] - y) < r[3] + hy)) continue;
+    puestos.push([x, y, hx, hy]);
+    g.save(); g.translate(x, y); if (a) g.rotate(a);
+    g.lineWidth = fz < 9 ? 2.2 : 2.8; g.strokeStyle = 'rgba(255,255,255,.88)'; g.strokeText(t, 0, 0); g.fillStyle = '#0f172a'; g.fillText(t, 0, 0);
+    g.restore();
   }
   g.restore();
 }

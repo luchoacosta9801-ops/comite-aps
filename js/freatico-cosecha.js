@@ -78,7 +78,7 @@ let FRC = null;   // centro de cada suerte de la cartografía (por código)
 function frCentros(){
   if (FRC) return FRC;
   const G = frMalla(), M = MAPA_FREATICO, sx = {}, sy = {}, n = {}, ha = {}, hac = {};
-  for (let i = 0; i < G.idx.length; i++) { const s = M.suertes[G.sue[i]], k = s[0]; sx[k] = (sx[k] || 0) + G.cx[i]; sy[k] = (sy[k] || 0) + G.cy[i]; n[k] = (n[k] || 0) + 1; }
+  for (let i = 0; i < G.idx.length; i++) { if (!frCeldaFirme(G, i)) continue; const s = M.suertes[G.sue[i]], k = s[0]; sx[k] = (sx[k] || 0) + G.cx[i]; sy[k] = (sy[k] || 0) + G.cy[i]; n[k] = (n[k] || 0) + 1; }
   M.suertes.forEach(s => { ha[s[0]] = (ha[s[0]] || 0) + s[2]; hac[s[0]] = s[1]; });
   const C = {}; Object.keys(n).forEach(k => C[k] = {x:sx[k] / n[k], y:sy[k] / n[k], ha:ha[k], h:hac[k]});
   return FRC = C;
