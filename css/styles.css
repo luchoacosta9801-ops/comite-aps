@@ -1217,6 +1217,7 @@ html.acc-bloqueado body>*:not(#acc-puerta){display:none!important}
 /* Medir sobre el mapa del maestro */
 .ms-medir{display:inline-flex;gap:6px;flex-wrap:wrap;margin-left:auto}
 .ms-medir .on{background:#7c3aed;border-color:#7c3aed;color:#fff}
+.ms-zoom [data-ms-surcos].on{background:#0c4a6e;border-color:#0c4a6e;color:#fff}
 .ms-mapa.midiendo canvas{cursor:crosshair}
 .ms-medidas{display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 12px;font-size:13px}
 .ms-medidas:empty{display:none}

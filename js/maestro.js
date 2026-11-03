@@ -7,7 +7,7 @@
 const MS_COLS = ['s', 'emp', 'zona', 'hac', 'uso', 'estado', 'variedad', 'area', 'siembra', 'ultCorte', 'nCorte', 'ciclo', 'edad', 'edadStd',
   'proxPpto', 'proxEst', 'tchPpto', 'tchAforo', 'tonPpto', 'tonEst', 'tipoFinca', 'zonaAgro', 'lucro', 'rangoEdad', 'sector', 'quema'];
 const MS_PAL = ['#0f766e', '#2563eb', '#d97706', '#7c3aed', '#dc2626', '#16a34a', '#db2777', '#0891b2', '#65a30d', '#9333ea', '#ea580c', '#475569'];
-const msE = {emp:'RIOP', zona:'', hac:'', uso:'', estado:'', variedad:'', txt:'', color:'variedad', orden:'s', asc:true, mas:false, ficha:null, med:{modo:null, figs:[], cur:null}};
+const msE = {emp:'RIOP', zona:'', hac:'', uso:'', estado:'', variedad:'', txt:'', color:'variedad', orden:'s', asc:true, mas:false, ficha:null, med:{modo:null, figs:[], cur:null}, surcos:true};
 
 function maestroSuertes(){
   if (DB.maestroSuertes === undefined && typeof SEED !== 'undefined' && SEED.maestroSuertes) DB.maestroSuertes = clone(SEED.maestroSuertes);
@@ -151,13 +151,13 @@ function renderMaestro(){
     <div class="fr-grid">
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Mapa de suertes</b>
         <span class="ms-vistas">${Object.entries(MS_VISTAS).map(([k, v]) => `<button type="button" class="fr-ch ${msE.color === k ? 'on' : ''}" data-ms-color="${k}">${v.n}</button>`).join('')}</span></div>
-        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa">⤢ Ver todo</button>
+        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa">⤢ Ver todo</button><button type="button" class="plegar-todo ${msE.surcos ? 'on' : ''}" data-ms-surcos title="Mostrar u ocultar las flechas del sentido de surco (hacia dónde corre el agua)">➜ Sentido de surco</button>
           <span class="ms-medir"><button type="button" class="plegar-todo ${msE.med.modo === 'lin' ? 'on' : ''}" data-ms-med="lin" title="Toca puntos en el mapa para medir una distancia o trazar una línea">📏 Distancia</button><button type="button" class="plegar-todo ${msE.med.modo === 'area' ? 'on' : ''}" data-ms-med="area" title="Toca los vértices para trazar una figura y medir su área">⬛ Área / figura</button>
           ${msE.med.modo || msE.med.figs.length ? `<button type="button" class="plegar-todo" data-ms-med="deshacer" title="Quitar el último punto">↶</button><button type="button" class="plegar-todo" data-ms-med="fin" title="Terminar esta medida y empezar otra">✔ Terminar</button><button type="button" class="plegar-todo" data-ms-med="borrar" title="Borrar todas las medidas">🗑</button>` : ''}</span></div>
         <div class="ms-mapa ${msE.med.modo ? 'midiendo' : ''}" id="ms-mapa"><canvas id="ms-cv"></canvas><div class="fr-tip" id="ms-tip" hidden></div></div>
         <div class="ms-medidas" id="ms-med"></div>
         <div class="fr-cley" id="ms-ley"></div>
-        <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha · 📏 Distancia y ⬛ Área / figura miden sobre el mapa (en metros, hectáreas y m²). Solo se dibujan las suertes que están en la cartografía.</div></div>
+        <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha · ➜ Sentido de surco: las flechas muestran hacia dónde corre el agua en cada suerte · 📏 Distancia y ⬛ Área / figura miden sobre el mapa (en metros, hectáreas y m²). Solo se dibujan las suertes que están en la cartografía.</div></div>
       <div class="fr-lado">
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por variedad</b></div>${barras(msCuenta(L, 'variedad'), area, v => v, 10, '#7c3aed')}</div>
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por estado</b></div>${barras(msCuenta(L, 'estado'), area, v => v, 8, '#0891b2')}</div>
@@ -211,6 +211,7 @@ function msMapa(L){
       g.fill('evenodd'); g.strokeStyle = 'rgba(15,23,42,.35)'; g.lineWidth = Vw().s > 0.15 ? 0.9 : 0.5; g.stroke();
     });
     if (msE.sel) { const su = M.suertes.filter(x => x[0] === msE.sel); g.strokeStyle = '#0f172a'; g.lineWidth = 3; g.beginPath(); su.forEach(x => x[3].forEach(r => linea(r, true))); g.stroke(); }
+    if (msE.surcos) msSurcosDibujar(g, sx, sy, Vw().s);
     frEtiquetasSuertes(g, sx, sy, Vw().s, ancho, alto);
     msMedDibujar(g, sx, sy);
   }
@@ -229,7 +230,8 @@ function msMapa(L){
     const c = G.celda[gy * G.W + gx]; if (c < 0) return null; const su = M.suertes[G.sue[c]];
     return {px, py, su, x:fila(su)}; };
   const globo = (cx, cy) => { const p = enPunto(cx, cy); if (!p) { tip.hidden = true; return; }
-    const x = p.x; tip.innerHTML = `<b>${esc(p.su[0])}</b> · ${esc(msHacN(p.su[1]))}${x ? `<br>${esc(x.variedad || '—')} · corte ${msN(x.nCorte)} · ${msN(x.edad, 1)} meses<br>${msN(x.area, 2)} ha · próximo corte ${msF(msProx(x))}` : '<br><span style="opacity:.8">Sin datos con este filtro</span>'}`;
+    const x = p.x, ss = msSentido(p.su[0], p.su[1]);
+    tip.innerHTML = `<b>${esc(p.su[0])}</b> · ${esc(msHacN(p.su[1]))}${x ? `<br>${esc(x.variedad || '—')} · corte ${msN(x.nCorte)} · ${msN(x.edad, 1)} meses<br>${msN(x.area, 2)} ha · próximo corte ${msF(msProx(x))}` : '<br><span style="opacity:.8">Sin datos con este filtro</span>'}${ss ? `<br>Surco: ${msSentidoTxt(ss)}` : ''}`;
     tip.hidden = false; tip.style.left = Math.max(4, Math.min(p.px + 14, ancho - tip.offsetWidth - 4)) + 'px'; tip.style.top = (p.py + 14 + tip.offsetHeight > alto ? p.py - tip.offsetHeight - 10 : p.py + 14) + 'px'; };
   cv.onwheel = e => { if (!e.ctrlKey) return; e.preventDefault(); const r = cv.getBoundingClientRect(); zoom(e.deltaY < 0 ? 1.25 : 0.8, e.clientX - r.left, e.clientY - r.top); };
   const toques = new Map(); let arr = null, movido = false, pinza = null;
@@ -249,6 +251,51 @@ function msMapa(L){
   cv.onpointerup = soltar; cv.onpointercancel = soltar;
   cv.onpointerleave = e => { if (e.pointerType === 'mouse') { tip.hidden = true; if (msE.med.cursor) { msE.med.cursor = null; dibujar(); } } };
   cv.style.touchAction = 'none';
+}
+
+// ── Sentido de surco: capa Direccion_de_Surco.shp (MAPA_FREATICO.surcos_lonlat, flechas en lon/lat). Cada flecha
+// pasa a metros y se asigna a la suerte donde cae su punto medio (celda de la malla). El agua corre de a hacia b ──
+function msSurcos(){
+  if (msE.surcosC) return msE.surcosC;
+  const M = MAPA_FREATICO, G = frMalla(), out = [];
+  (M.surcos_lonlat || []).forEach(r => {
+    const [x1, y1] = frTM(r[1], r[0]), [x2, y2] = frTM(r[3], r[2]), a = [x1 - M.x0, y1 - M.y0], b = [x2 - M.x0, y2 - M.y0];
+    const gx = Math.floor((a[0] + b[0]) / 2 / FR_CELDA), gy = Math.floor((M.alto - (a[1] + b[1]) / 2) / FR_CELDA);
+    const c = gx >= 0 && gy >= 0 && gx < G.W && gy < G.H ? G.celda[gy * G.W + gx] : -1;
+    out.push({a, b, su:c < 0 ? -1 : G.sue[c]});
+  });
+  return msE.surcosC = out;
+}
+const MS_RUMBOS = [['norte', '↑'], ['noreste', '↗'], ['este', '→'], ['sureste', '↘'], ['sur', '↓'], ['suroeste', '↙'], ['oeste', '←'], ['noroeste', '↖']];
+// Sentido de una suerte: promedio de sus flechas (rumbo desde el norte); "mixto" si las flechas apuntan a lados distintos
+function msSentido(cod, hac){
+  if (typeof MAPA_FREATICO === 'undefined' || !MAPA_FREATICO.surcos_lonlat) return null;
+  const k = cod + '|' + (hac || ''), C = msE.sentidoC = msE.sentidoC || {};
+  if (k in C) return C[k];
+  const S = MAPA_FREATICO.suertes, mismo = S.map((su, i) => [su, i]).filter(([su]) => su[0] === cod);
+  const conHac = hac ? mismo.filter(([su]) => norm(hac).includes(norm(su[1])) || norm(su[1]).includes(norm(hac))) : [];
+  const ids = new Set((conHac.length ? conHac : mismo).map(([, i]) => i));
+  const F = msSurcos().filter(f => ids.has(f.su));
+  if (!F.length) return C[k] = null;
+  let vx = 0, vy = 0; F.forEach(f => { const dx = f.b[0] - f.a[0], dy = f.b[1] - f.a[1], d = Math.hypot(dx, dy) || 1; vx += dx / d; vy += dy / d; });
+  const az = (Math.atan2(vx, vy) * 180 / Math.PI + 360) % 360, r = MS_RUMBOS[Math.round(az / 45) % 8];
+  return C[k] = {n:F.length, az, txt:r[0], fl:r[1], mixto:Math.hypot(vx, vy) / F.length < 0.7};
+}
+const msSentidoTxt = S => S ? `${S.fl} hacia el ${S.txt}${S.mixto ? ' (varios sentidos)' : ''}` : '';
+function msSurcosDibujar(g, sx, sy, s){
+  const F = msSurcos(); if (!F.length) return;
+  g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+  const trazo = (col, w, conPunta) => { g.strokeStyle = g.fillStyle = col; g.lineWidth = w;
+    F.forEach(f => { let x1 = sx(f.a[0]), y1 = sy(f.a[1]), x2 = sx(f.b[0]), y2 = sy(f.b[1]), L = Math.hypot(x2 - x1, y2 - y1);
+      // En la capa miden ~50 m: en pantalla se estiran desde su centro hasta un largo legible
+      if (s >= 0.12 && L > 0 && L < minL) { const k = minL / L / 2, mx = (x1 + x2) / 2, my = (y1 + y2) / 2; x1 = mx - (x2 - x1) * k; y1 = my - (y2 - y1) * k; x2 = 2 * mx - x1; y2 = 2 * my - y1; L = minL; }
+      g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+      if (!conPunta || L < 6) return;
+      const h = Math.min(9, L * 0.4), an = Math.atan2(y2 - y1, x2 - x1);
+      g.beginPath(); g.moveTo(x2, y2); g.lineTo(x2 - h * Math.cos(an - 0.5), y2 - h * Math.sin(an - 0.5)); g.lineTo(x2 - h * Math.cos(an + 0.5), y2 - h * Math.sin(an + 0.5)); g.closePath(); g.fill(); g.stroke(); }); };
+  const w = s > 0.3 ? 2 : s >= 0.12 ? 1.5 : 1, minL = s > 0.3 ? 30 : 20;
+  trazo('rgba(255,255,255,.85)', w + 2, true); trazo('#0c4a6e', w, true);
+  g.restore();
 }
 
 // ── Medir sobre el mapa: distancias (líneas) y áreas (figuras). La cartografía está en metros (MAGNA Colombia Oeste),
@@ -318,7 +365,7 @@ function msFicha(clave){
     ${ciclo}
     <div class="ms-datos">${dato('Área neta', msN(x.area, 2) + ' ha')}${dato('Variedad', esc(x.variedad || '—'))}${dato('N° de corte', msN(x.nCorte))}${dato('Ciclo de vida', msN(x.ciclo))}
       ${dato('Edad hoy', msN(x.edad, 1) + ' meses')}${dato('Edad estándar de corte', msN(x.edadStd, 1) + ' meses')}${dato('TCH presupuesto', msN(x.tchPpto, 1))}${dato('TCH aforo', msN(x.tchAforo, 1))}
-      ${dato('Toneladas ppto', msN(x.tonPpto))}${dato('Toneladas estimadas', msN(x.tonEst))}${dato('Tipo de finca', esc(x.tipoFinca || '—'))}${dato('Zona agroecológica', esc(x.zonaAgro || '—'))}
+      ${dato('Toneladas ppto', msN(x.tonPpto))}${dato('Toneladas estimadas', msN(x.tonEst))}${dato('Tipo de finca', esc(x.tipoFinca || '—'))}${dato('Zona agroecológica', esc(x.zonaAgro || '—'))}${dato('Sentido de surco', esc(msSentidoTxt(msSentido(x.s, x.hac)) || '—'))}
       ${x.lucro ? dato('Días lucro cesante', msN(x.lucro)) : ''}${x.quema ? dato('Restricción de quema', esc(x.quema)) : ''}</div>
     ${x.edad != null && x.edadStd ? `<div class="ms-edad"><small>Edad hoy frente a la edad estándar de corte (${msN(x.edadStd, 1)} meses)</small><div><i style="width:${Math.min(100, x.edad / x.edadStd * 100)}%;background:${x.edad >= x.edadStd ? '#dc2626' : '#16a34a'}"></i></div><span>${msN(x.edad / x.edadStd * 100)}%${x.edad >= x.edadStd ? ' · ya cumplió la edad de corte' : ''}</span></div>` : ''}
     <div class="ms-hist">🌱 Sembrada el <b>${msF(x.siembra)}</b>${x.nCorte != null ? ` · va en el corte <b>${x.nCorte}</b>` : ''}${x.ciclo ? ` · ciclo de vida previsto ${x.ciclo} cortes` : ''}${x.nCorte >= 8 ? ' · <b style="color:#b45309">candidata a renovación</b>' : ''}</div>
@@ -349,6 +396,7 @@ q('maestro').addEventListener('click', e => {
     else if (a === 'borrar') { M.figs = []; M.cur = null; }
     renderMaestro(); return; }
   if (t.closest('[data-ms-ajustar]')) { msE.sel = null; msE.ajustar && msE.ajustar(); return; }
+  if (t.closest('[data-ms-surcos]')) { msE.surcos = !msE.surcos; t.closest('[data-ms-surcos]').classList.toggle('on', msE.surcos); msE.dibujar && msE.dibujar(); return; }
   if (t.closest('.ms-x') || (t.classList && t.classList.contains('ms-fondo'))) { msE.ficha = null; q('ms-ficha').innerHTML = ''; return; }
   const fi = t.closest('[data-ms-ficha]'); if (fi) msFicha(fi.dataset.msFicha);
 });
