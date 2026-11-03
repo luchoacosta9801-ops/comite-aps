@@ -1234,3 +1234,8 @@ html.acc-bloqueado body>*:not(#acc-puerta){display:none!important}
 html.acc-solo .search-wrap,html.acc-solo .iv-fab,html.acc-solo .iv-win{display:none!important}
 .acc-ver summary{cursor:pointer;white-space:nowrap;font-size:12px}
 .acc-ver .acc-paneles{min-width:210px;margin-top:6px}
+/* Inge Virtual arrastrable: el botón y la barra de la ventana se toman para moverlos */
+.iv-fab{touch-action:none;cursor:grab}
+.iv-h{touch-action:none;cursor:grab;user-select:none}
+.iv-fab.iv-moviendo,.iv-win.iv-moviendo .iv-h{cursor:grabbing}
+.iv-fab.iv-moviendo{transform:none;transition:none}

@@ -575,6 +575,7 @@ const IV = (() => {
     {k:['lluvia','lluvias','precipitacion','cargar lluvias'], r:'En <b>💧 Niveles freáticos</b>, modo editor: <b>📥 Cargar lluvias</b> (Reporte de lluvias o Ponderado de Precipitaciones). Se calcula la lluvia de los 15 días previos a cada lectura por hacienda y zona, se muestra junto a los niveles y entra en los informes.'},
     {k:['cosecha','cosechadas','sustento','afectacion','tch','powerpoint','ppt'], r:'En <b>💧 Niveles freáticos → 🌾 Cosecha vs niveles</b> cargas el Excel de suertes cosechadas. A cada suerte se le asigna su pozo de influencia, se promedia el nivel antes del corte y se califica 5 / 3 / 1 (menos de 0,8 m / 0,8–1,2 / 1,2 m o más). Por defecto cada fecha de corte se lleva al <b>mismo día del año anterior</b> (15 oct 2026 → 15 oct 2025). Cruza el nivel freático antes del corte, la <b>lluvia</b> de la hacienda frente a lo normal y el <b>tipo de suelo</b> (zona agroecológica del maestro), y da la justificación de cada suerte. Si trae TCH compara la producción. Genera el <b>📄 informe de sustento</b> y lo exporta a <b>📊 PowerPoint</b> con gráficas, mapa y casos críticos.'},
     {k:['informe','informe de isobatas','generar informe'], r:'En <b>💧 Niveles freáticos</b>, elige la lectura y pulsa <b>📄 Generar informe de isóbatas</b> (debajo del plano). Sale el informe con objetivo, metodología, mapa, tabla de áreas por condición, análisis automático, comparación con la lectura anterior, pozos críticos y conclusiones. Las lluvias y observaciones de campo se escriben ahí mismo; luego <b>🖨 Imprimir / Guardar PDF</b>. El mapa de isobatas (IDW) se calcula solo en la página y se puede <b>⬇ Descargar</b> como imagen.'},
+    {k:['mover el inge','mover inge','estorba','arrastrar','inge virtual'], r:'Al <b>👷 Inge Virtual</b> lo puedes arrastrar: toma el botón y suéltalo donde no te estorbe; la ventana del chat se mueve tomándola de la barra azul de arriba. La página recuerda dónde los dejaste en ese navegador.'},
     {k:['celular','movil','telefono movil'], r:'La página funciona en el celular: el menú se compacta, las tablas pasan a tarjetas y las presentaciones se deslizan con el dedo.'},
   ];
   function comoTxt(t){
@@ -600,7 +601,7 @@ const IV = (() => {
     return R.length ? `Esto es lo que encontré en la plataforma:${lista(R.map(([, d]) => d.res))}` : null;
   }
 
-  const AYUDA = `Soy el <b>Inge Virtual</b> 👷. Conozco toda la plataforma: comité APS, presupuesto 2026 y 2027, días de lucro, agronomía, simulador, <b>niveles freáticos</b>, <b>lluvias</b>, <b>maestro de suertes</b>, cosecha vs niveles, proyectos, protocolos de emergencia, el equipo y conceptos de ingeniería agrícola y civil. Prueba:`;
+  const AYUDA = `Soy el <b>Inge Virtual</b> 👷 (si te estorbo, arrástrame a otro lado de la pantalla). Conozco toda la plataforma: comité APS, presupuesto 2026 y 2027, días de lucro, agronomía, simulador, <b>niveles freáticos</b>, <b>lluvias</b>, <b>maestro de suertes</b>, cosecha vs niveles, proyectos, protocolos de emergencia, el equipo y conceptos de ingeniería agrícola y civil. Prueba:`;
   const EJEMPLOS = ['Resumen de la semana', '¿Cómo están los niveles freáticos?', '¿Qué suertes están en nivel crítico?', '¿Cuánto llovió en marzo?', '¿Qué se corta en noviembre?', 'Variedades de La Luisa 1', 'Suertes candidatas a renovar', '¿Cuánto falta del presupuesto 2026?', '¿En qué estado está la 3111-131?', '¿Qué hacer si se rompe un dique?', '¿Quién es el jefe de zona 1?', '¿Qué es la descepada?'];
 
   function responder(pregunta){
@@ -755,7 +756,28 @@ const IV = (() => {
     let r; try { r = IV.responder(txt); } catch (e) { console.error(e); r = 'Tuve un problema leyendo los datos 😕. Intenta de otra forma.'; }
     setTimeout(() => { espera.innerHTML = r; msgs.scrollTop = msgs.scrollHeight; }, 250);
   }
-  btn.addEventListener('click', () => abrir(win.hidden));
+  // El botón y la ventana se pueden arrastrar a cualquier parte; la posición se recuerda en este navegador
+  // (en fracción de la pantalla, así se acomoda al cambiar el tamaño). Un toque sin arrastrar abre o cierra.
+  const POS_KEY = 'comite-aps:iv-pos', POS_WKEY = 'comite-aps:iv-pos-win';
+  const leerPos = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+  const ubicar = (el, p) => { if (!p) return; const r = el.getBoundingClientRect(), W = window.innerWidth, H = window.innerHeight;
+    el.style.left = Math.max(4, Math.min(W - r.width - 4, p.x * W)) + 'px'; el.style.top = Math.max(4, Math.min(H - r.height - 4, p.y * H)) + 'px';
+    el.style.right = 'auto'; el.style.bottom = 'auto'; };
+  function arrastrable(el, asa, k){
+    let ini = null, movido = false, hasta = 0;   // hasta: el clic que llega justo al soltar un arrastre no cuenta
+    asa.addEventListener('pointerdown', e => { if (e.button > 0 || e.target.closest('button:not(.iv-fab), input')) return; const r = el.getBoundingClientRect(); ini = {x:e.clientX, y:e.clientY, l:r.left, t:r.top}; movido = false; asa.setPointerCapture(e.pointerId); });
+    asa.addEventListener('pointermove', e => { if (!ini) return; const dx = e.clientX - ini.x, dy = e.clientY - ini.y;
+      if (!movido && Math.hypot(dx, dy) < 6) return; movido = true; el.classList.add('iv-moviendo');
+      ubicar(el, {x:(ini.l + dx) / window.innerWidth, y:(ini.t + dy) / window.innerHeight}); });
+    asa.addEventListener('pointerup', () => { if (!ini) return; ini = null; el.classList.remove('iv-moviendo');
+      if (movido) { hasta = Date.now() + 300; movido = false; const r = el.getBoundingClientRect(); try { localStorage.setItem(k, JSON.stringify({x:r.left / window.innerWidth, y:r.top / window.innerHeight})); } catch (e) {} } });
+    asa.addEventListener('click', e => { if (Date.now() < hasta) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  }
+  arrastrable(btn, btn, POS_KEY);
+  arrastrable(win, win.querySelector('.iv-h'), POS_WKEY);
+  const reubicar = () => { ubicar(btn, leerPos(POS_KEY)); if (window.innerWidth >= 760) ubicar(win, leerPos(POS_WKEY)); else { win.style.left = win.style.top = win.style.right = win.style.bottom = ''; } };
+  reubicar(); window.addEventListener('resize', reubicar);
+  btn.addEventListener('click', () => { abrir(win.hidden); if (!win.hidden) reubicar(); });
   win.querySelector('.iv-x').addEventListener('click', () => abrir(false));
   win.querySelector('.iv-borrar').addEventListener('click', () => { msgs.innerHTML = ''; poner(IV.AYUDA + chips(), 'bot'); inp.value = ''; inp.focus(); });
   win.querySelector('#iv-f').addEventListener('submit', e => { e.preventDefault(); preguntar(inp.value); inp.value = ''; });
