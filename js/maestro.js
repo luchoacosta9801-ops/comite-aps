@@ -168,7 +168,7 @@ function renderMaestro(){
         <div class="ms-mapa ${msE.med.modo ? 'midiendo' : ''}" id="ms-mapa"><canvas id="ms-cv"></canvas><div class="fr-tip" id="ms-tip" hidden></div></div>
         <div class="ms-medidas" id="ms-med"></div>
         <div class="fr-cley" id="ms-ley"></div>
-        <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha · en «Capas» se prenden o apagan ríos, reservorios, canales, drenaje secundario, vías y el sentido de surco (las flechas muestran hacia dónde corre el agua) · 📏 Distancia y ⬛ Área / figura miden sobre el mapa (en metros, hectáreas y m²). Solo se dibujan las suertes que están en la cartografía.</div></div>
+        <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha · en «Capas» se prenden o apagan ríos, reservorios, canales, drenaje secundario, vías y el sentido de surco (las flechas muestran hacia dónde corre el agua) · 📏 Distancia y ⬛ Área / figura miden sobre el mapa (en metros, hectáreas y m²); con el teclado: Esc o Enter terminan la figura, otro Esc sale de medir y Ctrl+Z o Retroceso quitan el último punto. Solo se dibujan las suertes que están en la cartografía.</div></div>
       <div class="fr-lado">
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por variedad</b></div>${barras(msCuenta(L, 'variedad'), area, v => v, 10, '#7c3aed')}</div>
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por estado</b></div>${barras(msCuenta(L, 'estado'), area, v => v, 8, '#0891b2')}</div>
@@ -425,12 +425,7 @@ q('maestro').addEventListener('click', e => {
   if (t.closest('[data-ms-mas]')) { msE.mas = true; renderMaestro(); return; }
   const zb = t.closest('[data-ms-zoom]'); if (zb) { msE.zoom && msE.zoom(+zb.dataset.msZoom); return; }
   const md = t.closest('[data-ms-med]');
-  if (md) { const M = msE.med, a = md.dataset.msMed;
-    if (a === 'lin' || a === 'area') { M.modo = M.modo === a ? null : a; M.cur = null; M.cursor = null; }
-    else if (a === 'deshacer') { const f = M.cur != null ? M.figs[M.cur] : M.figs[M.figs.length - 1]; if (f) { if (f.fin) f.fin = false; else f.pts.pop(); if (!f.pts.length) { M.figs.splice(M.figs.indexOf(f), 1); M.cur = null; } else M.cur = M.figs.indexOf(f); } }
-    else if (a === 'fin') { const f = M.figs[M.cur]; if (f) f.fin = true; M.cur = null; M.figs = M.figs.filter(x => x.pts.length > 1); }
-    else if (a === 'borrar') { M.figs = []; M.cur = null; }
-    renderMaestro(); return; }
+  if (md) { msMedAccion(md.dataset.msMed); return; }
   if (t.closest('[data-ms-ajustar]')) { msE.sel = null; msE.ajustar && msE.ajustar(); return; }
   const cp = t.closest('[data-ms-capa]');
   if (cp) { const k = cp.dataset.msCapa; msE.capas[k] = !msE.capas[k]; cp.classList.toggle('on', msE.capas[k]); msE.dibujar && msE.dibujar(); return; }
@@ -445,4 +440,23 @@ q('maestro').addEventListener('change', e => {
 });
 let msEspera = 0;
 q('maestro').addEventListener('input', e => { if (e.target.id === 'ms-txt') { msE.txt = e.target.value; clearTimeout(msEspera); msEspera = setTimeout(() => redibujarConservando('ms-txt', renderMaestro), 250); } });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && msE.ficha && q('ms-ficha')) { msE.ficha = null; q('ms-ficha').innerHTML = ''; } });
+// Botones de medir (📏 / ⬛ / ↶ / ✔ / 🗑) y sus atajos de teclado
+function msMedAccion(a){
+  const M = msE.med;
+  if (a === 'lin' || a === 'area') { M.modo = M.modo === a ? null : a; M.cur = null; M.cursor = null; }
+  else if (a === 'deshacer') { const f = M.cur != null ? M.figs[M.cur] : M.figs[M.figs.length - 1]; if (f) { if (f.fin) f.fin = false; else f.pts.pop(); if (!f.pts.length) { M.figs.splice(M.figs.indexOf(f), 1); M.cur = null; } else M.cur = M.figs.indexOf(f); } }
+  else if (a === 'fin') { const f = M.figs[M.cur]; if (f) f.fin = true; M.cur = null; M.figs = M.figs.filter(x => x.pts.length > 1); }
+  else if (a === 'salir') { M.modo = null; M.cur = null; M.cursor = null; M.figs = M.figs.filter(x => x.pts.length > 1); M.figs.forEach(x => { x.fin = true; }); }
+  else if (a === 'borrar') { M.figs = []; M.cur = null; }
+  renderMaestro();
+}
+// Esc: cierra la ficha; midiendo, termina la figura que se está trazando y, con otro Esc, sale de medir.
+// Enter termina la figura; Ctrl+Z o Retroceso quitan el último punto (no actúan si se está escribiendo en un campo)
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && msE.ficha && q('ms-ficha')) { msE.ficha = null; q('ms-ficha').innerHTML = ''; return; }
+  if (vistaActual !== 'maes' || !msE.med.modo || /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || '')) || e.target.isContentEditable) return;
+  const M = msE.med, trazando = M.cur != null && M.figs[M.cur] && !M.figs[M.cur].fin;
+  if (e.key === 'Escape') { e.preventDefault(); msMedAccion(trazando ? 'fin' : 'salir'); }
+  else if (e.key === 'Enter') { e.preventDefault(); msMedAccion('fin'); }
+  else if ((e.key === 'z' && (e.ctrlKey || e.metaKey)) || e.key === 'Backspace') { e.preventDefault(); msMedAccion('deshacer'); }
+});
