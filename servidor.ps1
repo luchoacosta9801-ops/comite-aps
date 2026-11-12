@@ -120,6 +120,30 @@ function Freatico($ctx) {
   $res.OutputStream.Write($bytes, 0, $bytes.Length)
 }
 
+
+# GET /api/levante: el reporte de labores pendientes de levante más reciente de Documents\OPERACIONES CAMPO - LEVANTE
+# (labores_pendientes_*.xlsx, hoja BD), tal cual; la página lo lee. ?info=1: solo nombre y fecha. Nunca se sube a GitHub.
+$carpetaLevante = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'OPERACIONES CAMPO - LEVANTE'
+function Levante($ctx) {
+  $req = $ctx.Request; $res = $ctx.Response
+  $origen = $req.Headers['Origin']
+  if ($req.Headers['X-Comite'] -ne '1' -or ($origen -and $permitidos -notcontains $origen)) {
+    return Responder $res 403 @{ ok = $false; error = 'Origen no permitido' }
+  }
+  $f = Get-ChildItem -Path $carpetaLevante -Filter '*.xls*' -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -notlike '~$*' -and $_.Name -match 'labores' } |
+    Sort-Object @{ e = { if ($_.Name -match ' Z[0-9]') { 1 } else { 0 } } }, @{ e = 'LastWriteTime'; Descending = $true } | Select-Object -First 1   # el completo antes que los de una zona (Z1, Z2)
+  if (-not $f) { return Responder $res 404 @{ ok = $false; error = "No hay reporte de labores en $carpetaLevante" } }
+  if ($req.QueryString['info']) { return Responder $res 200 @{ ok = $true; archivo = $f.Name; fecha = $f.LastWriteTime.ToString('s') } }
+  $tmp = [IO.Path]::GetTempFileName(); Copy-Item $f.FullName $tmp -Force
+  $bytes = [IO.File]::ReadAllBytes($tmp); Remove-Item $tmp -ErrorAction SilentlyContinue
+  $res.ContentType = 'application/octet-stream'
+  $res.Headers.Add('X-Archivo', [Uri]::EscapeDataString($f.Name))
+  $res.Headers.Add('X-Fecha', $f.LastWriteTime.ToString('s'))
+  $res.Headers.Add('Access-Control-Expose-Headers', 'X-Archivo, X-Fecha')
+  $res.Headers.Add('Cache-Control', 'no-store')
+  $res.OutputStream.Write($bytes, 0, $bytes.Length)
+}
 # POST /api/guardar-video: guarda el video institucional de la portada (lo graba _privado/video/componer.html)
 # Solo ese archivo, solo MP4 o WebM y hasta 60 MB.
 function GuardarVideo($ctx) {
@@ -161,6 +185,8 @@ while ($http.IsListening) {
       Maestro $ctx
     } elseif ($ruta -eq 'api/guardar-video' -and $ctx.Request.HttpMethod -eq 'POST') {
       GuardarVideo $ctx
+    } elseif ($ruta -eq 'api/levante') {
+      Levante $ctx
     } elseif ($ruta -eq 'api/freatico') {
       Freatico $ctx
     } elseif ($ruta -eq 'api/publicar' -and $ctx.Request.HttpMethod -eq 'POST') {

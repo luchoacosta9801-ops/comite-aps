@@ -63,7 +63,7 @@ const ACC_PANELES = [
   {v:'proto', t:'🚨 Protocolos', m:['protocolos']},
   {v:'estructura', t:'👥 Estructura', m:['estructura']},
   {v:'simulador', t:'💰 Simulador', m:['sim']},
-  {v:'lab', t:'🚜 Control de labores', m:['labores']},
+  {v:'lab', t:'🚜 Control de labores', m:['labores', 'levante']},
 ];
 const ROLES = {ver:'👁 Ver', panel:'🧩 Editor por panel', editor:'✏️ Editor (todo)'};
 const accRolOpts = r => Object.entries(ROLES).map(([k, t]) => `<option value="${k}" ${r === k ? 'selected' : ''}>${t}</option>`).join('');
