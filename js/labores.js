@@ -1,7 +1,7 @@
 // Control de labores de levante (#labores, vista 'lab', se abre desde el dashboard del Comité APS).
 // Base: el reporte de labores pendientes de Operaciones Campo · Levante (labores_pendientes_AAAA-MM-DD.xlsx, hoja BD,
 // en Documents\OPERACIONES CAMPO - LEVANTE): una fila por suerte cosechada (o por corte parcial) con el área pendiente
-// de 1ra labor (roturación), 2da labor y fertilización: área > 0 = pendiente, 0 = hecha, vacía = no aplica.
+// de 1ra labor (roturación), 2da labor y fertilización: columnas H, K y N: área > 0 = pendiente; 0 o vacía = hecha.
 // Se cruza con el maestro de suertes (hacienda, variedad, número de corte) y se suman las suertes que el maestro da
 // por cosechadas en los últimos N días y que el reporte aún no trae. Despaje y reencalle son alertas por días
 // después del corte (no vienen en el reporte; si ya se roturó, se dan por hechas).
@@ -69,10 +69,9 @@ function labSuertes(){
 function labEstado(o, L){
   const P = labPar(), [d0, d1] = P[L.k], r = o.reg[L.k] || {}, hoy = labHoy(), v = o.bd && L.bd ? o.bd[L.bd] : undefined;
   if (r.r) return {e:'hecha', t:`Hecha ${msF(r.r)}`};
-  if (v === 0) return {e:'hecha', t:'Hecha según el reporte'};
-  if (v === null) return {e:'noaplica', t:'El reporte no la trae'};
+  if (o.bd && L.bd && !(v > 0)) return {e:'hecha', t:'Hecha según el reporte'};   // 0 o casilla vacía = hecha
   if (L.tipo === 'alerta' && o.dd > P.dias) return {e:'noaplica', t:`Corte de hace más de ${P.dias} días: sin seguimiento`};
-  if (L.tipo === 'alerta' && o.bd && o.bd.r1 === 0) return {e:'hecha', t:'Se da por hecha: ya se roturó'};
+  if (L.tipo === 'alerta' && o.bd && !(o.bd.r1 > 0)) return {e:'hecha', t:'Se da por hecha: ya se roturó'};
   const pend = v > 0 ? ` · ${msN(v, 2)} ha pendientes` : '';
   if (r.p) return r.p < hoy ? {e:'atrasada', t:`Programada ${msF(r.p)} · atrasada ${labDias(r.p, hoy)} d${pend}`} : {e:'programada', t:`Programada ${msF(r.p)}${pend}`};
   if (o.dd < d0) return {e:'proxima', t:`Empieza en ${d0 - o.dd} d${pend}`};
@@ -186,6 +185,8 @@ function labLeerReporte(X, buf, archivo, fechaArchivo){
     r1:col(/^1RA LABOR.*AREA/), i1:col(/^1RA LABOR.*IMPLEMENTO/), c1:col(/^1RA LABOR.*CONTRATISTA/),
     r2:col(/^2DA LABOR.*AREA/), i2:col(/^2DA LABOR.*IMPLEMENTO/), c2:col(/^2DA LABOR.*CONTRATISTA/),
     fe:col(/FERTILIZ.*AREA/), cf:col(/FERTILIZ.*CONTRATISTA/), t:col(/TIPO/)};
+  // Si los encabezados cambian, las áreas están en H (1ra roturación), K (2da roturación) y N (fertilización)
+  if (C.r1 < 0) C.r1 = 7; if (C.r2 < 0) C.r2 = 10; if (C.fe < 0) C.fe = 13;
   if (C.s < 0 || C.d < 0 && C.f < 0) throw new Error('Faltan las columnas Suerte y Días (o Fecha Inicio)');
   // Fecha del reporte: la del nombre del archivo (labores_pendientes_2026-11-05) o la del archivo
   const mf = /(\d{4})-(\d{2})-(\d{2})/.exec(archivo || ''), fRep = mf ? mf[0] : (fechaArchivo || labHoy()).slice(0, 10);
