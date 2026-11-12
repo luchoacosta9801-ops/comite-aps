@@ -91,7 +91,7 @@ function loadDB(){
 }
 // Módulos del portal que solo se editan a mano (no los trae el Excel semanal) y su copia "tal como se
 // cargó", para saber qué se cambió aquí sin publicar
-const MODULOS_LOCALES = ['estructura', 'protocolos', 'proyectos', 'portada', 'agronomia', 'sim', 'ppto2027', 'freatico', 'lluvias', 'cosechaNF', 'maestroSuertes', 'usuarios'];
+const MODULOS_LOCALES = ['estructura', 'protocolos', 'proyectos', 'portada', 'agronomia', 'sim', 'ppto2027', 'freatico', 'lluvias', 'cosechaNF', 'maestroSuertes', 'usuarios', 'labores'];
 const BASE_KEY = 'comite-aps:base';
 function guardarBase(d){
   if (!GUARDA_LOCAL) return;
@@ -152,7 +152,9 @@ const SEED = {
   // Lluvias diarias por hacienda (para cruzar con los niveles freáticos)
   lluvias: ${J(d.lluvias)},` : ''}${d.cosechaNF ? `
   // Suertes cosechadas para el análisis cosecha vs niveles freáticos
-  cosechaNF: ${J(d.cosechaNF)},` : ''}${d.maestroSuertes ? `
+  cosechaNF: ${J(d.cosechaNF)},` : ''}${d.labores ? `
+  // Control de labores de levante (programadas y hechas por suerte y corte)
+  labores: ${J(d.labores)},` : ''}${d.maestroSuertes ? `
   // Maestro de suertes (solo datos agronómicos, sin nombres ni datos de negocio)
   maestroSuertes: { archivo: ${J(d.maestroSuertes.archivo)}, fecha: ${J(d.maestroSuertes.fecha)}, cols: ${J(d.maestroSuertes.cols)},
     filas: ${lista(d.maestroSuertes.filas, '    ')} },` : ''}${d.usuarios && d.usuarios.lista && d.usuarios.lista.length ? `

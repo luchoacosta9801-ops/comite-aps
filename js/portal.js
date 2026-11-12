@@ -16,6 +16,7 @@ const VISTAS = {
   freat:      {hash:'#freaticos',  titulo:'Niveles freáticos',        sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Niveles freáticos · Ingeniería Agrícola'},
   usu:        {hash:'#usuarios',    titulo:'Usuarios y accesos',       sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Usuarios · Ingeniería Agrícola'},
   maes:       {hash:'#maestro',    titulo:'Maestro de suertes',       sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Maestro de suertes · Ingeniería Agrícola'},
+  lab:        {hash:'#labores',    titulo:'Control de labores',       sub:'Levante de socas · Comité APS',            doc:'Control de labores · Comité APS'},
   nfcos:      {hash:'#cosecha-niveles', titulo:'Cosecha vs niveles freáticos', sub:'Ingeniería Agrícola · Riopaila Agrícola', doc:'Cosecha vs niveles freáticos · Ingeniería Agrícola'},
 };
 // Video institucional vigente de la portada (al regrabarlo con otro nombre, cambiar aquí)
@@ -32,7 +33,8 @@ function irA(vista, {historial = true} = {}){
   if (!vistaPermitida(vistaActual)) vistaActual = VISTAS_SOLO.length === 1 ? VISTAS_SOLO[0] : 'portal';
   const V = VISTAS[vistaActual];
   if (VISTAS_SOLO) { q('btn-inicio').style.display = vistaPermitida('portal') ? '' : 'none';
-    q('btn-sim').style.display = vistaPermitida('aps') && vistaPermitida('simulador') ? '' : 'none'; }
+    q('btn-sim').style.display = vistaPermitida('aps') && vistaPermitida('simulador') ? '' : 'none';
+    q('btn-labores').style.display = vistaPermitida('lab') ? '' : 'none'; }
   document.body.dataset.vista = vistaActual;
   document.body.classList.toggle('modo-sim', vistaActual === 'simulador');   // estilos del simulador
   document.querySelector('.hdr-title').textContent = V.titulo;
@@ -59,11 +61,13 @@ function renderVista(){
   else if (vistaActual === 'nfcos' && typeof renderCosechaNF === 'function') renderCosechaNF();
   else if (vistaActual === 'maes' && typeof renderMaestro === 'function') renderMaestro();
   else if (vistaActual === 'usu' && typeof renderUsuarios === 'function') renderUsuarios();
+  else if (vistaActual === 'lab' && typeof renderLabores === 'function') renderLabores();
 }
 // El simulador ya traía su propio botón: ahora navega con el portal
 function modoSimulador(abrir){ irA(abrir ? 'simulador' : 'aps'); }
 window.addEventListener('popstate', () => irA(vistaDeHash(location.hash), {historial:false}));
 q('btn-inicio').addEventListener('click', () => irA('portal'));
+q('btn-labores').addEventListener('click', () => irA('lab'));
 // Buscar una suerte desde cualquier módulo lleva al dashboard
 q('search-results').addEventListener('click', e => { if (e.target.closest('.sr-item') && vistaActual !== 'aps') irA('aps'); }, true);
 // Cualquier cambio de datos redibuja también el módulo abierto
@@ -107,6 +111,9 @@ function renderPortal(){
         `${esc(DB.meta.semana)} · <b>${f2(ha)} ha</b> sembradas · <b>${pct}%</b> vs ppto`, 'var(--cyan)')}
       ${card('simulador', '💰', 'Simulador de costos', 'Costo por suerte según labor, contratista y pases, comparado con el presupuesto.',
         `${S.length} suertes en proceso · <b>${moneyM(simTot)}</b> · ${simDifT >= 0 ? 'ahorro' : 'sobrecosto'} ${moneyM(Math.abs(simDifT))}`, 'var(--green)')}
+      ${typeof labResumen !== 'function' || typeof maestroSuertes !== 'function' || !maestroSuertes() ? '' : (() => { const R = labResumen(), u = R.L.reduce((a, l) => a + l.urg.length, 0), v = R.L.reduce((a, l) => a + l.ven.length, 0);
+        return card('lab', '🚜', 'Control de labores', 'Levante de las suertes cosechadas (maestro): alertas de despaje y reencalle, y programación de roturación y fertilización.',
+        `<b>${R.n}</b> suertes cosechadas · <b>${u}</b> labores por hacer${v ? ` · <b style="color:#b91c1c">${v} vencidas</b>` : ''}`, '#b45309'); })()}
       ${typeof maestroSuertes !== 'function' ? '' : (() => { const M = maestroSuertes(), L = M ? msFilas().filter(x => x.emp === 'RIOP') : [];
         return card('maes', '📚', 'Maestro de suertes', 'El maestro de suertes en versión digital: áreas, variedades, edades, cortes y próximos cortes de cada suerte, con mapa.',
         M ? `<b>${L.length}</b> suertes Riopaila · <b>${f2(sum(L, x => x.area || 0))} ha</b>${M.fecha ? ` · ${esc(M.fecha)}` : ''}` : 'Por cargar', '#7c3aed'); })()}

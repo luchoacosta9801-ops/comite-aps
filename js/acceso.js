@@ -63,6 +63,7 @@ const ACC_PANELES = [
   {v:'proto', t:'🚨 Protocolos', m:['protocolos']},
   {v:'estructura', t:'👥 Estructura', m:['estructura']},
   {v:'simulador', t:'💰 Simulador', m:['sim']},
+  {v:'lab', t:'🚜 Control de labores', m:['labores']},
 ];
 const ROLES = {ver:'👁 Ver', panel:'🧩 Editor por panel', editor:'✏️ Editor (todo)'};
 const accRolOpts = r => Object.entries(ROLES).map(([k, t]) => `<option value="${k}" ${r === k ? 'selected' : ''}>${t}</option>`).join('');
@@ -139,7 +140,7 @@ const accPanelesHTML = (x, attr) => `<div class="acc-paneles">${ACC_PANELES.map(
 // Paneles que puede VER un usuario (x.solo); sin marcar ninguno ve todo el portal. Cada panel incluye sus subpáginas
 // (Dashboard → detalle del presupuesto 2026; Niveles freáticos → cosecha vs niveles). El control está en portal.js (irA)
 const ACC_VER = [
-  {v:'aps', t:'📊 Dashboard Comité APS'}, {v:'simulador', t:'💰 Simulador'}, {v:'maes', t:'📚 Maestro de suertes'},
+  {v:'aps', t:'📊 Dashboard Comité APS'}, {v:'simulador', t:'💰 Simulador'}, {v:'lab', t:'🚜 Control de labores'}, {v:'maes', t:'📚 Maestro de suertes'},
   {v:'freat', t:'💧 Niveles freáticos'}, {v:'ppto', t:'📅 Presupuesto 2027'}, {v:'agro', t:'🌱 Gestión Agronomía'},
   {v:'proy', t:'🏗️ Proyectos'}, {v:'proto', t:'🚨 Protocolos'}, {v:'estructura', t:'👥 Estructura'},
 ];
