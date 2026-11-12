@@ -1272,3 +1272,14 @@ body:not([data-vista="aps"]) #btn-labores{display:none!important}
 .lab-par label{display:flex;align-items:center;gap:6px}
 .lab-par input{width:64px}
 @media (max-width:760px){.lab-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Control de labores: selector de labor y tabla compacta */
+.lab-labsel{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 2px}
+.lab-labsel button{font:inherit;font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:999px;border:1.5px solid var(--bdr);background:#fff;color:var(--dim);cursor:pointer}
+.lab-labsel button b{display:inline-block;min-width:20px;margin-left:4px;padding:0 6px;border-radius:999px;background:#f1f5f9;color:var(--text);font-size:11px}
+.lab-labsel button.on{border-color:var(--c,#0f172a);background:var(--c,#0f172a);color:#fff}
+.lab-labsel button.on b{background:rgba(255,255,255,.25);color:#fff}
+.lab-tab td,.lab-tab th{white-space:nowrap;padding-top:5px;padding-bottom:5px;font-size:12px}
+.lab-tab .lab-cod{font-family:var(--mono)}
+.lab-tab .lab-det{color:var(--muted);font-size:11.5px;white-space:normal;min-width:150px}
+.lab-tab .lab-in{font:inherit;font-size:11.5px;padding:2px 4px;border:1px solid var(--bdr);border-radius:6px}
+.lab-tab tfoot td{font-weight:700;background:#f8fafc}
