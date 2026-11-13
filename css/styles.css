@@ -1298,3 +1298,4 @@ body:not([data-vista="aps"]) #btn-labores{display:none!important}
 .ms-mapa-card.ms-full .ms-full-btn{background:#b91c1c;border-color:#b91c1c;color:#fff}
 html.ms-full-on body[data-vista="maes"]{overflow:hidden}
 html.ms-full-on body[data-vista="maes"] .iv-fab{z-index:960}
+.ms-gps-sig{font-size:11.5px;font-weight:800;color:#2563eb}

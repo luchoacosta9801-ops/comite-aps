@@ -9,7 +9,7 @@ const MS_COLS = ['s', 'emp', 'zona', 'hac', 'uso', 'estado', 'variedad', 'area',
 const MS_PAL = ['#0f766e', '#2563eb', '#d97706', '#7c3aed', '#dc2626', '#16a34a', '#db2777', '#0891b2', '#65a30d', '#9333ea', '#ea580c', '#475569'];
 const msE = {emp:'RIOP', zona:'', hac:'', uso:'', estado:'', variedad:'', txt:'', color:'variedad', orden:'s', asc:true, mas:false, ficha:null, med:{modo:null, figs:[], cur:null},
   capas:{red:true, agua:true, canales:true, drensec:true, vias:true, surcos:true},
-  gps:{on:false, id:null, pos:null, acc:null, centrado:false},
+  gps:{on:false, id:null, pos:null, acc:null, centrado:false, seguir:false},
   fondo:(() => { try { return localStorage.getItem('comite-aps:ms-fondo') || 'sat'; } catch (e) { return 'sat'; } })(), full:false};
 // Capas del mapa del maestro (MAPA_FREATICO): [clave, nombre, color de la muestra, ayuda]
 const MS_CAPAS = [
@@ -272,7 +272,7 @@ function msMapa(L){
   cv.onpointermove = e => { const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
     if (toques.has(e.pointerId)) toques.set(e.pointerId, [px, py]);
     if (pinza && toques.size === 2) { const [a, b] = [...toques.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom(pinza.s * d / pinza.d / Vw().s, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); movido = true; return; }
-    if (arr) { const dx = e.clientX - arr[0], dy = e.clientY - arr[1]; if (Math.abs(dx) + Math.abs(dy) > 5) movido = true; if (movido) { Vw().ox = arr[2] + dx; Vw().oy = arr[3] + dy; dibujar(); tip.hidden = true; } return; }
+    if (arr) { const dx = e.clientX - arr[0], dy = e.clientY - arr[1]; if (Math.abs(dx) + Math.abs(dy) > 5) movido = true; if (movido && msE.gps.seguir) { msE.gps.seguir = false; msGpsTexto(); } if (movido) { Vw().ox = arr[2] + dx; Vw().oy = arr[3] + dy; dibujar(); tip.hidden = true; } return; }
     if (msE.med.modo && e.pointerType === 'mouse') { msE.med.cursor = msE.aMundo(e.clientX, e.clientY); dibujar(); return; }
     if (e.pointerType === 'mouse') globo(e.clientX, e.clientY); };
   const soltar = e => { toques.delete(e.pointerId); if (toques.size < 2) pinza = null;
@@ -414,27 +414,31 @@ window.addEventListener('resize', () => { if (vistaActual !== 'maes' || !msE.ful
 // no se guarda ni se publica. Se pasa de lat/lon a MAGNA (frTM) y se dice en qué suerte está ──
 function msGps(encender){
   const G = msE.gps;
-  if (!encender) { if (G.id != null) navigator.geolocation.clearWatch(G.id); Object.assign(G, {on:false, id:null, pos:null, acc:null, centrado:false}); renderMaestro(); return; }
+  if (!encender) { if (G.id != null) navigator.geolocation.clearWatch(G.id); Object.assign(G, {on:false, id:null, pos:null, acc:null, centrado:false, seguir:false}); renderMaestro(); return; }
   if (!navigator.geolocation) { toast('⚠ Este navegador no permite conocer la ubicación'); return; }
-  G.on = true; G.centrado = false; renderMaestro(); msGpsTexto('⏳ Buscando tu ubicación… (acepta el permiso de ubicación si el navegador lo pide)');
+  G.on = true; G.centrado = false; G.seguir = true; renderMaestro(); msGpsTexto('⏳ Buscando tu ubicación… (acepta el permiso de ubicación si el navegador lo pide)');
   G.id = navigator.geolocation.watchPosition(p => {
     if (vistaActual !== 'maes' || !G.on) { msGps(false); return; }
     if (typeof MAPA_FREATICO === 'undefined') return;
     const M = MAPA_FREATICO, [x, y] = frTM(p.coords.latitude, p.coords.longitude);
     G.pos = [x - M.x0, y - M.y0]; G.acc = p.coords.accuracy || null;
-    if (!G.centrado) { G.centrado = true; msGpsCentrar(); } else if (msE.dibujar) msE.dibujar();
+    // La primera vez se centra y acerca; después, mientras esté en «seguir», el mapa acompaña el punto
+    // (al arrastrar el mapa se deja de seguir; ⌖ Centrar vuelve a seguir)
+    if (!G.centrado) { G.centrado = true; msGpsCentrar(true); } else if (G.seguir) msGpsCentrar(false); else if (msE.dibujar) msE.dibujar();
     msGpsTexto();
   }, err => {
     const m = err.code === 1 ? 'No diste permiso de ubicación. Actívalo en el candado de la barra de direcciones del navegador.' : err.code === 3 ? 'El GPS no respondió a tiempo; sigue intentando…' : 'No se pudo obtener la ubicación.';
     if (err.code === 1) { msGps(false); toast('⚠ ' + m); } else msGpsTexto('⚠ ' + m);
   }, {enableHighAccuracy:true, maximumAge:5000, timeout:30000});
 }
-// Centra el mapa en la ubicación (y acerca si está muy lejos)
-function msGpsCentrar(){
+// Centra el mapa en la ubicación, esté donde esté (con el mapa de fondo se ve el pueblo, la vía o la finca);
+// acercar = la primera vez. Si está fuera de las fincas y no hay fondo, se prende el satelital para ubicarse.
+function msGpsCentrar(acercar){
   const G = msE.gps, W = msE.vista, M = MAPA_FREATICO; if (!G.pos || !W) return;
-  const fuera = G.pos[0] < -2000 || G.pos[1] < -2000 || G.pos[0] > M.ancho + 2000 || G.pos[1] > M.alto + 2000;
-  if (fuera) { toast('📍 Estás fuera del área del mapa'); return; }
-  W.s = Math.max(W.s, 0.35); W.ox = W.ancho / 2 - G.pos[0] * W.s; W.oy = W.alto / 2 - (M.alto - G.pos[1]) * W.s;
+  const fuera = G.pos[0] < 0 || G.pos[1] < 0 || G.pos[0] > M.ancho || G.pos[1] > M.alto;
+  if (fuera && msE.fondo === 'no') { msE.fondo = 'sat'; document.querySelectorAll('[data-ms-fondo]').forEach(b => b.classList.toggle('on', b.dataset.msFondo === 'sat')); toast('🛰 Estás fuera de las fincas: activé el fondo satelital para ubicarte'); }
+  if (acercar) W.s = Math.max(W.s, 0.35);
+  W.ox = W.ancho / 2 - G.pos[0] * W.s; W.oy = W.alto / 2 - (M.alto - G.pos[1]) * W.s;
   if (msE.dibujar) msE.dibujar();
 }
 function msGpsTexto(msg){
@@ -445,8 +449,12 @@ function msGpsTexto(msg){
   const c = gx >= 0 && gy >= 0 && gx < F.W && gy < F.H ? F.celda[gy * F.W + gx] : -1, su = c >= 0 ? M.suertes[F.sue[c]] : null;
   const fuera = G.pos[0] < 0 || G.pos[1] < 0 || G.pos[0] > M.ancho || G.pos[1] > M.alto;
   const ss = su && typeof msSentido === 'function' ? msSentido(su[0], su[1]) : null;
-  el.innerHTML = `📍 ${su ? `Estás en la suerte <b>${esc(su[0])}</b> · ${esc(msHacN(su[1]))}${ss ? ` · surco ${msSentidoTxt(ss)}` : ''}` : fuera ? 'Estás <b>fuera del área del mapa</b>' : 'No estás dentro de una suerte (vía, canal o zona sin cartografía)'}
-    ${G.acc ? `<span class="meta">· precisión ±${msN(G.acc)} m</span>` : ''} <button type="button" class="plegar-todo" data-ms-gps-centrar>⌖ Centrar</button>
+  // Fuera de una suerte: la suerte más cercana y a qué distancia
+  let cerca = '';
+  if (!su && typeof frCentros === 'function') { let m = null; Object.entries(frCentros()).forEach(([k, c]) => { const d = Math.hypot(c.x - G.pos[0], c.y - G.pos[1]); if (!m || d < m.d) m = {k, h:c.h, d}; });
+    if (m) cerca = ` · la suerte más cercana es <b>${esc(m.k)}</b> (${esc(msHacN(m.h))}) a ${msMetros(m.d)}`; }
+  el.innerHTML = `📍 ${su ? `Estás en la suerte <b>${esc(su[0])}</b> · ${esc(msHacN(su[1]))}${ss ? ` · surco ${msSentidoTxt(ss)}` : ''}` : fuera ? `Estás <b>fuera de las fincas</b>${cerca}` : `No estás dentro de una suerte (vía, canal o zona sin cartografía)${cerca}`}
+    ${G.acc ? `<span class="meta">· precisión ±${msN(G.acc)} m</span>` : ''} ${G.seguir ? '<span class="ms-gps-sig" title="El mapa se mueve contigo">● Siguiéndote</span>' : '<button type="button" class="plegar-todo" data-ms-gps-centrar title="Centrar y volver a seguirte">⌖ Centrar</button>'}
     ${su ? `<button type="button" class="plegar-todo" data-ms-ficha="${esc(su[0])}|${esc(su[1])}">Ver ficha</button>` : ''}`;
 }
 // Punto azul con el círculo de precisión
@@ -556,7 +564,7 @@ q('maestro').addEventListener('click', e => {
   const fo = t.closest('[data-ms-fondo]');
   if (fo) { msE.fondo = fo.dataset.msFondo; try { localStorage.setItem('comite-aps:ms-fondo', msE.fondo); } catch (e2) {} document.querySelectorAll('[data-ms-fondo]').forEach(b => b.classList.toggle('on', b === fo)); msE.dibujar && msE.dibujar(); return; }
   if (t.closest('[data-ms-gps]')) { msGps(!msE.gps.on); return; }
-  if (t.closest('[data-ms-gps-centrar]')) { msGpsCentrar(); return; }
+  if (t.closest('[data-ms-gps-centrar]')) { msE.gps.seguir = true; msGpsCentrar(false); msGpsTexto(); return; }
   const cp = t.closest('[data-ms-capa]');
   if (cp) { const k = cp.dataset.msCapa; msE.capas[k] = !msE.capas[k]; cp.classList.toggle('on', msE.capas[k]); msE.dibujar && msE.dibujar(); return; }
   if (t.closest('.ms-x') || (t.classList && t.classList.contains('ms-fondo'))) { msE.ficha = null; q('ms-ficha').innerHTML = ''; return; }
