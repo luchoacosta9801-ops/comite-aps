@@ -10,7 +10,7 @@ const MS_PAL = ['#0f766e', '#2563eb', '#d97706', '#7c3aed', '#dc2626', '#16a34a'
 const msE = {emp:'RIOP', zona:'', hac:'', uso:'', estado:'', variedad:'', txt:'', color:'variedad', orden:'s', asc:true, mas:false, ficha:null, med:{modo:null, figs:[], cur:null},
   capas:{red:true, agua:true, canales:true, drensec:true, vias:true, surcos:true},
   gps:{on:false, id:null, pos:null, acc:null, centrado:false},
-  fondo:(() => { try { return localStorage.getItem('comite-aps:ms-fondo') || 'no'; } catch (e) { return 'no'; } })()};
+  fondo:(() => { try { return localStorage.getItem('comite-aps:ms-fondo') || 'sat'; } catch (e) { return 'sat'; } })(), full:false};
 // Capas del mapa del maestro (MAPA_FREATICO): [clave, nombre, color de la muestra, ayuda]
 const MS_CAPAS = [
   ['red', 'Ríos y quebradas', '#2b7bd6', 'Red hídrica (ríos, quebradas, zanjones y acequias)'],
@@ -161,12 +161,12 @@ function renderMaestro(){
       <div class="sim-kpi"><div class="l">Toneladas estimadas</div><div class="v">${msN(sum(L, x => x.tonEst || 0) / 1000, 1)} mil t</div><div class="s">ppto ${msN(sum(L, x => x.tonPpto || 0) / 1000, 1)} mil t</div></div>
     </div>
     <div class="fr-grid">
-      <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Mapa de suertes</b>
+      <div class="sim-card abierta ms-mapa-card ${msE.full ? 'ms-full' : ''}" id="ms-mapa-card"><div class="sim-card-h" style="cursor:default"><b>Mapa de suertes</b>
         <span class="ms-vistas">${Object.entries(MS_VISTAS).map(([k, v]) => `<button type="button" class="fr-ch ${msE.color === k ? 'on' : ''}" data-ms-color="${k}">${v.n}</button>`).join('')}</span></div>
-        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa">⤢ Ver todo</button><button type="button" class="plegar-todo ms-gps-btn ${msE.gps.on ? 'on' : ''}" data-ms-gps title="Muestra en el mapa dónde estás (GPS del celular o del equipo)">📍 Mi ubicación</button>
+        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo ms-full-btn" data-ms-full title="${msE.full ? 'Salir de pantalla completa (Esc)' : 'Ver el mapa en pantalla completa'}">${msE.full ? '✕ Salir' : '⛶ Pantalla completa'}</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa (encuadrar)">⤢</button><button type="button" class="plegar-todo ms-gps-btn ${msE.gps.on ? 'on' : ''}" data-ms-gps title="Muestra en el mapa dónde estás (GPS del celular o del equipo)">📍 Mi ubicación</button>
           <span class="ms-medir"><button type="button" class="plegar-todo ${msE.med.modo === 'lin' ? 'on' : ''}" data-ms-med="lin" title="Toca puntos en el mapa para medir una distancia o trazar una línea">📏 Distancia</button><button type="button" class="plegar-todo ${msE.med.modo === 'area' ? 'on' : ''}" data-ms-med="area" title="Toca los vértices para trazar una figura y medir su área">⬛ Área / figura</button>
           ${msE.med.modo || msE.med.figs.length ? `<button type="button" class="plegar-todo" data-ms-med="deshacer" title="Quitar el último punto">↶</button><button type="button" class="plegar-todo" data-ms-med="fin" title="Terminar esta medida y empezar otra">✔ Terminar</button><button type="button" class="plegar-todo" data-ms-med="borrar" title="Borrar todas las medidas">🗑</button>` : ''}</span></div>
-        <div class="ms-capas"><label class="ms-fondo-sel" title="Imagen de fondo para ubicar municipios, pueblos, vías y ríos alrededor">Fondo <select id="ms-fondo">${Object.entries(MS_FONDOS).map(([k, v]) => `<option value="${k}" ${msE.fondo === k ? 'selected' : ''}>${v.n}</option>`).join('')}</select></label><span class="meta">Capas:</span>${MS_CAPAS.map(([k, n, c, t]) => `<button type="button" class="ms-capa ${msE.capas[k] ? 'on' : ''}" data-ms-capa="${k}" title="${t}"><i style="--c:${c}" class="ms-capa-${k}"></i>${n}</button>`).join('')}</div>
+        <div class="ms-capas"><span class="ms-fondo-sel" title="Imagen de fondo para ubicar municipios, pueblos, vías y ríos alrededor"><span class="meta">Fondo:</span>${Object.entries(MS_FONDOS).map(([k, v]) => `<button type="button" class="${msE.fondo === k ? 'on' : ''}" data-ms-fondo="${k}">${v.n}</button>`).join('')}</span><span class="meta">Capas:</span>${MS_CAPAS.map(([k, n, c, t]) => `<button type="button" class="ms-capa ${msE.capas[k] ? 'on' : ''}" data-ms-capa="${k}" title="${t}"><i style="--c:${c}" class="ms-capa-${k}"></i>${n}</button>`).join('')}</div>
         <div class="ms-mapa ${msE.med.modo ? 'midiendo' : ''}" id="ms-mapa"><canvas id="ms-cv"></canvas><div class="fr-tip" id="ms-tip" hidden></div></div>
         <div class="ms-gps-txt" id="ms-gps" ${msE.gps.on ? '' : 'hidden'}></div>
         <div class="ms-medidas" id="ms-med"></div>
@@ -206,7 +206,8 @@ function msMapa(L){
   const cats = V.cats || [...new Set(L.map(x => V.cat(x, top)))].sort((a, b) => a === 'Otras' ? 1 : b === 'Otras' ? -1 : 0);
   const color = c => V.esc ? (V.esc[cats.indexOf(c)] || '#cbd5e1') : (c === 'Otras' || c === '—' ? '#cbd5e1' : MS_PAL[cats.indexOf(c) % MS_PAL.length]);
   const fila = su => { const xs = porCod[su[0]]; return xs && (xs.find(y => norm(y.hac).includes(norm(su[1])) || norm(su[1]).includes(norm(y.hac))) || xs[0]); };
-  const dpr = window.devicePixelRatio || 1, ancho = caja.clientWidth, alto = Math.min(Math.round(ancho * M.alto / M.ancho), Math.round(window.innerHeight * 0.72));
+  const dpr = window.devicePixelRatio || 1, ancho = caja.clientWidth, alto = msE.full ? Math.max(240, Math.round(window.innerHeight - caja.getBoundingClientRect().top - 8))
+    : Math.min(Math.round(ancho * M.alto / M.ancho), Math.round(window.innerHeight * 0.72));
   cv.width = ancho * dpr; cv.height = alto * dpr; cv.style.height = alto + 'px';
   // Vista (se conserva al cambiar filtros mientras el tamaño sea el mismo)
   const ajustar = () => { const s = Math.min(ancho / M.ancho, alto / M.alto) * 0.96; msE.vista = {s, ox:(ancho - M.ancho * s) / 2, oy:(alto - M.alto * s) / 2, ancho, alto}; };
@@ -392,6 +393,23 @@ function msFondoCredito(g, ancho, alto){
   g.fillStyle = 'rgba(255,255,255,.8)'; g.fillRect(ancho - w, alto - 16, w, 16); g.fillStyle = '#334155'; g.textBaseline = 'middle'; g.fillText(F.cred, ancho - w + 5, alto - 8); g.restore();
 }
 
+// ── Pantalla completa del mapa: la tarjeta del mapa ocupa toda la ventana (y, si el navegador deja, la pantalla
+// entera, sin barras). ✕ Salir, Esc o el botón atrás del celular vuelven ──
+function msPantallaCompleta(on){
+  msE.full = on; msE.vista = null;
+  document.documentElement.classList.toggle('ms-full-on', on);
+  const card = () => q('ms-mapa-card');
+  if (on) { renderMaestro(); const c = card(); if (c && c.requestFullscreen && !document.fullscreenElement) c.requestFullscreen().catch(() => {}); }
+  else { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); renderMaestro(); const c = card(); if (c) c.scrollIntoView({block:'start'}); }
+}
+document.addEventListener('fullscreenchange', () => {
+  if (vistaActual !== 'maes') return;
+  if (!document.fullscreenElement && msE.full) msPantallaCompleta(false);
+  else if (msE.full) { msE.vista = null; renderMaestro(); }   // al entrar cambia el tamaño: se reencuadra
+});
+let msRedim = 0;
+window.addEventListener('resize', () => { if (vistaActual !== 'maes' || !msE.full) return; clearTimeout(msRedim); msRedim = setTimeout(() => { msE.vista = null; renderMaestro(); }, 200); });
+
 // ── Mi ubicación: GPS del navegador (celular o equipo) sobre el mapa. La posición se queda en este navegador:
 // no se guarda ni se publica. Se pasa de lat/lon a MAGNA (frTM) y se dice en qué suerte está ──
 function msGps(encender){
@@ -534,6 +552,9 @@ q('maestro').addEventListener('click', e => {
   const md = t.closest('[data-ms-med]');
   if (md) { msMedAccion(md.dataset.msMed); return; }
   if (t.closest('[data-ms-ajustar]')) { msE.sel = null; msE.ajustar && msE.ajustar(); return; }
+  if (t.closest('[data-ms-full]')) { msPantallaCompleta(!msE.full); return; }
+  const fo = t.closest('[data-ms-fondo]');
+  if (fo) { msE.fondo = fo.dataset.msFondo; try { localStorage.setItem('comite-aps:ms-fondo', msE.fondo); } catch (e2) {} document.querySelectorAll('[data-ms-fondo]').forEach(b => b.classList.toggle('on', b === fo)); msE.dibujar && msE.dibujar(); return; }
   if (t.closest('[data-ms-gps]')) { msGps(!msE.gps.on); return; }
   if (t.closest('[data-ms-gps-centrar]')) { msGpsCentrar(); return; }
   const cp = t.closest('[data-ms-capa]');
@@ -544,7 +565,6 @@ q('maestro').addEventListener('click', e => {
 q('maestro').addEventListener('change', e => {
   const t = e.target;
   if (t.id === 'ms-archivo') { msCargarArchivo(t.files[0]); t.value = ''; return; }
-  if (t.id === 'ms-fondo') { msE.fondo = t.value; try { localStorage.setItem('comite-aps:ms-fondo', t.value); } catch (e2) {} msE.dibujar && msE.dibujar(); return; }
   const k = {'ms-zona':'zona', 'ms-hac':'hac', 'ms-uso':'uso', 'ms-estado':'estado', 'ms-variedad':'variedad'}[t.id];
   if (k) { msE[k] = t.value; renderMaestro(); }
 });
@@ -564,6 +584,7 @@ function msMedAccion(a){
 // Enter termina la figura; Ctrl+Z o Retroceso quitan el último punto (no actúan si se está escribiendo en un campo)
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && msE.ficha && q('ms-ficha')) { msE.ficha = null; q('ms-ficha').innerHTML = ''; return; }
+  if (e.key === 'Escape' && msE.full && !msE.med.modo && vistaActual === 'maes') { msPantallaCompleta(false); return; }
   if (vistaActual !== 'maes' || !msE.med.modo || /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || '')) || e.target.isContentEditable) return;
   const M = msE.med, trazando = M.cur != null && M.figs[M.cur] && !M.figs[M.cur].fin;
   if (e.key === 'Escape') { e.preventDefault(); msMedAccion(trazando ? 'fin' : 'salir'); }

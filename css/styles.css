@@ -1289,3 +1289,12 @@ body:not([data-vista="aps"]) #btn-labores{display:none!important}
 .ms-gps-txt[hidden]{display:none}
 .ms-fondo-sel{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--dim);margin-right:6px}
 .ms-fondo-sel select{font:inherit;font-weight:600;font-size:12px;padding:4px 8px;border:1px solid var(--bdr);border-radius:999px;background:#fff}
+/* Maestro: botones de fondo y pantalla completa del mapa */
+.ms-fondo-sel{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;margin-right:8px}
+.ms-fondo-sel button{font:inherit;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid var(--bdr);background:#fff;color:var(--dim);cursor:pointer}
+.ms-fondo-sel button.on{background:#0f172a;border-color:#0f172a;color:#fff}
+.ms-full-btn{font-weight:800}
+.ms-mapa-card.ms-full{position:fixed;inset:0;z-index:950;margin:0;border-radius:0;overflow:auto;background:#fff;max-width:none}
+.ms-mapa-card.ms-full .ms-full-btn{background:#b91c1c;border-color:#b91c1c;color:#fff}
+html.ms-full-on body[data-vista="maes"]{overflow:hidden}
+html.ms-full-on body[data-vista="maes"] .iv-fab{z-index:960}
