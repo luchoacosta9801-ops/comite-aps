@@ -8,7 +8,8 @@ const MS_COLS = ['s', 'emp', 'zona', 'hac', 'uso', 'estado', 'variedad', 'area',
   'proxPpto', 'proxEst', 'tchPpto', 'tchAforo', 'tonPpto', 'tonEst', 'tipoFinca', 'zonaAgro', 'lucro', 'rangoEdad', 'sector', 'quema'];
 const MS_PAL = ['#0f766e', '#2563eb', '#d97706', '#7c3aed', '#dc2626', '#16a34a', '#db2777', '#0891b2', '#65a30d', '#9333ea', '#ea580c', '#475569'];
 const msE = {emp:'RIOP', zona:'', hac:'', uso:'', estado:'', variedad:'', txt:'', color:'variedad', orden:'s', asc:true, mas:false, ficha:null, med:{modo:null, figs:[], cur:null},
-  capas:{red:true, agua:true, canales:true, drensec:true, vias:true, surcos:true}};
+  capas:{red:true, agua:true, canales:true, drensec:true, vias:true, surcos:true},
+  gps:{on:false, id:null, pos:null, acc:null, centrado:false}};
 // Capas del mapa del maestro (MAPA_FREATICO): [clave, nombre, color de la muestra, ayuda]
 const MS_CAPAS = [
   ['red', 'Ríos y quebradas', '#2b7bd6', 'Red hídrica (ríos, quebradas, zanjones y acequias)'],
@@ -161,11 +162,12 @@ function renderMaestro(){
     <div class="fr-grid">
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Mapa de suertes</b>
         <span class="ms-vistas">${Object.entries(MS_VISTAS).map(([k, v]) => `<button type="button" class="fr-ch ${msE.color === k ? 'on' : ''}" data-ms-color="${k}">${v.n}</button>`).join('')}</span></div>
-        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa">⤢ Ver todo</button>
+        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa">⤢ Ver todo</button><button type="button" class="plegar-todo ms-gps-btn ${msE.gps.on ? 'on' : ''}" data-ms-gps title="Muestra en el mapa dónde estás (GPS del celular o del equipo)">📍 Mi ubicación</button>
           <span class="ms-medir"><button type="button" class="plegar-todo ${msE.med.modo === 'lin' ? 'on' : ''}" data-ms-med="lin" title="Toca puntos en el mapa para medir una distancia o trazar una línea">📏 Distancia</button><button type="button" class="plegar-todo ${msE.med.modo === 'area' ? 'on' : ''}" data-ms-med="area" title="Toca los vértices para trazar una figura y medir su área">⬛ Área / figura</button>
           ${msE.med.modo || msE.med.figs.length ? `<button type="button" class="plegar-todo" data-ms-med="deshacer" title="Quitar el último punto">↶</button><button type="button" class="plegar-todo" data-ms-med="fin" title="Terminar esta medida y empezar otra">✔ Terminar</button><button type="button" class="plegar-todo" data-ms-med="borrar" title="Borrar todas las medidas">🗑</button>` : ''}</span></div>
         <div class="ms-capas"><span class="meta">Capas:</span>${MS_CAPAS.map(([k, n, c, t]) => `<button type="button" class="ms-capa ${msE.capas[k] ? 'on' : ''}" data-ms-capa="${k}" title="${t}"><i style="--c:${c}" class="ms-capa-${k}"></i>${n}</button>`).join('')}</div>
         <div class="ms-mapa ${msE.med.modo ? 'midiendo' : ''}" id="ms-mapa"><canvas id="ms-cv"></canvas><div class="fr-tip" id="ms-tip" hidden></div></div>
+        <div class="ms-gps-txt" id="ms-gps" ${msE.gps.on ? '' : 'hidden'}></div>
         <div class="ms-medidas" id="ms-med"></div>
         <div class="fr-cley" id="ms-ley"></div>
         <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha · en «Capas» se prenden o apagan ríos, reservorios, canales, drenaje secundario, vías y el sentido de surco (las flechas muestran hacia dónde corre el agua) · 📏 Distancia y ⬛ Área / figura miden sobre el mapa (en metros, hectáreas y m²); con el teclado: Esc o Enter terminan la figura, otro Esc sale de medir y Ctrl+Z o Retroceso quitan el último punto. Solo se dibujan las suertes que están en la cartografía.</div></div>
@@ -188,6 +190,7 @@ function renderMaestro(){
       ${ord.length > lim ? `<div style="padding:8px 12px"><button type="button" class="plegar-todo" data-ms-mas>Ver las ${ord.length} suertes</button></div>` : ''}</div>
     <div id="ms-ficha"></div>`;
   msMapa(L);
+  if (msE.gps.on) msGpsTexto(msE.gps.pos ? undefined : '⏳ Buscando tu ubicación…');
   if (msE.ficha) msFicha(msE.ficha);
 }
 
@@ -233,6 +236,7 @@ function msMapa(L){
     if (C.surcos) msSurcosDibujar(g, sx, sy, s);
     msCapasEtiquetas(g, sx, sy, s, ancho, alto);
     frEtiquetasSuertes(g, sx, sy, Vw().s, ancho, alto);
+    msGpsDibujar(g, sx, sy, Vw().s);
     msMedDibujar(g, sx, sy);
   }
   msE.dibujar = dibujar;
@@ -334,6 +338,55 @@ function msSurcosDibujar(g, sx, sy, s){
   g.restore();
 }
 
+// ── Mi ubicación: GPS del navegador (celular o equipo) sobre el mapa. La posición se queda en este navegador:
+// no se guarda ni se publica. Se pasa de lat/lon a MAGNA (frTM) y se dice en qué suerte está ──
+function msGps(encender){
+  const G = msE.gps;
+  if (!encender) { if (G.id != null) navigator.geolocation.clearWatch(G.id); Object.assign(G, {on:false, id:null, pos:null, acc:null, centrado:false}); renderMaestro(); return; }
+  if (!navigator.geolocation) { toast('⚠ Este navegador no permite conocer la ubicación'); return; }
+  G.on = true; G.centrado = false; renderMaestro(); msGpsTexto('⏳ Buscando tu ubicación… (acepta el permiso de ubicación si el navegador lo pide)');
+  G.id = navigator.geolocation.watchPosition(p => {
+    if (vistaActual !== 'maes' || !G.on) { msGps(false); return; }
+    if (typeof MAPA_FREATICO === 'undefined') return;
+    const M = MAPA_FREATICO, [x, y] = frTM(p.coords.latitude, p.coords.longitude);
+    G.pos = [x - M.x0, y - M.y0]; G.acc = p.coords.accuracy || null;
+    if (!G.centrado) { G.centrado = true; msGpsCentrar(); } else if (msE.dibujar) msE.dibujar();
+    msGpsTexto();
+  }, err => {
+    const m = err.code === 1 ? 'No diste permiso de ubicación. Actívalo en el candado de la barra de direcciones del navegador.' : err.code === 3 ? 'El GPS no respondió a tiempo; sigue intentando…' : 'No se pudo obtener la ubicación.';
+    if (err.code === 1) { msGps(false); toast('⚠ ' + m); } else msGpsTexto('⚠ ' + m);
+  }, {enableHighAccuracy:true, maximumAge:5000, timeout:30000});
+}
+// Centra el mapa en la ubicación (y acerca si está muy lejos)
+function msGpsCentrar(){
+  const G = msE.gps, W = msE.vista, M = MAPA_FREATICO; if (!G.pos || !W) return;
+  const fuera = G.pos[0] < -2000 || G.pos[1] < -2000 || G.pos[0] > M.ancho + 2000 || G.pos[1] > M.alto + 2000;
+  if (fuera) { toast('📍 Estás fuera del área del mapa'); return; }
+  W.s = Math.max(W.s, 0.35); W.ox = W.ancho / 2 - G.pos[0] * W.s; W.oy = W.alto / 2 - (M.alto - G.pos[1]) * W.s;
+  if (msE.dibujar) msE.dibujar();
+}
+function msGpsTexto(msg){
+  const el = q('ms-gps'); if (!el) return; el.hidden = false;
+  if (msg) { el.innerHTML = msg; return; }
+  const G = msE.gps, M = MAPA_FREATICO, F = frMalla(); if (!G.pos) return;
+  const gx = Math.floor(G.pos[0] / FR_CELDA), gy = Math.floor((M.alto - G.pos[1]) / FR_CELDA);
+  const c = gx >= 0 && gy >= 0 && gx < F.W && gy < F.H ? F.celda[gy * F.W + gx] : -1, su = c >= 0 ? M.suertes[F.sue[c]] : null;
+  const fuera = G.pos[0] < 0 || G.pos[1] < 0 || G.pos[0] > M.ancho || G.pos[1] > M.alto;
+  const ss = su && typeof msSentido === 'function' ? msSentido(su[0], su[1]) : null;
+  el.innerHTML = `📍 ${su ? `Estás en la suerte <b>${esc(su[0])}</b> · ${esc(msHacN(su[1]))}${ss ? ` · surco ${msSentidoTxt(ss)}` : ''}` : fuera ? 'Estás <b>fuera del área del mapa</b>' : 'No estás dentro de una suerte (vía, canal o zona sin cartografía)'}
+    ${G.acc ? `<span class="meta">· precisión ±${msN(G.acc)} m</span>` : ''} <button type="button" class="plegar-todo" data-ms-gps-centrar>⌖ Centrar</button>
+    ${su ? `<button type="button" class="plegar-todo" data-ms-ficha="${esc(su[0])}|${esc(su[1])}">Ver ficha</button>` : ''}`;
+}
+// Punto azul con el círculo de precisión
+function msGpsDibujar(g, sx, sy, s){
+  const G = msE.gps; if (!G.on || !G.pos) return;
+  const x = sx(G.pos[0]), y = sy(G.pos[1]), r = G.acc ? Math.max(8, G.acc * s) : 0;
+  g.save();
+  if (r) { g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.fillStyle = 'rgba(37,99,235,.15)'; g.fill(); g.strokeStyle = 'rgba(37,99,235,.5)'; g.lineWidth = 1; g.stroke(); }
+  g.beginPath(); g.arc(x, y, 7, 0, 2 * Math.PI); g.fillStyle = '#2563eb'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke();
+  g.restore();
+}
+
 // ── Medir sobre el mapa: distancias (líneas) y áreas (figuras). La cartografía está en metros (MAGNA Colombia Oeste),
 // así que las medidas salen directas: longitud por suma de tramos y área por la fórmula del polígono (Gauss) ──
 const msLargo = (pts, cerrar) => { let s = 0; for (let i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); if (cerrar && pts.length > 2) s += Math.hypot(pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]); return s; };
@@ -427,6 +480,8 @@ q('maestro').addEventListener('click', e => {
   const md = t.closest('[data-ms-med]');
   if (md) { msMedAccion(md.dataset.msMed); return; }
   if (t.closest('[data-ms-ajustar]')) { msE.sel = null; msE.ajustar && msE.ajustar(); return; }
+  if (t.closest('[data-ms-gps]')) { msGps(!msE.gps.on); return; }
+  if (t.closest('[data-ms-gps-centrar]')) { msGpsCentrar(); return; }
   const cp = t.closest('[data-ms-capa]');
   if (cp) { const k = cp.dataset.msCapa; msE.capas[k] = !msE.capas[k]; cp.classList.toggle('on', msE.capas[k]); msE.dibujar && msE.dibujar(); return; }
   if (t.closest('.ms-x') || (t.classList && t.classList.contains('ms-fondo'))) { msE.ficha = null; q('ms-ficha').innerHTML = ''; return; }

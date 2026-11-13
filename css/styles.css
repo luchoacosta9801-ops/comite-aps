@@ -1283,3 +1283,7 @@ body:not([data-vista="aps"]) #btn-labores{display:none!important}
 .lab-tab .lab-det{color:var(--muted);font-size:11.5px;white-space:normal;min-width:150px}
 .lab-tab .lab-in{font:inherit;font-size:11.5px;padding:2px 4px;border:1px solid var(--bdr);border-radius:6px}
 .lab-tab tfoot td{font-weight:700;background:#f8fafc}
+/* Maestro: mi ubicación */
+.ms-gps-btn.on{background:#2563eb;border-color:#2563eb;color:#fff}
+.ms-gps-txt{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 12px 8px;padding:7px 12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;font-size:12.5px;color:#1e3a8a}
+.ms-gps-txt[hidden]{display:none}
