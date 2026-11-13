@@ -1287,3 +1287,5 @@ body:not([data-vista="aps"]) #btn-labores{display:none!important}
 .ms-gps-btn.on{background:#2563eb;border-color:#2563eb;color:#fff}
 .ms-gps-txt{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 12px 8px;padding:7px 12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;font-size:12.5px;color:#1e3a8a}
 .ms-gps-txt[hidden]{display:none}
+.ms-fondo-sel{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--dim);margin-right:6px}
+.ms-fondo-sel select{font:inherit;font-weight:600;font-size:12px;padding:4px 8px;border:1px solid var(--bdr);border-radius:999px;background:#fff}

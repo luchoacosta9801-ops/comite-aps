@@ -9,7 +9,8 @@ const MS_COLS = ['s', 'emp', 'zona', 'hac', 'uso', 'estado', 'variedad', 'area',
 const MS_PAL = ['#0f766e', '#2563eb', '#d97706', '#7c3aed', '#dc2626', '#16a34a', '#db2777', '#0891b2', '#65a30d', '#9333ea', '#ea580c', '#475569'];
 const msE = {emp:'RIOP', zona:'', hac:'', uso:'', estado:'', variedad:'', txt:'', color:'variedad', orden:'s', asc:true, mas:false, ficha:null, med:{modo:null, figs:[], cur:null},
   capas:{red:true, agua:true, canales:true, drensec:true, vias:true, surcos:true},
-  gps:{on:false, id:null, pos:null, acc:null, centrado:false}};
+  gps:{on:false, id:null, pos:null, acc:null, centrado:false},
+  fondo:(() => { try { return localStorage.getItem('comite-aps:ms-fondo') || 'no'; } catch (e) { return 'no'; } })()};
 // Capas del mapa del maestro (MAPA_FREATICO): [clave, nombre, color de la muestra, ayuda]
 const MS_CAPAS = [
   ['red', 'Ríos y quebradas', '#2b7bd6', 'Red hídrica (ríos, quebradas, zanjones y acequias)'],
@@ -165,7 +166,7 @@ function renderMaestro(){
         <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa">⤢ Ver todo</button><button type="button" class="plegar-todo ms-gps-btn ${msE.gps.on ? 'on' : ''}" data-ms-gps title="Muestra en el mapa dónde estás (GPS del celular o del equipo)">📍 Mi ubicación</button>
           <span class="ms-medir"><button type="button" class="plegar-todo ${msE.med.modo === 'lin' ? 'on' : ''}" data-ms-med="lin" title="Toca puntos en el mapa para medir una distancia o trazar una línea">📏 Distancia</button><button type="button" class="plegar-todo ${msE.med.modo === 'area' ? 'on' : ''}" data-ms-med="area" title="Toca los vértices para trazar una figura y medir su área">⬛ Área / figura</button>
           ${msE.med.modo || msE.med.figs.length ? `<button type="button" class="plegar-todo" data-ms-med="deshacer" title="Quitar el último punto">↶</button><button type="button" class="plegar-todo" data-ms-med="fin" title="Terminar esta medida y empezar otra">✔ Terminar</button><button type="button" class="plegar-todo" data-ms-med="borrar" title="Borrar todas las medidas">🗑</button>` : ''}</span></div>
-        <div class="ms-capas"><span class="meta">Capas:</span>${MS_CAPAS.map(([k, n, c, t]) => `<button type="button" class="ms-capa ${msE.capas[k] ? 'on' : ''}" data-ms-capa="${k}" title="${t}"><i style="--c:${c}" class="ms-capa-${k}"></i>${n}</button>`).join('')}</div>
+        <div class="ms-capas"><label class="ms-fondo-sel" title="Imagen de fondo para ubicar municipios, pueblos, vías y ríos alrededor">Fondo <select id="ms-fondo">${Object.entries(MS_FONDOS).map(([k, v]) => `<option value="${k}" ${msE.fondo === k ? 'selected' : ''}>${v.n}</option>`).join('')}</select></label><span class="meta">Capas:</span>${MS_CAPAS.map(([k, n, c, t]) => `<button type="button" class="ms-capa ${msE.capas[k] ? 'on' : ''}" data-ms-capa="${k}" title="${t}"><i style="--c:${c}" class="ms-capa-${k}"></i>${n}</button>`).join('')}</div>
         <div class="ms-mapa ${msE.med.modo ? 'midiendo' : ''}" id="ms-mapa"><canvas id="ms-cv"></canvas><div class="fr-tip" id="ms-tip" hidden></div></div>
         <div class="ms-gps-txt" id="ms-gps" ${msE.gps.on ? '' : 'hidden'}></div>
         <div class="ms-medidas" id="ms-med"></div>
@@ -217,14 +218,18 @@ function msMapa(L){
   M.suertes.forEach(su => { const x = fila(su); if (x) { const c = V.cat(x, top); cuenta[c] = (cuenta[c] || 0) + su[2]; } });
   function dibujar(){
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#eef2f6'; g.fillRect(0, 0, ancho, alto);
-    const C = msE.capas, s = Vw().s;
-    if (C.red) { g.strokeStyle = '#7fb3e6'; g.lineWidth = 1.2; g.beginPath(); M.rios.forEach(r => linea(r)); g.stroke(); }
+    const C = msE.capas, s = Vw().s, conFondo = msE.fondo !== 'no';
+    if (conFondo) msFondoDibujar(g, dpr, ancho, alto, Vw());
+    if (C.red && !conFondo) { g.strokeStyle = '#7fb3e6'; g.lineWidth = 1.2; g.beginPath(); M.rios.forEach(r => linea(r)); g.stroke(); }
+    // Con mapa de fondo, las suertes van semitransparentes para que se vea la imagen debajo
     M.suertes.forEach(su => {
       const x = fila(su);
       g.beginPath(); su[3].forEach(r => linea(r, true));
       g.fillStyle = x ? color(V.cat(x, top)) : '#f1f5f9';
-      g.fill('evenodd'); g.strokeStyle = 'rgba(15,23,42,.35)'; g.lineWidth = Vw().s > 0.15 ? 0.9 : 0.5; g.stroke();
+      g.globalAlpha = conFondo ? (x ? 0.55 : 0.15) : 1; g.fill('evenodd'); g.globalAlpha = 1;
+      g.strokeStyle = conFondo ? 'rgba(255,255,255,.7)' : 'rgba(15,23,42,.35)'; g.lineWidth = Vw().s > 0.15 ? 0.9 : 0.5; g.stroke();
     });
+    if (conFondo) msFondoDibujar(g, dpr, ancho, alto, Vw(), 'ref');   // nombres de municipios y lugares
     if (msE.sel) { const su = M.suertes.filter(x => x[0] === msE.sel); g.strokeStyle = '#0f172a'; g.lineWidth = 3; g.beginPath(); su.forEach(x => x[3].forEach(r => linea(r, true))); g.stroke(); }
     // Capas de la cartografía sobre las suertes (cada una se prende o apaga en la barra «Capas»)
     const trazo = (rs, col, w, guion) => { g.strokeStyle = col; g.lineWidth = w; g.setLineDash(guion || []); g.beginPath(); rs.forEach(r => linea(r)); g.stroke(); g.setLineDash([]); };
@@ -238,6 +243,7 @@ function msMapa(L){
     frEtiquetasSuertes(g, sx, sy, Vw().s, ancho, alto);
     msGpsDibujar(g, sx, sy, Vw().s);
     msMedDibujar(g, sx, sy);
+    if (conFondo) msFondoCredito(g, ancho, alto);
   }
   msE.dibujar = dibujar;
   msE.aMundo = (cx, cy) => { const r = cv.getBoundingClientRect(), W = Vw(); return [(cx - r.left - W.ox) / W.s, M.alto - (cy - r.top - W.oy) / W.s]; };
@@ -336,6 +342,54 @@ function msSurcosDibujar(g, sx, sy, s){
   const w = s > 0.3 ? 2 : s >= 0.12 ? 1.5 : 1, minL = s > 0.3 ? 30 : 20;
   trazo('rgba(255,255,255,.85)', w + 2, true); trazo('#0c4a6e', w, true);
   g.restore();
+}
+
+// ── Mapa de fondo (como Google Earth): mosaicos de Esri (imagen satelital o mapa de calles) con los nombres de
+// municipios y lugares encima. Los mosaicos vienen en Web Mercator: cada uno se ubica por sus esquinas pasadas a
+// metros MAGNA (frTM) y se dibuja con una transformación afín (incluye el pequeño giro entre las dos proyecciones) ──
+const MS_FONDOS = {
+  no:   {n:'Sin fondo'},
+  sat:  {n:'🛰 Satélite', url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', max:19,
+         ref:'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', cred:'Imágenes © Esri, Maxar, Earthstar Geographics'},
+  mapa: {n:'🗺 Mapa', url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', max:19, cred:'Mapa © Esri, HERE, Garmin, OpenStreetMap'},
+};
+const MS_TILES = new Map();   // url → Image (se guardan las ya bajadas)
+let msTileEspera = 0;
+function msTile(url){
+  let im = MS_TILES.get(url);
+  if (!im) { im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => { cancelAnimationFrame(msTileEspera); msTileEspera = requestAnimationFrame(() => msE.dibujar && msE.dibujar()); }; im.src = url; MS_TILES.set(url, im);
+    if (MS_TILES.size > 800) MS_TILES.delete(MS_TILES.keys().next().value); }
+  return im.complete && im.naturalWidth ? im : null;
+}
+function msFondoDibujar(g, dpr, ancho, alto, W, capa){
+  const F = MS_FONDOS[msE.fondo]; if (!F || !F.url || !(W.s > 0) || !(ancho > 0) || !(alto > 0)) return;
+  const tpl = capa === 'ref' ? F.ref : F.url; if (!tpl) return;
+  const M = MAPA_FREATICO, aMundo = (px, py) => [(px - W.ox) / W.s + M.x0, M.alto - (py - W.oy) / W.s + M.y0];
+  const ll = [aMundo(0, 0), aMundo(ancho, 0), aMundo(0, alto), aMundo(ancho, alto)].map(p => frTMinv(p[0], p[1]));
+  const lat0 = Math.min(...ll.map(p => p[0])), lat1 = Math.max(...ll.map(p => p[0])), lon0 = Math.min(...ll.map(p => p[1])), lon1 = Math.max(...ll.map(p => p[1]));
+  // Nivel de zoom: un pixel del mosaico ≈ un pixel de pantalla (sin pasar de ~150 mosaicos)
+  const latM = (lat0 + lat1) / 2, mpp = 1 / (W.s * dpr);
+  let z = Math.max(3, Math.min(F.max, Math.round(Math.log2(156543.03 * Math.cos(latM * Math.PI / 180) / mpp))));
+  if (!Number.isFinite(z) || ![lat0, lat1, lon0, lon1].every(Number.isFinite)) return;   // (sin esto, un mapa de ancho 0 dejaba el ciclo sin fin)
+  const tx = (lon, z) => (lon + 180) / 360 * 2 ** z, ty = (lat, z) => { const r = lat * Math.PI / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * 2 ** z; };
+  let x0, x1, y0, y1;
+  for (;;) { x0 = Math.floor(tx(lon0, z)); x1 = Math.floor(tx(lon1, z)); y0 = Math.floor(ty(lat1, z)); y1 = Math.floor(ty(lat0, z)); if ((x1 - x0 + 1) * (y1 - y0 + 1) <= 150 || !(z > 3)) break; z--; }
+  const lonDe = (x, z) => x / 2 ** z * 360 - 180, latDe = (y, z) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / 2 ** z))) * 180 / Math.PI;
+  const aPant = (lat, lon) => { const [x, y] = frTM(lat, lon); return [W.ox + (x - M.x0) * W.s, W.oy + (M.alto - (y - M.y0)) * W.s]; };
+  g.save(); g.imageSmoothingEnabled = true;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const im = msTile(tpl.replace('{z}', z).replace('{y}', y).replace('{x}', x)); if (!im) continue;
+    const nw = aPant(latDe(y, z), lonDe(x, z)), ne = aPant(latDe(y, z), lonDe(x + 1, z)), sw = aPant(latDe(y + 1, z), lonDe(x, z));
+    // medio pixel de más para que no se vean rayas entre mosaicos
+    g.setTransform(dpr * (ne[0] - nw[0]) / 255.5, dpr * (ne[1] - nw[1]) / 255.5, dpr * (sw[0] - nw[0]) / 255.5, dpr * (sw[1] - nw[1]) / 255.5, dpr * nw[0], dpr * nw[1]);
+    g.drawImage(im, 0, 0, 256, 256);
+  }
+  g.restore(); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function msFondoCredito(g, ancho, alto){
+  const F = MS_FONDOS[msE.fondo]; if (!F || !F.cred) return;
+  g.save(); g.font = '10px system-ui,Segoe UI,Arial'; const w = g.measureText(F.cred).width + 10;
+  g.fillStyle = 'rgba(255,255,255,.8)'; g.fillRect(ancho - w, alto - 16, w, 16); g.fillStyle = '#334155'; g.textBaseline = 'middle'; g.fillText(F.cred, ancho - w + 5, alto - 8); g.restore();
 }
 
 // ── Mi ubicación: GPS del navegador (celular o equipo) sobre el mapa. La posición se queda en este navegador:
@@ -490,6 +544,7 @@ q('maestro').addEventListener('click', e => {
 q('maestro').addEventListener('change', e => {
   const t = e.target;
   if (t.id === 'ms-archivo') { msCargarArchivo(t.files[0]); t.value = ''; return; }
+  if (t.id === 'ms-fondo') { msE.fondo = t.value; try { localStorage.setItem('comite-aps:ms-fondo', t.value); } catch (e2) {} msE.dibujar && msE.dibujar(); return; }
   const k = {'ms-zona':'zona', 'ms-hac':'hac', 'ms-uso':'uso', 'ms-estado':'estado', 'ms-variedad':'variedad'}[t.id];
   if (k) { msE[k] = t.value; renderMaestro(); }
 });
