@@ -245,6 +245,7 @@ function msMapa(L){
     msGpsDibujar(g, sx, sy, Vw().s);
     msMedDibujar(g, sx, sy);
     if (conFondo) msFondoCredito(g, ancho, alto);
+    msNorte(g, ancho);
   }
   msE.dibujar = dibujar;
   msE.aMundo = (cx, cy) => { const r = cv.getBoundingClientRect(), W = Vw(); return [(cx - r.left - W.ox) / W.s, M.alto - (cy - r.top - W.oy) / W.s]; };
@@ -414,14 +415,20 @@ window.addEventListener('resize', () => { if (vistaActual !== 'maes' || !msE.ful
 // no se guarda ni se publica. Se pasa de lat/lon a MAGNA (frTM) y se dice en qué suerte está ──
 function msGps(encender){
   const G = msE.gps;
-  if (!encender) { if (G.id != null) navigator.geolocation.clearWatch(G.id); Object.assign(G, {on:false, id:null, pos:null, acc:null, centrado:false, seguir:false}); renderMaestro(); return; }
+  if (!encender) { if (G.id != null) navigator.geolocation.clearWatch(G.id); msBrujulaOn(false); Object.assign(G, {on:false, id:null, pos:null, acc:null, centrado:false, seguir:false, rumbo:null, brujula:false}); renderMaestro(); return; }
   if (!navigator.geolocation) { toast('⚠ Este navegador no permite conocer la ubicación'); return; }
-  G.on = true; G.centrado = false; G.seguir = true; renderMaestro(); msGpsTexto('⏳ Buscando tu ubicación… (acepta el permiso de ubicación si el navegador lo pide)');
+  // Brújula: en iPhone hay que pedir permiso dentro del toque al botón
+  const DOE = window.DeviceOrientationEvent;
+  msBrujulaOn(true);   // se escucha siempre; en iPhone los datos llegan solo si se concede el permiso
+  if (DOE && typeof DOE.requestPermission === 'function') DOE.requestPermission().catch(() => {});
+  G.on = true; G.centrado = false; G.seguir = true; G.rumbo = null; G.brujula = false; renderMaestro(); msGpsTexto('⏳ Buscando tu ubicación… (acepta el permiso de ubicación si el navegador lo pide)');
   G.id = navigator.geolocation.watchPosition(p => {
     if (vistaActual !== 'maes' || !G.on) { msGps(false); return; }
     if (typeof MAPA_FREATICO === 'undefined') return;
     const M = MAPA_FREATICO, [x, y] = frTM(p.coords.latitude, p.coords.longitude);
     G.pos = [x - M.x0, y - M.y0]; G.acc = p.coords.accuracy || null;
+    // Sin brújula (computador, algunos celulares): el rumbo del GPS cuando hay movimiento
+    if (!G.brujula && p.coords.heading != null && !isNaN(p.coords.heading) && (p.coords.speed || 0) > 0.7) G.rumbo = p.coords.heading;
     // La primera vez se centra y acerca; después, mientras esté en «seguir», el mapa acompaña el punto
     // (al arrastrar el mapa se deja de seguir; ⌖ Centrar vuelve a seguir)
     if (!G.centrado) { G.centrado = true; msGpsCentrar(true); } else if (G.seguir) msGpsCentrar(false); else if (msE.dibujar) msE.dibujar();
@@ -454,19 +461,56 @@ function msGpsTexto(msg){
   if (!su && typeof frCentros === 'function') { let m = null; Object.entries(frCentros()).forEach(([k, c]) => { const d = Math.hypot(c.x - G.pos[0], c.y - G.pos[1]); if (!m || d < m.d) m = {k, h:c.h, d}; });
     if (m) cerca = ` · la suerte más cercana es <b>${esc(m.k)}</b> (${esc(msHacN(m.h))}) a ${msMetros(m.d)}`; }
   el.innerHTML = `📍 ${su ? `Estás en la suerte <b>${esc(su[0])}</b> · ${esc(msHacN(su[1]))}${ss ? ` · surco ${msSentidoTxt(ss)}` : ''}` : fuera ? `Estás <b>fuera de las fincas</b>${cerca}` : `No estás dentro de una suerte (vía, canal o zona sin cartografía)${cerca}`}
-    ${G.acc ? `<span class="meta">· precisión ±${msN(G.acc)} m</span>` : ''} ${G.seguir ? '<span class="ms-gps-sig" title="El mapa se mueve contigo">● Siguiéndote</span>' : '<button type="button" class="plegar-todo" data-ms-gps-centrar title="Centrar y volver a seguirte">⌖ Centrar</button>'}
+    ${G.acc ? `<span class="meta">· precisión ±${msN(G.acc)} m</span>` : ''} <span class="meta" id="ms-gps-rumbo"></span> ${G.seguir ? '<span class="ms-gps-sig" title="El mapa se mueve contigo">● Siguiéndote</span>' : '<button type="button" class="plegar-todo" data-ms-gps-centrar title="Centrar y volver a seguirte">⌖ Centrar</button>'}
     ${su ? `<button type="button" class="plegar-todo" data-ms-ficha="${esc(su[0])}|${esc(su[1])}">Ver ficha</button>` : ''}`;
+  msGpsRumboTxt();
 }
-// Punto azul con el círculo de precisión
+// Punto azul con el círculo de precisión y, si se sabe hacia dónde mira o va la persona (G.rumbo, grados desde el
+// norte), un abanico y una punta en esa dirección. El mapa está con el norte arriba (MAGNA, giro < 0,1°)
 function msGpsDibujar(g, sx, sy, s){
   const G = msE.gps; if (!G.on || !G.pos) return;
   const x = sx(G.pos[0]), y = sy(G.pos[1]), r = G.acc ? Math.max(8, G.acc * s) : 0;
   g.save();
   if (r) { g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.fillStyle = 'rgba(37,99,235,.15)'; g.fill(); g.strokeStyle = 'rgba(37,99,235,.5)'; g.lineWidth = 1; g.stroke(); }
+  if (G.rumbo != null) {
+    const a = (G.rumbo - 90) * Math.PI / 180, ab = 0.5;   // abanico de ±29°
+    const gr = g.createRadialGradient(x, y, 4, x, y, 46); gr.addColorStop(0, 'rgba(37,99,235,.45)'); gr.addColorStop(1, 'rgba(37,99,235,0)');
+    g.beginPath(); g.moveTo(x, y); g.arc(x, y, 46, a - ab, a + ab); g.closePath(); g.fillStyle = gr; g.fill();
+    // punta de flecha pegada al punto
+    g.beginPath(); g.moveTo(x + Math.cos(a) * 17, y + Math.sin(a) * 17); g.lineTo(x + Math.cos(a + 2.4) * 9, y + Math.sin(a + 2.4) * 9); g.lineTo(x + Math.cos(a - 2.4) * 9, y + Math.sin(a - 2.4) * 9); g.closePath();
+    g.fillStyle = '#1d4ed8'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#fff'; g.stroke();
+  }
   g.beginPath(); g.arc(x, y, 7, 0, 2 * Math.PI); g.fillStyle = '#2563eb'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke();
   g.restore();
 }
-
+// Rumbo desde la brújula del celular (deviceorientation): Android da «absolute» (alpha respecto al norte), iPhone
+// da webkitCompassHeading (y pide permiso al tocar el botón). Se corrige por el giro de la pantalla y se suaviza.
+function msBrujula(e){
+  const G = msE.gps; if (!G.on) return;
+  let h = null;
+  if (e.webkitCompassHeading != null && !isNaN(e.webkitCompassHeading)) h = e.webkitCompassHeading;
+  else if ((e.absolute || e.type === 'deviceorientationabsolute') && e.alpha != null) h = 360 - e.alpha;
+  if (h == null) return;
+  const giro = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+  h = ((h + giro) % 360 + 360) % 360;
+  if (G.rumbo == null) G.rumbo = h; else { let d = ((h - G.rumbo + 540) % 360) - 180; G.rumbo = (G.rumbo + d * 0.3 + 360) % 360; }
+  G.brujula = true;
+  msGpsRumboTxt(); cancelAnimationFrame(G.raf); G.raf = requestAnimationFrame(() => { msE.dibujar && msE.dibujar(); });
+}
+function msBrujulaOn(on){
+  ['deviceorientationabsolute', 'deviceorientation'].forEach(t => window[on ? 'addEventListener' : 'removeEventListener'](t, msBrujula, true));
+}
+const MS_RUMBO_N = ['norte', 'noreste', 'este', 'sureste', 'sur', 'suroeste', 'oeste', 'noroeste'];
+function msGpsRumboTxt(){ const el = q('ms-gps-rumbo'), G = msE.gps; if (el) el.textContent = G.rumbo != null ? `🧭 mirando al ${MS_RUMBO_N[Math.round(G.rumbo / 45) % 8]} (${Math.round(G.rumbo)}°)` : ''; }
+// Rosa del norte en la esquina del mapa
+function msNorte(g, ancho){
+  const x = ancho - 30, y = 40;
+  g.save(); g.beginPath(); g.arc(x, y, 20, 0, 2 * Math.PI); g.fillStyle = 'rgba(255,255,255,.9)'; g.fill(); g.lineWidth = 1; g.strokeStyle = 'rgba(15,23,42,.25)'; g.stroke();
+  g.beginPath(); g.moveTo(x, y - 15); g.lineTo(x + 6, y + 1); g.lineTo(x, y - 3); g.lineTo(x - 6, y + 1); g.closePath(); g.fillStyle = '#dc2626'; g.fill();
+  g.beginPath(); g.moveTo(x, y + 15); g.lineTo(x + 6, y - 1); g.lineTo(x, y + 3); g.lineTo(x - 6, y - 1); g.closePath(); g.fillStyle = '#94a3b8'; g.fill();
+  g.font = '800 10px system-ui,Segoe UI,Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#0f172a'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText('N', x, y - 28); g.fillText('N', x, y - 28);
+  g.restore();
+}
 // ── Medir sobre el mapa: distancias (líneas) y áreas (figuras). La cartografía está en metros (MAGNA Colombia Oeste),
 // así que las medidas salen directas: longitud por suma de tramos y área por la fórmula del polígono (Gauss) ──
 const msLargo = (pts, cerrar) => { let s = 0; for (let i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); if (cerrar && pts.length > 2) s += Math.hypot(pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]); return s; };
