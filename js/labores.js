@@ -21,8 +21,7 @@
 // Fecha Inicio viene mezclada: texto dd/mm/aaaa y fechas que Excel volteó (día por mes).
 
 const LAB_LABORES = [
-  {k:'despaje',   n:'Despaje',        ico:'🍂', tipo:'alerta', col:'#b45309'},
-  {k:'reencalle', n:'Reencalle',      ico:'〰️', tipo:'alerta', col:'#7c3aed'},
+  // Despaje y reencalle (alertas por días después del corte) se quitaron el 16 nov 2026 a pedido de Luis
   {k:'rotur',     n:'1ra roturación', ico:'🚜', tipo:'prog',   col:'#0369a1', bd:'r1'},
   {k:'rotur2',    n:'2da roturación', ico:'🚜', tipo:'prog',   col:'#0e7490', bd:'r2'},
   {k:'fert',      n:'Fertilización',  ico:'🌱', tipo:'prog',   col:'#15803d', bd:'fe'},
@@ -146,10 +145,6 @@ function renderLabores(){
       <div class="v">${msN(haL(urg, Lb), 1)}<small> ha pendientes</small></div>
       <div class="s">${urg.length} suertes${ven.length ? ` · <b style="color:#b91c1c">${ven.length} vencidas</b>` : ''}<br>${Lb.tipo === 'prog' ? `${cuenta('programada').length} programadas · ` : ''}${cuenta('hecha').length} realizadas${cuenta('sindato').length ? ` · <span title="El Excel no dice si la tiene: confírmalo en la ficha 📝">${cuenta('sindato').length} sin dato</span>` : ''}</div>
       <span class="plegar-todo lab-kpi-ver">Ver todas</span></div>`; }).join('');
-  // Alertas de despaje y reencalle (las más urgentes primero)
-  const alertas = [];
-  T.forEach(o => LAB_LABORES.filter(Lb => Lb.tipo === 'alerta').forEach(Lb => { const s = labEstado(o, Lb); if (s.e === 'pendiente' || s.e === 'vencida') alertas.push({o, Lb, s, falta:P[Lb.k][1] - o.dd}); }));
-  alertas.sort((a, b) => a.falta - b.falta);
   // Programa semanal de roturación y fertilización (fechas programadas, de esta semana en adelante)
   const PROG = LAB_LABORES.filter(Lb => Lb.tipo === 'prog'), sem = {};
   T.forEach(o => PROG.forEach(Lb => { const r = o.reg[Lb.k] || {}, e = labEstado(o, Lb).e; if (!r.p || e === 'hecha' || e === 'noaplica') return;
@@ -160,8 +155,8 @@ function renderLabores(){
   const chip = s => { const E = LAB_EST[s.e]; return `<span class="lab-chip" style="color:${E.col};background:${E.bg}" title="${esc(s.t)}">${E.n}</span>`; };
   // Lo que dice la casilla del Excel, tal cual (S / N / vacía)
   const xl = (o, Lb) => !Lb.bd || !o.bd ? '' : o.bd.sn ? `<small class="lab-xl">Excel: ${o.bd[Lb.bd] ? String(o.bd[Lb.bd]).toUpperCase() : '—'}</small>` : '';
-  // Orden de columnas: primero lo que trae el Excel (1ra, 2da, fertilización), luego las alertas
-  const LAB_COLS = ['rotur', 'rotur2', 'fert', 'despaje', 'reencalle'].map(k => LAB_LABORES.find(Lb => Lb.k === k));
+  // Columnas: lo que trae el Excel (1ra, 2da roturación y fertilización)
+  const LAB_COLS = LAB_LABORES;
   const LbSel = LAB_LABORES.find(x => x.k === labE.labor);
   const fichaBtn = o => `<td><button type="button" class="plegar-todo lab-fbtn" data-lab-ficha="${esc(o.key)}" title="Ficha de labores: roturación y fertilización (con quién, implemento, producto)">📝 ${ed ? 'Ficha' : 'Ver'}</button></td>`;
   const datos = o => `<td class="b lab-cod"><a href="#" data-lab-ficha="${esc(o.key)}" title="Abrir la ficha de labores">${esc(o.x.s)}</a>${o.fuente === 'maestro' ? ' <small class="lab-fu" title="Cosechada según el maestro; aún no está en el Excel de labores pendientes">maestro</small>' : ''}</td>
@@ -198,10 +193,7 @@ function renderLabores(){
       <div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="plegar-todo" data-ir="aps">📊 Dashboard Comité APS</button><button type="button" class="plegar-todo" data-lab-excel>📊 Excel</button></div></div>
     ${ed ? labCargaHTML() : ''}
     <div class="sim-kpis lab-kpis">${kpi}</div>
-    <div class="fr-grid2">
-      <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>🔔 Alertas de despaje y reencalle</b> <span class="meta">· ${alertas.length}</span></div>
-        <div class="lab-alertas">${alertas.slice(0, 40).map(a => `<div class="lab-al ${a.s.e}"><b>${esc(a.Lb.ico)} ${esc(a.Lb.n)}</b> · <a href="#" class="b" data-lab-ficha="${esc(a.o.key)}">${esc(a.o.x.s)}</a> ${esc(msHacN(a.o.x.hac))} · ${msN(a.o.x.area, 2)} ha <span class="meta">· cortada hace ${a.o.dd} d</span><span class="lab-al-t">${esc(a.s.t)}</span></div>`).join('') || '<div class="nores">Sin alertas: todo al día ✓</div>'}
-        ${alertas.length > 40 ? `<div class="meta" style="padding:6px 12px">… y ${alertas.length - 40} más (en la tabla, elige Despaje o Reencalle)</div>` : ''}</div></div>
+    <div>
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>📅 Programa de roturación y fertilización</b> <span class="meta">· por semana</span></div>
         <div class="sim-tw"><table class="sim-t"><thead><tr><th>Semana</th>${PROG.map(Lb => `<th class="n">${Lb.ico} ${Lb.n}</th>`).join('')}</tr></thead><tbody>
         ${semanas.map(w => { const s = sem[w], c = k => s[k] ? `${s[k].n} st · <b>${msN(s[k].a, 1)} ha</b>` : '<span class="meta">—</span>';
