@@ -1299,3 +1299,25 @@ body:not([data-vista="aps"]) #btn-labores{display:none!important}
 html.ms-full-on body[data-vista="maes"]{overflow:hidden}
 html.ms-full-on body[data-vista="maes"] .iv-fab{z-index:960}
 .ms-gps-sig{font-size:11.5px;font-weight:800;color:#2563eb}
+/* Control de labores · ficha de labores de la suerte (roturación y fertilización) */
+.lab-tab .lab-cod a{color:inherit;text-decoration:underline dotted;text-underline-offset:3px}
+.lab-al a{color:inherit}
+.lab-fbtn{font-size:11px;padding:3px 8px}
+.lf-ficha{max-width:640px}
+.lf-sec{border:1px solid var(--bdr);border-left:4px solid var(--c);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.lf-h{font-weight:800;font-size:14px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lf-q{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px;margin:6px 0}
+.lf-seg{display:inline-flex;border:1.5px solid var(--bdr);border-radius:999px;overflow:hidden}
+.lf-seg button{font:inherit;font-size:12.5px;font-weight:700;border:0;background:#fff;color:var(--dim);padding:5px 12px;cursor:pointer}
+.lf-seg button+button{border-left:1.5px solid var(--bdr)}
+.lf-seg button.on{background:var(--c,#0f172a);color:#fff}
+.lf-seg button:disabled{cursor:default}
+.lf-ex{font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:#f3f4f6;color:#6b7280}
+.lf-ex.hecha{background:#dcfce7;color:#15803d}.lf-ex.pend{background:#fee2e2;color:#b91c1c}
+.lf-pase{background:#f8fafc;border:1px solid var(--bdr);border-radius:10px;padding:8px 10px;margin-top:8px}
+.lf-pt{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.lf-campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:8px}
+.lf-campos label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--dim);font-weight:600}
+.lf-campos input,.lf-q input,.lf-sec textarea{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--bdr);border-radius:8px;background:#fff;color:var(--text)}
+.lf-sec textarea{width:100%;box-sizing:border-box;resize:vertical}
+.lf-ayuda{font-size:12px;margin:4px 0 8px}

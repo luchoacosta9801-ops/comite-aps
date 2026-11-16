@@ -121,8 +121,8 @@ function Freatico($ctx) {
 }
 
 
-# GET /api/levante: el reporte de labores pendientes de levante más reciente de Documents\OPERACIONES CAMPO - LEVANTE
-# (labores_pendientes_*.xlsx, hoja BD), tal cual; la página lo lee. ?info=1: solo nombre y fecha. Nunca se sube a GitHub.
+# GET /api/levante: el Excel de labores pendientes de levante más reciente de Documents\OPERACIONES CAMPO - LEVANTE
+# («Maestro Suertes y labores pendientes ….xlsx», hoja Hoja1 (2); si no hay, labores_pendientes_*.xlsx, hoja BD), tal cual; la página lo lee. ?info=1: solo nombre y fecha. Nunca se sube a GitHub.
 $carpetaLevante = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'OPERACIONES CAMPO - LEVANTE'
 function Levante($ctx) {
   $req = $ctx.Request; $res = $ctx.Response
@@ -132,7 +132,7 @@ function Levante($ctx) {
   }
   $f = Get-ChildItem -Path $carpetaLevante -Filter '*.xls*' -File -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -notlike '~$*' -and $_.Name -match 'labores' } |
-    Sort-Object @{ e = { if ($_.Name -match ' Z[0-9]') { 1 } else { 0 } } }, @{ e = 'LastWriteTime'; Descending = $true } | Select-Object -First 1   # el completo antes que los de una zona (Z1, Z2)
+    Sort-Object @{ e = { if ($_.Name -match 'maestro') { 0 } elseif ($_.Name -match ' Z[0-9]') { 2 } else { 1 } } }, @{ e = 'LastWriteTime'; Descending = $true } | Select-Object -First 1   # primero el «Maestro Suertes y labores pendientes» (hoja Hoja1 (2)); luego el reporte completo antes que los de una zona (Z1, Z2)
   if (-not $f) { return Responder $res 404 @{ ok = $false; error = "No hay reporte de labores en $carpetaLevante" } }
   if ($req.QueryString['info']) { return Responder $res 200 @{ ok = $true; archivo = $f.Name; fecha = $f.LastWriteTime.ToString('s') } }
   $tmp = [IO.Path]::GetTempFileName(); Copy-Item $f.FullName $tmp -Force
