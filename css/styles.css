@@ -1336,3 +1336,39 @@ html.ms-full-on body[data-vista="maes"] .iv-fab{z-index:960}
 .lab-estsel .est-pend.on,.lab-estsel .est-venc.on{background:#b91c1c;border-color:#b91c1c}
 .lab-estsel .est-sindato.on{background:#6b7280;border-color:#6b7280}
 .lab-xl{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+/* Control de labores · diseño compacto (16 nov 2026): encabezado con íconos, recuadros pequeños y barra de botones */
+.lab-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 10px}
+.lab-top .sim-tit{cursor:help}
+.lab-aviso{font-size:11px;font-weight:700;color:#b45309;background:#fef3c7;border-radius:999px;padding:2px 8px;vertical-align:middle}
+.lab-acc{display:flex;gap:6px}
+.lab-ico{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--bdr);border-radius:10px;background:#fff;cursor:pointer;font-size:15px;padding:0}
+.lab-ico:hover{background:#f1f5f9}
+.lab-minis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.lab-mini{font:inherit;text-align:left;display:flex;flex-direction:column;gap:4px;padding:9px 12px;border:1px solid var(--bdr);border-left:4px solid var(--c);border-radius:12px;background:#fff;cursor:pointer;color:var(--text);transition:box-shadow .15s}
+.lab-mini:hover{box-shadow:0 4px 14px rgba(15,23,42,.10)}
+.lab-mini.on{box-shadow:0 0 0 2px var(--c);background:color-mix(in srgb,var(--c) 5%,#fff)}
+.lab-mini-t{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--c)}
+.lab-mini-v{font-size:12px;color:var(--dim)}
+.lab-mini-v b{font-family:var(--mono);font-size:19px;color:var(--text);margin-right:2px}
+.lab-mini-bar{display:flex;height:5px;border-radius:999px;overflow:hidden;background:#f1f5f9}
+.lab-mini-bar i{display:block;height:100%}
+.lab-mini-s{font-size:11px;color:var(--muted)}
+.lab-mini-s .ok{color:#15803d;font-weight:700}.lab-mini-s .pe{color:#b91c1c;font-weight:700}
+.lab-barra{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px 4px}
+.lab-seg{display:inline-flex;background:#f1f5f9;border-radius:10px;padding:3px;gap:2px}
+.lab-seg button{font:inherit;font-size:12px;font-weight:700;border:0;background:transparent;color:var(--dim);padding:4px 10px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.lab-seg button.on{background:#fff;color:var(--c,#0f172a);box-shadow:0 1px 3px rgba(15,23,42,.15)}
+.lab-pills{display:inline-flex;flex-wrap:wrap;gap:4px}
+.lab-pills button{font:inherit;font-size:11.5px;font-weight:600;border:1px solid var(--bdr);background:#fff;color:var(--dim);padding:2px 9px;border-radius:999px;cursor:pointer}
+.lab-pills button b{font-weight:800;color:var(--text);margin-left:2px}
+.lab-pills button.on{background:#0f172a;border-color:#0f172a;color:#fff}.lab-pills button.on b{color:#fff}
+.lab-pills .est-hecha.on{background:#15803d;border-color:#15803d}
+.lab-pills .est-pend.on,.lab-pills .est-venc.on{background:#b91c1c;border-color:#b91c1c}
+.lab-pills .est-sindato.on{background:#6b7280;border-color:#6b7280}
+.lab-cuenta{margin-left:auto;font-size:11.5px;color:var(--muted)}
+#lab-tabla .lab-filtros{padding:6px 12px 8px;gap:6px}
+#lab-tabla .lab-filtros select,#lab-tabla .lab-filtros input{font-size:12px;padding:4px 8px;border-radius:8px}
+#lab-tabla .lab-filtros .pr-buscar{min-width:180px}
+details.lab-prog{padding:6px 12px}
+details.lab-prog summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--dim)}
+@media (max-width:760px){.lab-minis{grid-template-columns:1fr;gap:6px}.lab-cuenta{margin-left:0;width:100%}.lab-seg{flex-wrap:wrap}}
