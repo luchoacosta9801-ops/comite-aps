@@ -1,7 +1,7 @@
 // Datos publicados del Comité APS. Archivo generado por la app ("Publicar para todos");
 // cambiar meta.corte hace que los navegadores descarten lo guardado y tomen estos datos.
 const SEED = {
-  meta: {"fecha":"3 Nov 2026","semana":"Semana 45","corte":"2026-11-16T23:22:12.943Z","pptoTotal":620.24},
+  meta: {"fecha":"3 Nov 2026","semana":"Semana 45","corte":"2026-11-16T23:22:25.967Z","pptoTotal":620.24},
   lotes: [
     {"s":"3110-050","h":"NORMANDIA","z":2,"a":8.33,"c":"CAÑA","d":278,"e":"SEMBRADA","p":"SI","v":"CC 01-1940"},
     {"s":"3501-050","h":"RIOPAILA","z":1,"a":8.62,"c":"CAÑA","d":314,"e":"SEMBRADA","p":"SI","v":"CC 01-1940"},
