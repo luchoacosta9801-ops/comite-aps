@@ -1321,3 +1321,18 @@ html.ms-full-on body[data-vista="maes"] .iv-fab{z-index:960}
 .lf-campos input,.lf-q input,.lf-sec textarea{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--bdr);border-radius:8px;background:#fff;color:var(--text)}
 .lf-sec textarea{width:100%;box-sizing:border-box;resize:vertical}
 .lf-ayuda{font-size:12px;margin:4px 0 8px}
+/* Control de labores: recuadros clicables y botones de estado del listado (17 nov 2026) */
+.lab-kpi[data-lab-labor]{cursor:pointer;transition:box-shadow .15s,transform .15s}
+.lab-kpi[data-lab-labor]:hover{box-shadow:0 6px 18px rgba(15,23,42,.12);transform:translateY(-1px)}
+.lab-kpi.on{box-shadow:0 0 0 2px var(--c);background:color-mix(in srgb,var(--c) 6%,#fff)}
+.lab-kpi .s{padding-right:0}
+.lab-kpi .plegar-todo.lab-kpi-ver{position:static;display:inline-block;margin-top:8px}
+.lab-kpi .lab-kpi-ver{pointer-events:none}
+.lab-estsel{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 0}
+.lab-estsel button{font:inherit;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;border:1.5px solid var(--bdr);background:#fff;color:var(--dim);cursor:pointer}
+.lab-estsel button b{margin-left:3px;color:var(--text)}
+.lab-estsel button.on{background:#0f172a;border-color:#0f172a;color:#fff}.lab-estsel button.on b{color:#fff}
+.lab-estsel .est-hecha.on{background:#15803d;border-color:#15803d}
+.lab-estsel .est-pend.on,.lab-estsel .est-venc.on{background:#b91c1c;border-color:#b91c1c}
+.lab-estsel .est-sindato.on{background:#6b7280;border-color:#6b7280}
+.lab-xl{display:block;font-size:10px;color:var(--muted);margin-top:2px}

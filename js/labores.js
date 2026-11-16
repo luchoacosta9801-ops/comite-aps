@@ -30,7 +30,7 @@ const LAB_LABORES = [
 // Ventanas por defecto (días después del corte); el editor las cambia en «Parámetros»
 const LAB_DEF = {dias:60, despaje:[0, 10], reencalle:[5, 15], rotur:[15, 30], rotur2:[30, 50], fert:[25, 45]};
 const LAB_EST = {
-  hecha:      {n:'Hecha',      col:'#15803d', bg:'#dcfce7'},
+  hecha:      {n:'Realizada',  col:'#15803d', bg:'#dcfce7'},
   programada: {n:'Programada', col:'#1d4ed8', bg:'#dbeafe'},
   atrasada:   {n:'Atrasada',   col:'#c2410c', bg:'#ffedd5'},
   pendiente:  {n:'Pendiente',  col:'#a16207', bg:'#fef9c3'},
@@ -39,7 +39,7 @@ const LAB_EST = {
   sindato:    {n:'Sin dato',   col:'#6b7280', bg:'#f3f4f6'},
   noaplica:   {n:'No aplica',  col:'#94a3b8', bg:'#f8fafc'},
 };
-const labE = {zona:'', hac:'', txt:'', labor:'', estado:'pend', orden:'corte', progFecha:'', fuente:'', ficha:null, sucio:false};
+const labE = {zona:'', hac:'', txt:'', labor:'', estado:'', orden:'excel', progFecha:'', fuente:'', ficha:null, sucio:false};
 const LAB_IMPL = ['Subsolador', 'Triple'];   // implementos de la roturación única
 
 function labDatos(){
@@ -64,15 +64,15 @@ function labSuertes(){
   const ms = msFilas().filter(x => x.emp === 'RIOP'), porCod = {};
   ms.forEach(x => { const o = porCod[x.s]; if (!o || (/^CAÑA$/i.test(x.uso || '') && !/^CAÑA$/i.test(o.uso || ''))) porCod[x.s] = x; });
   const out = [];
-  if (B) B.filas.forEach(f => { const m = porCod[f.s] || {};
+  if (B) B.filas.forEach((f, i) => { const m = porCod[f.s] || {};
     out.push({x:{s:f.s, hac:m.hac || '', zona:f.z ?? m.zona, area:f.a, variedad:m.variedad || f.v, nCorte:m.nCorte ?? f.nc, ultCorte:f.f, zonaAgro:f.za || m.zonaAgro, tipo:f.tipo,
-      desdeSiembra:!!(f.fs && f.f === f.fs && f.fs !== f.fc), par:f.par}, bd:f, fuente:'reporte'}); });
+      desdeSiembra:!!(f.fs && f.f === f.fs && f.fs !== f.fc), par:f.par}, bd:f, fuente:'reporte', i}); });
   const renov = new Set((DB.lotes || []).map(l => l.s + '|' + norm(l.h)));
   ms.filter(x => x.ultCorte && x.estado !== 'PROCESO' && /^(CAÑA|SEMILLA)$/i.test(x.uso || '') && !renov.has(x.s + '|' + norm(x.hac)))
     .forEach(x => { const dd = labDias(x.ultCorte, hoy); if (dd < 0 || dd > P.dias) return;
       // Ya está en el reporte si trae esa suerte con un corte de la misma fecha o posterior (±10 días)
       if (B && B.filas.some(f => f.s === x.s && labDias(x.ultCorte, f.f) >= -10)) return;
-      out.push({x:{s:x.s, hac:x.hac, zona:x.zona, area:x.area, variedad:x.variedad, nCorte:x.nCorte, ultCorte:x.ultCorte, zonaAgro:x.zonaAgro}, bd:null, fuente:'maestro'}); });
+      out.push({x:{s:x.s, hac:x.hac, zona:x.zona, area:x.area, variedad:x.variedad, nCorte:x.nCorte, ultCorte:x.ultCorte, zonaAgro:x.zonaAgro}, bd:null, fuente:'maestro', i:1e6}); });
   return out.map(o => Object.assign(o, {dd:labDias(o.x.ultCorte, hoy), key:`${o.x.s}|${o.x.ultCorte}`}))
     .map(o => Object.assign(o, {reg:R[o.key] || {}}));
 }
@@ -118,7 +118,7 @@ const labBloque = (A, Lb, campo) => A.filter(o => { const r = o.reg[Lb.k] || {},
 // Filtros de la tabla: labE.labor (una labor o todas) y labE.estado: pend (pendientes) / venc (vencidas o atrasadas) /
 // prog (programadas) / hecha / '' (todas). Con una labor elegida se mira solo esa; con todas, basta que alguna cumpla
 // (y para «hecha», que todas lo estén)
-const LAB_ESTADOS = [['pend', 'Pendientes'], ['venc', 'Vencidas o atrasadas'], ['prog', 'Programadas'], ['sindato', 'Sin dato en el Excel'], ['hecha', 'Hechas'], ['', 'Todas']];
+const LAB_ESTADOS = [['pend', 'Pendientes'], ['venc', 'Vencidas o atrasadas'], ['prog', 'Programadas'], ['sindato', 'Sin dato en el Excel'], ['hecha', 'Realizadas'], ['', 'Todas']];
 const labCumple = (e, est) => est === 'pend' ? labPorHacer(e) : est === 'sindato' ? e === 'sindato' : est === 'venc' ? (e === 'vencida' || e === 'atrasada')
   : est === 'prog' ? (e === 'programada' || e === 'atrasada') : est === 'hecha' ? (e === 'hecha' || e === 'noaplica') : true;
 function labFiltradas(T){
@@ -142,10 +142,10 @@ function renderLabores(){
   // KPI por labor
   const kpi = LAB_LABORES.map(Lb => { const E = T.map(o => labEstado(o, Lb).e), cuenta = e => T.filter((o, i) => E[i] === e);
     const urg = T.filter((o, i) => labPorHacer(E[i])), ven = T.filter((o, i) => E[i] === 'vencida' || E[i] === 'atrasada');
-    return `<div class="sim-kpi lab-kpi" style="--c:${Lb.col}"><div class="l">${Lb.ico} ${Lb.n} <small>${P[Lb.k][0]}–${P[Lb.k][1]} d</small></div>
+    return `<div class="sim-kpi lab-kpi ${labE.labor === Lb.k ? 'on' : ''}" style="--c:${Lb.col}" data-lab-labor="${Lb.k}" data-lab-ir role="button" tabindex="0" title="Ver todas las suertes con ${Lb.n.toLowerCase()}: realizadas y pendientes"><div class="l">${Lb.ico} ${Lb.n} <small>${P[Lb.k][0]}–${P[Lb.k][1]} d</small></div>
       <div class="v">${msN(haL(urg, Lb), 1)}<small> ha pendientes</small></div>
-      <div class="s">${urg.length} suertes${ven.length ? ` · <b style="color:#b91c1c">${ven.length} vencidas</b>` : ''}<br>${Lb.tipo === 'prog' ? `${cuenta('programada').length} programadas · ` : ''}${cuenta('hecha').length} hechas${cuenta('sindato').length ? ` · <span title="El Excel no dice si la tiene: confírmalo en la ficha 📝">${cuenta('sindato').length} sin dato</span>` : ''}</div>
-      <button type="button" class="plegar-todo" data-lab-labor="${Lb.k}" data-lab-ir>Ver</button></div>`; }).join('');
+      <div class="s">${urg.length} suertes${ven.length ? ` · <b style="color:#b91c1c">${ven.length} vencidas</b>` : ''}<br>${Lb.tipo === 'prog' ? `${cuenta('programada').length} programadas · ` : ''}${cuenta('hecha').length} realizadas${cuenta('sindato').length ? ` · <span title="El Excel no dice si la tiene: confírmalo en la ficha 📝">${cuenta('sindato').length} sin dato</span>` : ''}</div>
+      <span class="plegar-todo lab-kpi-ver">Ver todas</span></div>`; }).join('');
   // Alertas de despaje y reencalle (las más urgentes primero)
   const alertas = [];
   T.forEach(o => LAB_LABORES.filter(Lb => Lb.tipo === 'alerta').forEach(Lb => { const s = labEstado(o, Lb); if (s.e === 'pendiente' || s.e === 'vencida') alertas.push({o, Lb, s, falta:P[Lb.k][1] - o.dd}); }));
@@ -156,8 +156,12 @@ function renderLabores(){
     const w = r.p < hoy ? 'atrasadas' : labLunes(r.p); const s = sem[w] = sem[w] || {}; const z = s[Lb.k] = s[Lb.k] || {n:0, a:0}; z.n++; z.a += labHa(o, Lb); }));
   const semanas = Object.keys(sem).sort((a, b) => a === 'atrasadas' ? -1 : b === 'atrasadas' ? 1 : a < b ? -1 : 1);
   // Tabla
-  const ord = [...L].sort((a, b) => labE.orden === 'hac' ? (a.x.hac + a.x.s).localeCompare(b.x.hac + b.x.s) : labE.orden === 'area' ? (b.x.area || 0) - (a.x.area || 0) : labE.orden === 'nuevas' ? a.dd - b.dd : b.dd - a.dd);
+  const ord = [...L].sort((a, b) => labE.orden === 'excel' ? (a.i ?? 1e6) - (b.i ?? 1e6) || b.dd - a.dd : labE.orden === 'hac' ? (a.x.hac + a.x.s).localeCompare(b.x.hac + b.x.s) : labE.orden === 'area' ? (b.x.area || 0) - (a.x.area || 0) : labE.orden === 'nuevas' ? a.dd - b.dd : b.dd - a.dd);
   const chip = s => { const E = LAB_EST[s.e]; return `<span class="lab-chip" style="color:${E.col};background:${E.bg}" title="${esc(s.t)}">${E.n}</span>`; };
+  // Lo que dice la casilla del Excel, tal cual (S / N / vacía)
+  const xl = (o, Lb) => !Lb.bd || !o.bd ? '' : o.bd.sn ? `<small class="lab-xl">Excel: ${o.bd[Lb.bd] ? String(o.bd[Lb.bd]).toUpperCase() : '—'}</small>` : '';
+  // Orden de columnas: primero lo que trae el Excel (1ra, 2da, fertilización), luego las alertas
+  const LAB_COLS = ['rotur', 'rotur2', 'fert', 'despaje', 'reencalle'].map(k => LAB_LABORES.find(Lb => Lb.k === k));
   const LbSel = LAB_LABORES.find(x => x.k === labE.labor);
   const fichaBtn = o => `<td><button type="button" class="plegar-todo lab-fbtn" data-lab-ficha="${esc(o.key)}" title="Ficha de labores: roturación y fertilización (con quién, implemento, producto)">📝 ${ed ? 'Ficha' : 'Ver'}</button></td>`;
   const datos = o => `<td class="b lab-cod"><a href="#" data-lab-ficha="${esc(o.key)}" title="Abrir la ficha de labores">${esc(o.x.s)}</a>${o.fuente === 'maestro' ? ' <small class="lab-fu" title="Cosechada según el maestro; aún no está en el Excel de labores pendientes">maestro</small>' : ''}</td>
@@ -166,7 +170,7 @@ function renderLabores(){
   const cabDatos = '<th>Suerte</th><th>Hacienda</th><th>Zona</th><th>Zona agro</th><th class="n">Área (ha)</th><th>Variedad</th><th class="n">Corte</th><th>Cosechada</th><th class="n">Días</th>';
   // Una labor elegida: una fila por suerte con su estado y, en modo editor, las fechas para programar o marcar hecha
   const filaLabor = (o, Lb) => { const s = labEstado(o, Lb), r = o.reg[Lb.k] || {}, k = esc(o.key), cerrada = s.e === 'noaplica' || (s.e === 'hecha' && !r.r);
-    return `<tr>${datos(o)}${Lb.bd ? `<td class="n b">${labPorHacer(s.e) ? msN(labHa(o, Lb), 2) : '<span class="meta">—</span>'}</td>` : ''}<td>${chip(s)}</td><td class="lab-det">${esc(s.t)}</td>
+    return `<tr>${datos(o)}${Lb.bd ? `<td class="n b">${labPorHacer(s.e) ? msN(labHa(o, Lb), 2) : '<span class="meta">—</span>'}</td>` : ''}<td>${chip(s)}${xl(o, Lb)}</td><td class="lab-det">${esc(s.t)}</td>
       ${ed ? (cerrada ? `<td colspan="${Lb.tipo === 'prog' ? 3 : 2}"></td>` : `${Lb.tipo === 'prog' ? `<td><input type="date" class="lab-in" data-lab="${k}" data-labk="${Lb.k}" data-labc="p" value="${esc(r.p || '')}" title="Fecha programada"></td>` : ''}
         <td><input type="date" class="lab-in" data-lab="${k}" data-labk="${Lb.k}" data-labc="r" value="${esc(r.r || '')}" title="Fecha en que se hizo"></td>
         <td>${!r.r ? `<button type="button" class="plegar-todo" data-lab-hoy="${k}" data-labk="${Lb.k}" title="Marcar como hecha hoy">✓ Hoy</button>` : ''}</td>`) : ''}${fichaBtn(o)}</tr>`; };
@@ -174,12 +178,17 @@ function renderLabores(){
     ? `<table class="sim-t lab-tab"><thead><tr>${cabDatos}${LbSel.bd ? '<th class="n">Pendiente (ha)</th>' : ''}<th>Estado</th><th>Detalle</th>${ed ? `${LbSel.tipo === 'prog' ? '<th>Programada</th>' : ''}<th>Hecha</th><th></th>` : ''}<th></th></tr></thead>
       <tbody>${ord.map(o => filaLabor(o, LbSel)).join('') || `<tr><td colspan="16" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
       ${ord.length ? `<tfoot><tr><td colspan="4">Total · ${ord.length} suertes</td><td class="n b">${msN(ha(ord), 2)}</td><td colspan="4"></td>${LbSel.bd ? `<td class="n b">${msN(sum(ord.filter(o => labPorHacer(labEstado(o, LbSel).e)), o => labHa(o, LbSel)), 2)}</td>` : ''}<td colspan="${ed ? 6 : 3}"></td></tr></tfoot>` : ''}</table>`
-    : `<table class="sim-t lab-tab"><thead><tr>${cabDatos}${LAB_LABORES.map(Lb => `<th title="${P[Lb.k][0]}–${P[Lb.k][1]} días después del corte">${Lb.ico} ${Lb.n}</th>`).join('')}<th></th></tr></thead>
-      <tbody>${ord.map(o => `<tr>${datos(o)}${LAB_LABORES.map(Lb => `<td>${chip(labEstado(o, Lb))}</td>`).join('')}${fichaBtn(o)}</tr>`).join('') || `<tr><td colspan="${10 + LAB_LABORES.length}" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
+    : `<table class="sim-t lab-tab"><thead><tr>${cabDatos}${LAB_COLS.map(Lb => `<th title="${P[Lb.k][0]}–${P[Lb.k][1]} días después del corte">${Lb.ico} ${Lb.n}</th>`).join('')}<th></th></tr></thead>
+      <tbody>${ord.map(o => `<tr>${datos(o)}${LAB_COLS.map(Lb => `<td>${chip(labEstado(o, Lb))}${xl(o, Lb)}</td>`).join('')}${fichaBtn(o)}</tr>`).join('') || `<tr><td colspan="${10 + LAB_LABORES.length}" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
       ${ord.length ? `<tfoot><tr><td colspan="4">Total · ${ord.length} suertes</td><td class="n b">${msN(ha(ord), 2)}</td><td colspan="${5 + LAB_LABORES.length}"></td></tr></tfoot>` : ''}</table>`;
   // Selector de labor (cuántas suertes pendientes tiene cada una con los demás filtros)
   const pendDe = Lb => T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && labPorHacer(labEstado(o, Lb).e)).length;
   const selector = `<div class="lab-labsel"><button type="button" class="${!LbSel ? 'on' : ''}" data-lab-labor="">Todas las labores</button>${LAB_LABORES.map(Lb => `<button type="button" class="${LbSel === Lb ? 'on' : ''}" style="--c:${Lb.col}" data-lab-labor="${Lb.k}">${Lb.ico} ${Lb.n} <b>${pendDe(Lb)}</b></button>`).join('')}</div>`;
+  // Botones de estado con su cuenta (con los demás filtros): todas / realizadas / pendientes / vencidas / sin dato
+  const base = T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!labE.fuente || o.fuente === labE.fuente));
+  const nEst = v => !v ? base.length : base.filter(o => LbSel ? labCumple(labEstado(o, LbSel).e, v) : (() => { const E = LAB_LABORES.map(Lb => labEstado(o, Lb).e); return v === 'hecha' ? E.every(e => labCumple(e, v)) : E.some(e => labCumple(e, v)); })()).length;
+  const estBtns = `<div class="lab-estsel">${[['', 'Todas'], ['hecha', '✓ Realizadas'], ['pend', 'Pendientes'], ['venc', 'Vencidas'], ['sindato', 'Sin dato en el Excel']].map(([v, t]) =>
+    `<button type="button" class="${labE.estado === v ? 'on' : ''} est-${v || 'todas'}" data-lab-est="${v}">${t} <b>${nEst(v)}</b></button>`).join('')}</div>`;
   const origen = !B ? '<b style="color:#b45309">Sin Excel de labores pendientes cargado</b>'
     : B.sn ? `Labores pendientes del maestro <b>${esc(B.archivo)}</b>${B.hoja ? ` (hoja ${esc(B.hoja)}, ${msF(B.fecha)})` : ''}: ${nRep} suertes`
     : `Reporte de levante <b>${esc(B.archivo)}</b> (${msF(B.fecha)}): ${nRep} cortes`;
@@ -198,14 +207,14 @@ function renderLabores(){
         ${semanas.map(w => { const s = sem[w], c = k => s[k] ? `${s[k].n} st · <b>${msN(s[k].a, 1)} ha</b>` : '<span class="meta">—</span>';
           return `<tr${w === 'atrasadas' ? ' style="background:#fff7ed"' : ''}><td>${w === 'atrasadas' ? '<b style="color:#c2410c">Atrasadas</b>' : `Semana del ${msF(w)}`}</td>${PROG.map(Lb => `<td class="n">${c(Lb.k)}</td>`).join('')}</tr>`; }).join('') || `<tr><td colspan="${PROG.length + 1}" class="nores">Aún no hay labores programadas.</td></tr>`}</tbody></table></div></div>
     </div>
-    <div class="sim-card abierta" id="lab-tabla"><div class="sim-card-h" style="cursor:default"><b>${LbSel ? `${LbSel.ico} ${LbSel.n}` : 'Suertes cosechadas'}</b> <span class="meta">· ${L.length} de ${T.length} suertes · ${msN(ha(L), 1)} ha</span></div>
-      ${selector}
+    <div class="sim-card abierta" id="lab-tabla"><div class="sim-card-h" style="cursor:default"><b>${LbSel ? `${LbSel.ico} ${LbSel.n}` : 'Suertes pendientes de levante'}</b> <span class="meta">· ${L.length} de ${T.length} suertes · ${msN(ha(L), 1)} ha${LbSel ? '' : ' · a la derecha, el estado de 1ra, 2da roturación y fertilización'}</span></div>
+      ${selector}${estBtns}
       <div class="lab-filtros">
         <select id="lab-zona">${opt('', 'Todas las zonas', labE.zona)}${opt('1', 'Zona 1', labE.zona)}${opt('2', 'Zona 2', labE.zona)}</select>
         <select id="lab-hac">${opt('', 'Todas las haciendas', labE.hac)}${hacs.map(h => opt(h, msHacN(h), labE.hac)).join('')}</select>
         <select id="lab-fuente">${opt('', 'Reporte y maestro', labE.fuente)}${opt('reporte', 'Solo las del reporte', labE.fuente)}${opt('maestro', 'Solo las que el reporte no trae', labE.fuente)}</select>
         <select id="lab-estado" title="${LbSel ? `Estado de ${LbSel.n.toLowerCase()}` : 'Con todas las labores: alguna en ese estado (o todas hechas)'}">${LAB_ESTADOS.map(([v, t]) => opt(v, t, labE.estado)).join('')}</select>
-        <select id="lab-orden">${opt('corte', 'Más antiguas primero', labE.orden)}${opt('nuevas', 'Más recientes primero', labE.orden)}${opt('hac', 'Por hacienda', labE.orden)}${opt('area', 'Por área', labE.orden)}</select>
+        <select id="lab-orden">${opt('excel', 'Como en el Excel', labE.orden)}${opt('corte', 'Más antiguas primero', labE.orden)}${opt('nuevas', 'Más recientes primero', labE.orden)}${opt('hac', 'Por hacienda', labE.orden)}${opt('area', 'Por área', labE.orden)}</select>
         <input id="lab-txt" class="pr-buscar" placeholder="Buscar suerte, hacienda, variedad o zona agroecológica…" value="${esc(labE.txt)}"></div>
       ${ed ? `<div class="lab-prog"><b>En bloque</b> <span class="meta">· aplica a las suertes que muestra la tabla con estos filtros</span>
         <div>Fecha <input type="date" id="lab-pf" value="${esc(labE.progFecha || hoy)}"> <span class="meta">Programar:</span>
@@ -415,7 +424,8 @@ q('labores').addEventListener('click', e => {
   if (t.closest('[data-lab-servidor]')) { labDesdeServidor(); return; }
   if (t.closest('[data-lab-quitar]')) { if (confirm('¿Quitar el Excel de labores pendientes? Quedan solo las suertes cosechadas según el maestro (lo anotado en las fichas no se borra).')) modCambio(() => { delete DB.levante; }); return; }
   const lb = t.closest('[data-lab-labor]');
-  if (lb) { labE.labor = lb.dataset.labLabor; if (lb.hasAttribute('data-lab-ir')) labE.estado = 'pend'; renderLabores(); if (lb.hasAttribute('data-lab-ir')) q('lab-tabla').scrollIntoView({block:'start', behavior:'smooth'}); return; }
+  const es = t.closest('[data-lab-est]'); if (es) { labE.estado = es.dataset.labEst; renderLabores(); return; }
+  if (lb) { labE.labor = lb.dataset.labLabor; if (lb.hasAttribute('data-lab-ir')) labE.estado = ''; renderLabores(); if (lb.hasAttribute('data-lab-ir')) q('lab-tabla').scrollIntoView({block:'start', behavior:'smooth'}); return; }
   const h = t.closest('[data-lab-hoy]'); if (h) { labPoner(h.dataset.labHoy, h.dataset.labk, 'r', labHoy()); return; }
   const b = t.closest('[data-lab-bloque]');
   if (b) { const [k, campo] = b.dataset.labBloque.split('|'), Lb = LAB_LABORES.find(x => x.k === k), fe = (q('lab-pf') || {}).value; if (!fe) { toast('⚠ Elige la fecha'); return; }
@@ -438,6 +448,7 @@ q('labores').addEventListener('change', e => {
 });
 let labEspera = 0;
 q('labores').addEventListener('input', e => { if (e.target.id === 'lab-txt') { labE.txt = e.target.value; clearTimeout(labEspera); labEspera = setTimeout(() => redibujarConservando('lab-txt', renderLabores), 250); } });
+q('labores').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.lab-kpi[data-lab-labor]')) { e.preventDefault(); e.target.click(); } });
 
 function labExcel(){
   cargarXLSX().then(XLSX => {
