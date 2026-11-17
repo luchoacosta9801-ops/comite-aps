@@ -1451,3 +1451,22 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .lab-mini .lab-ct{display:none}
 @media (max-width:760px){.lab-mini .lab-lg{display:none}.lab-mini .lab-ct{display:inline}}
 .lab-ver{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-top:2px}
+/* Agregar suerte (16 nov 2026) */
+.lab-add-btn{font:inherit;font-size:12.5px;font-weight:800;height:34px;padding:0 12px;border-radius:10px;border:1.5px solid #2a78d6;background:#eff6ff;color:#1d4ed8;cursor:pointer;white-space:nowrap}
+.lab-add-btn:hover{background:#dbeafe}
+.lab-fu-man{background:#dbeafe;color:#1d4ed8}
+.la-info{font-size:12.5px;color:var(--dim);background:#f8fafc;border:1px solid var(--bdr);border-radius:8px;padding:7px 10px;margin:10px 0 4px}
+.la-mal{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+.la-ok{margin-top:10px}
+.la-ok:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.lf-quitar{margin-top:8px;text-align:right}
+@media (max-width:760px){.lab-acc{flex-wrap:wrap;justify-content:flex-end}.la-ok{width:100%}}
+/* Botones Programada / Realizada por labor (16 nov 2026) */
+.lab-2b{display:inline-flex;flex-direction:column;gap:2px;padding-left:5px;border-left:3px solid #d03b3b;border-radius:2px}
+.lab-2b-p{border-left-color:#2a78d6}.lab-2b-r{border-left-color:#0ca30c}
+.lab-2b button{font:inherit;font-size:10px;font-weight:700;line-height:1.2;padding:2px 6px;border-radius:999px;border:1px solid var(--bdr);background:#fff;color:var(--muted);cursor:pointer;white-space:nowrap;text-align:left}
+.lab-2b button:hover{border-color:#94a3b8;color:var(--text)}
+.lab-2b button:first-child.on{background:#2a78d6;border-color:#2a78d6;color:#fff}
+.lab-2b button:last-child.on{background:#0ca30c;border-color:#0ca30c;color:#fff}
+.lab-ley2{display:inline-flex;align-items:center;gap:4px;margin-right:10px}
+.lab-ley2 i{display:inline-block;width:3px;height:11px;border-radius:2px;margin-left:4px}

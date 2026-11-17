@@ -37,7 +37,7 @@ const LAB_EST = {
   atrasada:   {n:'Atrasada',   col:'#c2410c', bg:'#ffedd5'},
   pendiente:  {n:'Pendiente',  col:'#b91c1c', bg:'#fee2e2'},
   vencida:    {n:'Pendiente',  col:'#b91c1c', bg:'#fee2e2'},   // se muestra como «Pendiente» (pedido de Luis); el globo dice hace cuánto venció
-  proxima:    {n:'Próxima',    col:'#64748b', bg:'#f1f5f9'},
+  proxima:    {n:'Pendiente',  col:'#b91c1c', bg:'#fee2e2'},   // aún no empieza su ventana; se muestra como «Pendiente» (pedido de Luis)
   sindato:    {n:'Sin dato',   col:'#6b7280', bg:'#f3f4f6'},
   noaplica:   {n:'No aplica',  col:'#94a3b8', bg:'#f8fafc'},
 };
@@ -71,11 +71,18 @@ function labSuertes(){
   if (B) B.filas.forEach((f, i) => { const m = porCod[f.s] || {};
     out.push({x:{s:f.s, hac:m.hac || '', zona:f.z ?? m.zona, area:f.a, variedad:m.variedad || f.v, nCorte:m.nCorte ?? f.nc, ultCorte:f.f, zonaAgro:f.za || m.zonaAgro, tipo:f.tipo,
       desdeSiembra:!!(f.fs && f.f === f.fs && f.fs !== f.fc), par:f.par}, bd:f, fuente:'reporte', i}); });
+  // Suertes agregadas a mano o desde otro Excel (DB.labores.extra): no se borran al recargar el Excel principal;
+  // se ocultan solas cuando el Excel ya trae esa suerte con un corte de la misma fecha (±10 días) o posterior
+  const enExcel = (s, f) => B && B.filas.some(g => g.s === s && labDias(f, g.f) >= -10);
+  const EX = (labDatos().extra || []).filter(f => !enExcel(f.s, f.f));
+  EX.forEach((f, i) => { const m = porCod[f.s] || {};
+    out.push({x:{s:f.s, hac:m.hac || f.hac || '', zona:f.z ?? m.zona, area:f.a ?? m.area, variedad:f.v || m.variedad, nCorte:f.nc ?? m.nCorte, ultCorte:f.f, zonaAgro:f.za || m.zonaAgro, par:f.par},
+      bd:Object.assign({}, f, {sn:1}), fuente:'manual', i:5e5 + i}); });
   const renov = new Set((DB.lotes || []).map(l => l.s + '|' + norm(l.h)));
   ms.filter(x => x.ultCorte && x.estado !== 'PROCESO' && /^(CAÑA|SEMILLA)$/i.test(x.uso || '') && !renov.has(x.s + '|' + norm(x.hac)))
     .forEach(x => { const dd = labDias(x.ultCorte, hoy); if (dd < 0 || dd > P.dias) return;
       // Ya está en el reporte si trae esa suerte con un corte de la misma fecha o posterior (±10 días)
-      if (B && B.filas.some(f => f.s === x.s && labDias(x.ultCorte, f.f) >= -10)) return;
+      if (enExcel(x.s, x.ultCorte) || EX.some(f => f.s === x.s && labDias(x.ultCorte, f.f) >= -10)) return;
       out.push({x:{s:x.s, hac:x.hac, zona:x.zona, area:x.area, variedad:x.variedad, nCorte:x.nCorte, ultCorte:x.ultCorte, zonaAgro:x.zonaAgro}, bd:null, fuente:'maestro', i:1e6}); });
   return out.map(o => Object.assign(o, {dd:labDias(o.x.ultCorte, hoy), key:`${o.x.s}|${o.x.ultCorte}`}))
     .map(o => Object.assign(o, {reg:R[o.key] || {}}));
@@ -162,26 +169,30 @@ function renderLabores(){
   // Tabla
   const ord = [...L].sort((a, b) => labE.orden === 'excel' ? (a.i ?? 1e6) - (b.i ?? 1e6) || b.dd - a.dd : labE.orden === 'hac' ? (a.x.hac + a.x.s).localeCompare(b.x.hac + b.x.s) : labE.orden === 'area' ? (b.x.area || 0) - (a.x.area || 0) : labE.orden === 'nuevas' ? a.dd - b.dd : b.dd - a.dd);
   const chip = s => { const E = LAB_EST[s.e]; return `<span class="lab-chip" style="color:${E.col};background:${E.bg}" title="${esc(s.t)}">${E.n}</span>`; };
-  // Lo que dice la casilla del Excel, tal cual (S / N / vacía)
-  const xl = (o, Lb) => !Lb.bd || !o.bd ? '' : o.bd.sn ? `<small class="lab-xl">Excel: ${o.bd[Lb.bd] ? String(o.bd[Lb.bd]).toUpperCase() : '—'}</small>` : '';
+  // En modo editor, cada labor lleva dos botones: Programada y Realizada (el activo va pintado; ninguno = pendiente,
+  // con borde rojo). Tocar el activo lo quita. Fuera del modo editor se ve solo el estado.
+  const dosBot = (o, Lb, conFechas) => { const s = labEstado(o, Lb), e = s.e, k = esc(o.key), r = o.reg[Lb.k] || {};
+    if (!ed || e === 'noaplica') return chip(s);
+    const prog = e === 'programada' || e === 'atrasada', hecha = e === 'hecha', tono = hecha ? 'r' : prog ? 'p' : 'x';
+    return `<span class="lab-2b lab-2b-${tono}" title="${esc(s.t)}"><button type="button" class="${prog ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|p">Programada</button><button type="button" class="${hecha ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|r">Realizada</button></span>${conFechas && (r.p || r.r) ? `<small class="lab-t">${r.r ? `Hecha ${msF(r.r)}` : `Prog. ${msF(r.p)}`}</small>` : ''}`; };
   // Columnas: lo que trae el Excel (1ra, 2da roturación y fertilización)
   const LAB_COLS = LAB_LABORES;
   const LbSel = LAB_LABORES.find(x => x.k === labE.labor);
   const fichaBtn = o => `<td><button type="button" class="plegar-todo lab-fbtn" data-lab-ficha="${esc(o.key)}" title="Ficha de labores: roturación y fertilización (con quién, implemento, producto)">📝</button></td>`;
-  const datos = o => `<td class="b lab-cod"><a href="#" data-lab-ficha="${esc(o.key)}" title="Abrir la ficha de labores">${esc(o.x.s)}</a>${o.fuente === 'maestro' ? ' <small class="lab-fu" title="Cosechada según el maestro; aún no está en el Excel de labores pendientes">maestro</small>' : ''}</td>
+  const datos = o => `<td class="b lab-cod"><a href="#" data-lab-ficha="${esc(o.key)}" title="Abrir la ficha de labores">${esc(o.x.s)}</a>${o.fuente === 'maestro' ? ' <small class="lab-fu" title="Cosechada según el maestro; aún no está en el Excel de labores pendientes">maestro</small>' : o.fuente === 'manual' ? ' <small class="lab-fu lab-fu-man" title="Agregada a mano o desde otro Excel; aún no está en el Excel de labores pendientes">agregada</small>' : ''}</td>
     <td>${esc(msHacN(o.x.hac)) || '<span class="meta">—</span>'}</td><td>${esc(o.x.zona ?? '')}</td><td>${esc(o.x.zonaAgro || '')}</td><td class="n">${msN(o.x.area, 2)}${o.x.par ? `<small class="lab-t" title="Parcial (ha) según el Excel">parcial ${msN(o.x.par, 2)}</small>` : ''}</td>
     <td>${esc(o.x.variedad || '—')}</td><td class="n">${o.x.nCorte != null ? msN(o.x.nCorte) : esc(o.x.tipo || '')}</td><td>${msF(o.x.ultCorte)}${o.x.desdeSiembra ? '<small class="lab-t">siembra</small>' : ''}</td><td class="n">${o.dd}</td>`;
   const cabDatos = '<th>Suerte</th><th>Hacienda</th><th title="Zona">Z</th><th title="Zona agroecológica">Z. agro</th><th class="n">Área</th><th>Variedad</th><th class="n">Corte</th><th>Cosechada</th><th class="n lab-th2" title="Días de lucro: desde el corte (o la siembra) hasta hoy">Días de<br>lucro</th>';
   // Una labor elegida: una fila por suerte con su estado y, en modo editor, las fechas para programar o marcar hecha
   const filaLabor = (o, Lb) => { const s = labEstado(o, Lb), r = o.reg[Lb.k] || {}, k = esc(o.key), cerrada = s.e === 'noaplica' || (s.e === 'hecha' && !r.r);
-    return `<tr>${datos(o)}${Lb.bd ? `<td class="n b">${labPorHacer(s.e) ? msN(labHa(o, Lb), 2) : '<span class="meta">—</span>'}</td>` : ''}<td>${chip(s)}${xl(o, Lb)}</td>
-      ${ed ? `<td class="lab-hecha">${[r.p ? `<a href="#" data-lab-ficha="${k}" title="Cambiar en la ficha">Prog. ${msF(r.p)}</a>` : '', r.r ? `<a href="#" data-lab-ficha="${k}" title="Cambiar en la ficha">Hecha ${msF(r.r)}</a>` : ''].filter(Boolean).join('<br>')}${!cerrada && !r.r ? `<button type="button" class="plegar-todo" data-lab-hoy="${k}" data-labk="${Lb.k}" title="Marcar como hecha hoy (otras fechas: en la ficha 📝)">✓ Hoy</button>` : ''}</td>` : ''}${fichaBtn(o)}</tr>`; };
+    return `<tr>${datos(o)}${Lb.bd ? `<td class="n b">${labPorHacer(s.e) ? msN(labHa(o, Lb), 2) : '<span class="meta">—</span>'}</td>` : ''}<td>${chip(s)}</td>
+      ${ed ? `<td class="lab-hecha">${dosBot(o, Lb, true)}</td>` : ''}${fichaBtn(o)}</tr>`; };
   const tabla = LbSel
-    ? `<table class="sim-t lab-tab"><thead><tr>${cabDatos}${LbSel.bd ? '<th class="n" title="Hectáreas pendientes">Pend. ha</th>' : ''}<th title="Pasa el mouse sobre el estado para ver el detalle">Estado</th>${ed ? '<th title="Fecha programada o en que se hizo (se cambian en la ficha 📝)">Fechas</th>' : ''}<th></th></tr></thead>
+    ? `<table class="sim-t lab-tab"><thead><tr>${cabDatos}${LbSel.bd ? '<th class="n" title="Hectáreas pendientes">Pend. ha</th>' : ''}<th title="Pasa el mouse sobre el estado para ver el detalle">Estado</th>${ed ? '<th title="Marca la labor como programada o realizada (con la fecha de hoy; otras fechas en la ficha 📝)">Marcar</th>' : ''}<th></th></tr></thead>
       <tbody>${ord.map(o => filaLabor(o, LbSel)).join('') || `<tr><td colspan="16" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
       ${ord.length ? `<tfoot><tr><td colspan="4">Total · ${ord.length} suertes</td><td class="n b">${msN(ha(ord), 2)}</td><td colspan="4"></td>${LbSel.bd ? `<td class="n b">${msN(sum(ord.filter(o => labPorHacer(labEstado(o, LbSel).e)), o => labHa(o, LbSel)), 2)}</td>` : ''}<td colspan="${ed ? 3 : 2}"></td></tr></tfoot>` : ''}</table>`
     : `<table class="sim-t lab-tab"><thead><tr>${cabDatos}${LAB_COLS.map(Lb => `<th title="${Lb.n}: ${P[Lb.k][0]}–${P[Lb.k][1]} días después del corte">${Lb.ico} ${Lb.c || Lb.n}</th>`).join('')}<th></th></tr></thead>
-      <tbody>${ord.map(o => `<tr>${datos(o)}${LAB_COLS.map(Lb => `<td>${chip(labEstado(o, Lb))}${xl(o, Lb)}</td>`).join('')}${fichaBtn(o)}</tr>`).join('') || `<tr><td colspan="${10 + LAB_LABORES.length}" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
+      <tbody>${ord.map(o => `<tr>${datos(o)}${LAB_COLS.map(Lb => `<td>${dosBot(o, Lb)}</td>`).join('')}${fichaBtn(o)}</tr>`).join('') || `<tr><td colspan="${10 + LAB_LABORES.length}" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
       ${ord.length ? `<tfoot><tr><td colspan="4">Total · ${ord.length} suertes</td><td class="n b">${msN(ha(ord), 2)}</td><td colspan="${5 + LAB_LABORES.length}"></td></tr></tfoot>` : ''}</table>`;
   // Selector de labor (cuántas suertes pendientes tiene cada una con los demás filtros)
   const pendDe = Lb => T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && labPorHacer(labEstado(o, Lb).e)).length;
@@ -189,7 +200,7 @@ function renderLabores(){
   // Botones de estado con su cuenta (con los demás filtros): todas / realizadas / pendientes / vencidas / sin dato
   const base = T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!labE.fuente || o.fuente === labE.fuente));
   const nEst = v => !v ? base.length : base.filter(o => LbSel ? labCumple(labEstado(o, LbSel).e, v) : (() => { const E = LAB_LABORES.map(Lb => labEstado(o, Lb).e); return v === 'hecha' ? E.every(e => labCumple(e, v)) : E.some(e => labCumple(e, v)); })()).length;
-  const estBtns = `<div class="lab-pills">${[['', 'Todas'], ['hecha', 'Realizadas'], ['pend', 'Pendientes'], ['sindato', 'Sin dato']].map(([v, t]) =>
+  const estBtns = `<div class="lab-pills">${[['', 'Todas'], ['hecha', 'Realizadas'], ['pend', 'Pendientes'], ['sindato', 'Sin dato']].filter(([v]) => v !== 'sindato' || nEst(v) || labE.estado === v).map(([v, t]) =>
     `<button type="button" class="${labE.estado === v ? 'on' : ''} est-${v || 'todas'}" data-lab-est="${v}">${t} <b>${nEst(v)}</b></button>`).join('')}</div>`;
   // De dónde salen los datos: solo en el globo del título (para no llenar la página de texto)
   const origen = !B ? 'Sin Excel de labores pendientes cargado'
@@ -197,7 +208,8 @@ function renderLabores(){
   cont.innerHTML = `
     <div class="lab-top"><div class="sim-tit" title="${esc(origen)}">🚜 Control labores campo${B ? '' : ' <small class="lab-aviso">sin Excel cargado</small>'}${B && B.mod ? `<small class="lab-ver" title="Hora en que se guardó el Excel que muestra el panel">Excel guardado ${labHoraTxt(B.mod)}</small>` : ''}</div>
       <div class="lab-acc">${ed ? `<label class="lab-ico" title="Cargar Excel de labores pendientes">📂<input type="file" id="lab-archivo" accept=".xlsx,.xls,.xlsm" hidden></label>
-        <button type="button" class="lab-ico" data-lab-servidor title="Traer el último Excel de Documents\\OPERACIONES CAMPO - LEVANTE">🔄</button>` : ''}
+        <button type="button" class="lab-ico" data-lab-servidor title="Traer el último Excel de Documents\\OPERACIONES CAMPO - LEVANTE">🔄</button>
+        <button type="button" class="lab-add-btn" data-lab-add title="Agregar una suerte (por ejemplo, una cosechada hace poco) a mano o desde un Excel">➕ Suerte</button>` : ''}
         <button type="button" class="lab-ico" data-lab-excel title="Descargar en Excel">⬇️</button></div></div>
     <div class="lab-minis">${kpi}</div>
     <div${semanas.length ? '' : ' hidden'}>
@@ -207,7 +219,7 @@ function renderLabores(){
           return `<tr${w === 'atrasadas' ? ' style="background:#fff7ed"' : ''}><td>${w === 'atrasadas' ? '<b style="color:#c2410c">Atrasadas</b>' : `Semana del ${msF(w)}`}</td>${PROG.map(Lb => `<td class="n">${c(Lb.k)}</td>`).join('')}</tr>`; }).join('') || `<tr><td colspan="${PROG.length + 1}" class="nores">Aún no hay labores programadas.</td></tr>`}</tbody></table></div></div>
     </div>
     <div class="sim-card abierta" id="lab-tabla">
-      <div class="lab-barra">${selector}${estBtns}<span class="lab-cuenta">${L.length} suertes · ${msN(ha(L), 1)} ha</span></div>
+      <div class="lab-barra">${selector}${estBtns}<span class="lab-cuenta">${ed ? '<span class="lab-ley2"><i style="background:#d03b3b"></i>Pendiente <i style="background:#2a78d6"></i>Programada <i style="background:#0ca30c"></i>Realizada</span>' : ''}${L.length} suertes · ${msN(ha(L), 1)} ha</span></div>
       <div class="lab-filtros">
         <input id="lab-txt" class="pr-buscar" placeholder="🔎 Buscar suerte, hacienda o variedad…" value="${esc(labE.txt)}">
         <select id="lab-zona">${opt('', 'Zona', labE.zona)}${opt('1', 'Zona 1', labE.zona)}${opt('2', 'Zona 2', labE.zona)}</select>
@@ -260,7 +272,7 @@ function labFechaXL(v){
 // Hoja1 (2): una fila por suerte con s/n en 1ra, 2da y abono
 function labLeerSN(F, iH, hoja, archivo, fechaArchivo){
   const H = F[iH].map(c => norm(c)), col = re => H.findIndex(h => re.test(h));
-  const C = {s:col(/^SUERTE$/), z:col(/^ZONA$/), za:col(/^ZONA AGRO/), uso:col(/^USO/), fs:col(/SIEMBRA/), fc:col(/ULTIMO CORTE|ULT CORTE/),
+  const C = {s:col(/^SUERTE$/), z:col(/^ZONA$/), za:col(/^ZONA AGRO/), uso:col(/^USO/), fs:col(/SIEMBRA/), fc:col(/ULTIMO CORTE|ULT CORTE|FECHA (DE )?CORTE/),
     nc:col(/NUMERO DE CORTE|^N CORTE|^CORTE$/), v:col(/^VARIEDAD/), a:col(/^AREA/), r1:col(/^1RA\b/), r2:col(/^2DA\b/), fe:col(/^(ABONO|FERTILIZ)/), par:col(/^PARCIAL/)};
   // Fecha del archivo: la del nombre (… 6-11-2026.xlsx o AAAA-MM-DD) o la de la última modificación
   const m1 = /(\d{4})-(\d{2})-(\d{2})/.exec(archivo || ''), m2 = /(\d{1,2})-(\d{1,2})-(\d{4})/.exec(archivo || '');
@@ -359,6 +371,25 @@ function labSet(key, k, campo, valor){
   labLimpiar(D);
 }
 function labPoner(key, k, campo, valor){ modCambio(() => labSet(key, k, campo, valor)); }
+// Botones Programada / Realizada de la tabla. Programada: pone la fecha de hoy como programada (quita «realizada»).
+// Realizada: la da por hecha hoy (si estaba programada, toma esa fecha). Tocar el que ya está activo lo quita;
+// si estaba realizada según el Excel (S), queda como «no la tiene» (pendiente).
+function labMarcar(key, k, que){
+  const o = labSuertes().find(y => y.key === key); if (!o) return;
+  const L = LAB_LABORES.find(x => x.k === k), e = labEstado(o, L).e, hoy = labHoy(), r = o.reg[k] || {};
+  modCambio(() => {
+    if (que === 'p') {
+      if (e === 'programada' || e === 'atrasada') { labSet(key, k, 'p', ''); return; }
+      labSet(key, k, 'r', ''); if (r.tiene === 'si') labSet(key, k, 'tiene', '');
+      if (labEstado(Object.assign({}, o, {reg:(DB.labores.reg || {})[key] || {}}), L).e === 'hecha') labSet(key, k, 'tiene', 'no');
+      labSet(key, k, 'p', hoy);
+    } else {
+      if (e === 'hecha') { labSet(key, k, 'r', ''); labSet(key, k, 'tiene', '');
+        if (labEstado(Object.assign({}, o, {reg:(DB.labores.reg || {})[key] || {}}), L).e === 'hecha') labSet(key, k, 'tiene', 'no'); return; }
+      labSet(key, k, 'tiene', 'si'); const x = ((DB.labores.reg || {})[key] || {})[k] || {}; if (!x.r) labSet(key, k, 'r', hoy);
+    }
+  });
+}
 
 // ── Ficha de labores de una suerte (📝): roturación y fertilización ──
 // Se dibuja en su propio contenedor (fuera de #labores) para que no se cierre al guardar; la tabla se redibuja al cerrar.
@@ -423,6 +454,7 @@ function labFicha(key){
       <div class="lf-sec" style="--c:#64748b"><div class="lf-h">📝 Observaciones</div>
         <textarea ${dis} data-lft="nota|obs" rows="2" placeholder="Notas de la suerte">${esc(nota.obs || '')}</textarea></div>
       <div class="meta lf-ayuda">Lo que respondas aquí manda sobre el Excel. ${ed ? 'Se guarda solo; recuerda 🚀 Publicar.' : ''}</div>
+      ${ed && o.fuente === 'manual' ? `<div class="lf-quitar"><button type="button" class="plegar-todo" data-lf-quitar="${esc(o.x.s)}|${esc(o.x.ultCorte)}">🗑 Quitar esta suerte agregada</button></div>` : ''}
     </div></div>${dl('contr')}${dl('impl')}${dl('prod')}</div>`;
 }
 function labFichaCerrar(){ labFichaEl().innerHTML = ''; labE.ficha = null; if (labE.sucio) { labE.sucio = false; renderVista(); } }
@@ -435,6 +467,11 @@ function labFichaGuardar(k, campo, valor, redibujar){
 labFichaEl().addEventListener('click', e => {
   const t = e.target;
   if (t.matches('[data-lf-cerrar]') || t.closest('.ms-x')) { labFichaCerrar(); return; }
+  const qx = t.closest('[data-lf-quitar]');
+  if (qx) { const [s, f] = qx.dataset.lfQuitar.split('|'); if (!confirm(`¿Quitar la suerte ${s} (corte ${msF(f)}) que se agregó? Lo anotado en su ficha también se borra.`)) return;
+    labFichaEl().innerHTML = ''; labE.ficha = null; labE.sucio = false;
+    modCambio(() => { const D = DB.labores; D.extra = (D.extra || []).filter(x => !(x.s === s && x.f === f)); if (!D.extra.length) delete D.extra; if (D.reg) delete D.reg[`${s}|${f}`]; });
+    toast(`🗑 Se quitó la suerte ${s} · recuerda 🚀 Publicar`); return; }
   const b = t.closest('[data-lf]'); if (!b) return;
   const [k, campo, v] = b.dataset.lf.split('|'), actual = ((labSuertes().find(y => y.key === labE.ficha) || {reg:{}}).reg[k] || {})[campo];
   labFichaGuardar(k, campo, actual === v ? '' : v, true);
@@ -457,6 +494,8 @@ q('labores').addEventListener('click', e => {
   const ir = t.closest('[data-ir]'); if (ir) { irA(ir.dataset.ir); return; }
   const fi = t.closest('[data-lab-ficha]'); if (fi) { e.preventDefault(); labFicha(fi.dataset.labFicha); return; }
   if (t.closest('[data-lab-ind]')) { labIndicadores(); return; }
+  const mk = t.closest('[data-lab-m]'); if (mk) { const [s, f, k, que] = mk.dataset.labM.split('|'); labMarcar(`${s}|${f}`, k, que); return; }
+  if (t.closest('[data-lab-add]')) { labE.add = null; labAgregar(); return; }
   if (t.closest('[data-lab-excel]')) { labExcel(); return; }
   if (t.closest('[data-lab-servidor]')) { labDesdeServidor(); return; }
   if (t.closest('[data-lab-quitar]')) { if (confirm('¿Quitar el Excel de labores pendientes? Quedan solo las suertes cosechadas según el maestro (lo anotado en las fichas no se borra).')) modCambio(() => { delete DB.levante; }); return; }
@@ -497,7 +536,7 @@ function labExcel(){
     cab.push('¿Tiene roturación?', '¿Única roturación?', 'Roturación · implemento', 'Roturación · contratista', 'Roturación · área realizada (ha)', '¿Tiene 2da roturación?', '2da · implemento', '2da · contratista', '2da · área realizada (ha)',
       '¿Tiene fertilización?', 'Fertilización · contratista', 'Producto o mezcla', 'Dosis', 'Fertilización · área realizada (ha)', 'Observaciones');
     const sino = v => v === 'si' ? 'Sí' : v === 'no' ? 'No' : '';
-    const filas = [cab, ...L.map(o => { const f = [o.x.s, msHacN(o.x.hac), o.x.zona ?? '', o.x.zonaAgro || '', +(+o.x.area || 0).toFixed(2), o.x.variedad || '', o.x.nCorte ?? '', o.x.ultCorte, o.dd, o.fuente === 'reporte' ? (sn ? 'Excel labores pendientes' : 'Reporte de levante') : 'Maestro', o.x.par || ''];
+    const filas = [cab, ...L.map(o => { const f = [o.x.s, msHacN(o.x.hac), o.x.zona ?? '', o.x.zonaAgro || '', +(+o.x.area || 0).toFixed(2), o.x.variedad || '', o.x.nCorte ?? '', o.x.ultCorte, o.dd, o.fuente === 'reporte' ? (sn ? 'Excel labores pendientes' : 'Reporte de levante') : o.fuente === 'manual' ? 'Agregada' : 'Maestro', o.x.par || ''];
       LAB_LABORES.forEach(Lb => { const r = o.reg[Lb.k] || {}; f.push(LAB_EST[labEstado(o, Lb).e].n); if (Lb.bd) f.push(o.bd ? (sn ? String(o.bd[Lb.bd] || '').toUpperCase() : o.bd[Lb.bd] ?? '') : ''); f.push(r.p || '', r.r || ''); });
       const a = o.reg.rotur || {}, b = o.reg.rotur2 || {}, c = o.reg.fert || {};
       const hr = (k, x) => labEstado(o, LAB_LABORES.find(Lb => Lb.k === k)).e === 'hecha' ? +labHaReal(o, x).toFixed(2) : '';
@@ -506,6 +545,87 @@ function labExcel(){
     XLSX.utils.book_append_sheet(wb, hoja(XLSX, filas), 'Labores');
     XLSX.writeFile(wb, `control-labores-${labHoy()}.xlsx`);
   });
+}
+
+// ── ➕ Agregar suertes (modo editor): a mano (con los datos del maestro) o desde otro Excel ──
+// Se guardan en DB.labores.extra [{s, f (fecha de corte), a, par, r1, r2, fe ('s'|'n'), hac, z, za, v, nc}] y se publican
+// con el módulo «labores». No se pierden al recargar el Excel principal; cuando ese Excel ya trae la suerte, se ocultan.
+function labMaestroDe(s){
+  if (typeof msFilas !== 'function') return null;
+  const L = msFilas().filter(x => x.s === s); return L.find(x => x.emp === 'RIOP' && /^CAÑA$/i.test(x.uso || '')) || L.find(x => x.emp === 'RIOP') || L[0] || null;
+}
+const labEnControl = (s, f) => labSuertes().find(o => o.x.s === s && Math.abs(labDias(o.x.ultCorte, f)) <= 10);
+function labAgregarExtra(filas){
+  const D = DB.labores = DB.labores || {params:{}, reg:{}}; D.extra = D.extra || [];
+  filas.forEach(f => { Object.keys(f).forEach(k => (f[k] === undefined || f[k] === '' || f[k] === null) && delete f[k]); D.extra.push(f); });
+}
+function labAgregar(){
+  const el = (() => { let e = document.getElementById('lab-add'); if (!e) { e = document.createElement('div'); e.id = 'lab-add'; document.body.appendChild(e); labAgregarEventos(e); } return e; })();
+  const A = labE.add = labE.add || {r1:'n', r2:'n', fe:'n'}, s = frCodSuerte(A.s), m = s ? labMaestroDe(s) : null;
+  const ya = s && A.f ? labEnControl(s, A.f) : null;
+  const codigos = typeof msFilas === 'function' ? [...new Set(msFilas().filter(x => x.emp === 'RIOP').map(x => x.s))].sort() : [];
+  const sn = (k, n) => `<div class="lf-q">¿Tiene ${n}? <span class="lf-seg">${[['s', 'Sí'], ['n', 'No']].map(([v, t]) => `<button type="button" class="${A[k] === v ? 'on' : ''}" data-la-sn="${k}|${v}">${t}</button>`).join('')}</span></div>`;
+  el.innerHTML = `<div class="ms-fondo" data-la-cerrar><div class="ms-ficha lf-ficha" role="dialog" aria-label="Agregar suerte">
+    <div class="ms-fh"><div><b>➕ Agregar suerte</b><small>Por ejemplo, una cosechada hace poco que el Excel aún no trae</small></div><button type="button" class="ms-x" data-la-cerrar title="Cerrar (Esc)">✕</button></div>
+    <div class="ms-cuerpo">
+      <div class="lf-sec" style="--c:#2a78d6"><div class="lf-h">✍️ A mano</div>
+        <div class="lf-campos"><label>Suerte<input type="text" inputmode="numeric" data-la="s" list="la-dl" value="${esc(A.s || '')}" placeholder="Ej.: 3501-120"></label>
+          <label>Fecha de corte<input type="date" data-la="f" value="${esc(A.f || '')}" max="${labHoy()}"></label>
+          <label>Área (ha)<input type="number" inputmode="decimal" step="0.01" min="0" data-la="a" value="${esc(A.a ?? '')}"></label>
+          <label>Parcial (ha) · opcional<input type="number" inputmode="decimal" step="0.01" min="0" data-la="par" value="${esc(A.par ?? '')}"></label></div>
+        ${s ? `<div class="la-info">${m ? `📚 <b>${esc(msHacN(m.hac))}</b> · Zona ${esc(m.zona ?? '—')} · ${msN(m.area, 2)} ha · ${esc(m.variedad || '—')}${m.nCorte != null ? ` · corte ${msN(m.nCorte)}` : ''}${m.ultCorte ? ` · último corte en el maestro: ${msF(m.ultCorte)}` : ''}` : '⚠ Esa suerte no está en el maestro: escribe el área a mano.'}</div>` : A.s ? '<div class="la-info la-mal">Escribe el código completo: sector y suerte, por ejemplo 3501-120.</div>' : ''}
+        ${ya ? `<div class="la-info la-mal">Esa suerte ya está en el control (corte ${msF(ya.x.ultCorte)}). Ábrela en la tabla para anotar sus labores.</div>` : ''}
+        ${sn('r1', '1ra roturación')}${sn('r2', '2da roturación')}${sn('fe', 'fertilización')}
+        <button type="button" class="lab-ind-btn la-ok" data-la-ok ${s && A.f && !ya ? '' : 'disabled'}>➕ Agregar suerte</button></div>
+      <div class="lf-sec" style="--c:#1baf7a"><div class="lf-h">📂 Desde un Excel</div>
+        <p class="meta lf-ayuda">Agrega las suertes de otro Excel que aún no están en el control (no reemplaza el Excel principal). Debe tener la columna <b>SUERTE</b> y la <b>FECHA DE ULTIMO CORTE</b> (o de siembra); si trae <b>1ra</b>, <b>2da</b> y <b>abono</b> con S/N, también se toman.</p>
+        <label class="plegar-todo pt-file">📂 Elegir Excel…<input type="file" data-la-xl accept=".xlsx,.xls,.xlsm" hidden></label></div>
+    </div></div><datalist id="la-dl">${codigos.map(c => `<option value="${c}">`).join('')}</datalist></div>`;
+}
+function labAgregarCerrar(){ const e = document.getElementById('lab-add'); if (e) e.innerHTML = ''; labE.add = null; }
+function labAgregarEventos(e){
+  e.addEventListener('click', ev => { const t = ev.target;
+    if (t.matches('[data-la-cerrar]') || t.closest('.ms-x')) { labAgregarCerrar(); return; }
+    const b = t.closest('[data-la-sn]'); if (b) { const [k, v] = b.dataset.laSn.split('|'); labE.add[k] = v; labAgregar(); return; }
+    if (t.closest('[data-la-ok]')) { const A = labE.add, s = frCodSuerte(A.s), m = s ? labMaestroDe(s) || {} : {};
+      const a = +String(A.a ?? '').replace(',', '.') || +m.area || 0;
+      if (!s || !A.f) { toast('⚠ Falta la suerte o la fecha de corte'); return; }
+      if (!a) { toast('⚠ Escribe el área de la suerte'); return; }
+      if (labEnControl(s, A.f)) { toast('⚠ Esa suerte ya está en el control'); return; }
+      const par = +String(A.par ?? '').replace(',', '.') || undefined;
+      modCambio(() => labAgregarExtra([{s, f:A.f, a, par, r1:A.r1, r2:A.r2, fe:A.fe, hac:m.hac, z:m.zona, za:m.zonaAgro, v:m.variedad, nc:m.nCorte}]));
+      labAgregarCerrar(); toast(`➕ Suerte ${s} agregada · recuerda 🚀 Publicar`); labFicha(`${s}|${A.f}`); } });
+  e.addEventListener('change', ev => { const t = ev.target;
+    if (t.dataset.laXl !== undefined && t.files && t.files[0]) { labAgregarDeExcel(t.files[0]); t.value = ''; return; }
+    const k = t.dataset.la; if (!k) return; const A = labE.add; A[k] = t.value.trim();
+    if (k === 's') { const s = frCodSuerte(A.s); if (s) { A.s = s; const m = labMaestroDe(s); A.a = m && m.area != null ? +(+m.area).toFixed(2) : ''; if (!A.f && m && m.ultCorte && labDias(m.ultCorte, labHoy()) <= 120) A.f = m.ultCorte; } }
+    labAgregar(); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && e.innerHTML) labAgregarCerrar(); });
+}
+// Lee cualquier Excel con SUERTE + fecha (usa el lector de la hoja de labores; si no la encuentra, busca la fila SUERTE en cada hoja)
+function labLeerLista(X, buf, nombre){
+  try { return labLeerReporte(X, buf, nombre, labHoy()); } catch (e) {}
+  for (const n of X.read(buf, {type:'array', bookSheets:true}).SheetNames) {
+    const F = X.utils.sheet_to_json(X.read(buf, {type:'array', sheets:n}).Sheets[n], {header:1, raw:true, defval:''});
+    const iH = F.slice(0, 30).findIndex(r => r.some(c => norm(c) === 'SUERTE'));
+    if (iH >= 0) try { return labLeerSN(F, iH, n, nombre, labHoy()); } catch (e) {}
+  }
+  throw new Error('No encontré una hoja con la columna SUERTE y la fecha de corte');
+}
+function labAgregarDeExcel(file){
+  toast(`⏳ Leyendo ${file.name}…`);
+  Promise.all([cargarXLSX(), file.arrayBuffer()]).then(([X, buf]) => {
+    const R = labLeerLista(X, buf, file.name), nuevas = [], vistas = new Set();
+    let ya = 0;
+    R.filas.forEach(f => { const k = f.s + '|' + f.f; if (vistas.has(k)) return; vistas.add(k);
+      if (labEnControl(f.s, f.f)) { ya++; return; }
+      const m = labMaestroDe(f.s) || {}, sn = v => R.sn ? v : v > 0 ? 'n' : v === 0 ? 's' : undefined;
+      nuevas.push({s:f.s, f:f.f, a:f.a || m.area, par:f.par, r1:sn(f.r1), r2:sn(f.r2), fe:sn(f.fe), hac:m.hac, z:f.z ?? m.zona, za:f.za || m.zonaAgro, v:m.variedad || f.v, nc:m.nCorte ?? f.nc}); });
+    if (!nuevas.length) { toast(`ℹ️ Ese Excel no trae suertes nuevas (${ya} ya están en el control)`, 6000); return; }
+    if (!confirm(`¿Agregar ${nuevas.length} suertes nuevas de ${file.name}?${ya ? ` (${ya} ya estaban en el control y no se tocan)` : ''}`)) return;
+    modCambio(() => labAgregarExtra(nuevas)); labAgregarCerrar();
+    toast(`➕ ${nuevas.length} suertes agregadas desde ${file.name} · recuerda 🚀 Publicar`, 6000);
+  }).catch(err => toast('⚠ ' + (err.message || err), 6000));
 }
 
 // ── 📊 Indicadores: gráficos de las suertes de la tabla (con los filtros de zona, hacienda y búsqueda) ──
