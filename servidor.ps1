@@ -176,6 +176,7 @@ while ($http.IsListening) {
   $res = $ctx.Response
   try {
     $ruta = [Uri]::UnescapeDataString($ctx.Request.Url.AbsolutePath).TrimStart('/')
+    if ($ruta.StartsWith('api/')) { Write-Host "$(Get-Date -Format s) $($ctx.Request.HttpMethod) $ruta" }   # para saber cual pedido traba el servidor
     if ($ruta.StartsWith('api/')) { Cors $ctx }
     if ($ruta.StartsWith('api/') -and $ctx.Request.HttpMethod -eq 'OPTIONS') {
       $res.StatusCode = 204

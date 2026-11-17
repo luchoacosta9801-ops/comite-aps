@@ -226,6 +226,7 @@ function renderLabores(){
       <button type="button" class="plegar-todo" data-lab-par-def>↺ Valores por defecto</button>
       ${B ? '<button type="button" class="plegar-todo" data-lab-quitar title="Quitar el Excel cargado (quedan solo las cosechadas según el maestro)">✕ Quitar Excel</button>' : ''}</div></div>` : ''}`;
   if (labE.ficha) labFicha(labE.ficha);
+  if (ed && !labRevisado) { labRevisado = true; labDesdeServidor(true); }
 }
 const labCargaHTML = () => `<div class="lab-carga"><span>📥 Labores pendientes (Excel «Maestro Suertes y labores pendientes», hoja <b>Hoja1 (2)</b>):</span>
   <label class="plegar-todo pt-file">📂 Cargar Excel…<input type="file" id="lab-archivo" accept=".xlsx,.xls,.xlsm" hidden></label>
@@ -314,18 +315,32 @@ function labAplicar(R){
   const pend = k => sum(R.filas, f => f[k] > 0 ? f[k] : 0);
   toast(`🚜 Reporte cargado: ${R.filas.length} cortes · pendiente 1ra ${msN(pend('r1'), 1)} ha · 2da ${msN(pend('r2'), 1)} ha · fertilización ${msN(pend('fe'), 1)} ha · recuerda 🚀 Publicar`);
 }
+// Hora local del archivo (AAAA-MM-DDTHH:MM:SS): se guarda en DB.levante.mod para saber si el Excel de la carpeta cambió
+const labHoraISO = d => `${labISO(d)}T${[d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':')}`;
 function labCargarArchivo(file){
   if (!file) return; toast(`⏳ Leyendo ${file.name}…`);
-  Promise.all([cargarXLSX(), file.arrayBuffer()]).then(([X, buf]) => labAplicar(labLeerReporte(X, buf, file.name, labISO(new Date(file.lastModified))))).catch(e => toast('⚠ ' + (e.message || e)));
+  Promise.all([cargarXLSX(), file.arrayBuffer()]).then(([X, buf]) => labAplicar(Object.assign(labLeerReporte(X, buf, file.name, labISO(new Date(file.lastModified))), {mod:labHoraISO(new Date(file.lastModified))}))).catch(e => toast('⚠ ' + (e.message || e)));
 }
-function labDesdeServidor(){
-  const H = {cache:'no-store', headers:{'X-Comite':'1'}};
-  toast('⏳ Buscando el último Excel de labores pendientes…');
-  fetch(API_BASE + 'api/levante', H).then(r => { if (!r.ok) return r.json().then(j => { throw new Error(j.error || 'No se pudo traer'); });
-    const nom = decodeURIComponent(r.headers.get('X-Archivo') || 'reporte.xlsx'), fe = (r.headers.get('X-Fecha') || '').slice(0, 10);
-    return Promise.all([cargarXLSX(), r.arrayBuffer()]).then(([X, buf]) => labAplicar(labLeerReporte(X, buf, nom, fe))); })
-    .catch(e => toast('⚠ ' + (e.message === 'Failed to fetch' ? 'El servidor de este PC no responde' : e.message || e)));
+// auto = true: solo pregunta la hora del Excel de la carpeta y lo trae si es otro archivo o se guardó después del cargado
+// (al abrir el panel en modo editor, al recargar la página y al volver a la pestaña); sin avisos si el servidor no está
+let labRevisado = false, labTrayendo = false;
+function labDesdeServidor(auto){
+  if (labTrayendo) return; const H = {cache:'no-store', headers:{'X-Comite':'1'}};
+  const traer = () => { labTrayendo = true;
+    return fetch(API_BASE + 'api/levante', H).then(r => { if (!r.ok) return r.json().then(j => { throw new Error(j.error || 'No se pudo traer'); });
+      const nom = decodeURIComponent(r.headers.get('X-Archivo') || 'reporte.xlsx'), fh = r.headers.get('X-Fecha') || '';
+      return Promise.all([cargarXLSX(), r.arrayBuffer()]).then(([X, buf]) => labAplicar(Object.assign(labLeerReporte(X, buf, nom, fh.slice(0, 10)), {mod:fh.slice(0, 19)}))); })
+      .finally(() => { labTrayendo = false; }); };
+  if (!auto) { toast('⏳ Buscando el último Excel de labores pendientes…');
+    traer().catch(e => toast('⚠ ' + (e.message === 'Failed to fetch' ? 'El servidor de este PC no responde' : e.message || e))); return; }
+  fetch(API_BASE + 'api/levante?info=1', H).then(r => r.ok ? r.json() : null).then(info => {
+    if (!info || !info.ok) return; const B = labReporte();
+    if (B && B.archivo === info.archivo && B.mod && B.mod >= String(info.fecha).slice(0, 19)) return;
+    toast(`🔄 El Excel ${info.archivo} cambió (guardado ${msF(info.fecha)} ${String(info.fecha).slice(11, 16)}): actualizando…`);
+    return traer();
+  }).catch(() => {});
 }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && vistaActual === 'lab' && MODO_EDICION) labDesdeServidor(true); });
 
 // Cambios (solo en modo editor): fechas por suerte y labor, programación en bloque y parámetros
 function labSet(key, k, campo, valor){
