@@ -688,18 +688,39 @@ function labEnviar(key, labK){
     if (otra) return labEnviar(key, otra.k);
     toast(`ℹ️ ${o.x.s} ya está en la programación de la semana del ${msF(w)} (${Lb.n})`, 4000); return; }
   modCambio(() => { const D = DB.labores = DB.labores || {params:{}, reg:{}}; D.prog = D.prog || {};
-    (D.prog[w] = D.prog[w] || []).push({id:Date.now().toString(36) + Math.random().toString(36).slice(2, 5), key, s:o.x.s, hac:o.x.hac, z:o.x.zona, lab:Lb.k, ha:+(+labHa(o, Lb)).toFixed(2)}); });
+    // Lo tentativo anotado en la ficha (contratista, implemento, producto y fecha programada de esa semana) viene por defecto
+    const x = o.reg[Lb.k] || {}, fila = {id:Date.now().toString(36) + Math.random().toString(36).slice(2, 5), key, s:o.x.s, hac:o.x.hac, z:o.x.zona, lab:Lb.k, ha:+(+labHa(o, Lb)).toFixed(2)};
+    if (x.contr) fila.contr = x.contr; if (x.impl && Lb.k !== 'fert') fila.impl = x.impl; if (x.prod && Lb.k === 'fert') fila.prod = x.prod;
+    if (x.p && x.p >= w && x.p <= labMas(w, 6)) fila.dia = x.p;
+    (D.prog[w] = D.prog[w] || []).push(fila); });
   toast(`📤 ${o.x.s} → programación de la semana del ${msF(w)} · ${Lb.n}`, 3500);
+}
+const LAB_PG_SEC = [{k:'rot', n:'Roturación', ico:'🚜', labs:['rotur', 'rotur2'], col:'#2a78d6'}, {k:'fert', n:'Fertilización', ico:'🌱', labs:['fert'], col:'#1baf7a'}];
+const labPgOrdenContr = c => c === 'Sin asignar' ? 99 : LAB_CONTR.includes(c) ? LAB_CONTR.indexOf(c) : 50;
+const labPgFiltrar = F => F.filter(r => (!labE.pgSec || LAB_PG_SEC.find(S => S.k === labE.pgSec).labs.includes(r.lab)) && (!labE.pgContr || (r.contr || 'Sin asignar') === labE.pgContr));
+// Grupos: sección (roturación / fertilización) → contratista (lista fija primero, otros, «Sin asignar» al final) → filas por día
+function labPgGrupos(F){
+  return LAB_PG_SEC.map(S => { const R = F.filter(r => S.labs.includes(r.lab)), m = {};
+    R.forEach(r => (m[r.contr || 'Sin asignar'] = m[r.contr || 'Sin asignar'] || []).push(r));
+    return {S, R, contrs:Object.keys(m).sort((a, b) => labPgOrdenContr(a) - labPgOrdenContr(b) || a.localeCompare(b))
+      .map(c => ({c, filas:m[c].slice().sort((a, b) => (a.dia || '9').localeCompare(b.dia || '9') || a.lab.localeCompare(b.lab))}))}; }).filter(g => g.R.length);
 }
 function labProgramacion(){
   const el = (() => { let e = document.getElementById('lab-pg'); if (!e) { e = document.createElement('div'); e.id = 'lab-pg'; document.body.appendChild(e); labPgEventos(e); } return e; })();
   const ed = MODO_EDICION, dis = ed ? '' : 'disabled', w = labPgSemana(), dom = labMas(w, 6), F = labProg()[w] || [];
   const T = labSuertes(), porKey = new Map(T.map(o => [o.key, o]));
+  // Filas enviadas antes: si les falta contratista, implemento o producto y la ficha ya los tiene (tentativos), se traen
+  let lleno = false;
+  F.forEach(r => { const o = porKey.get(r.key), x = o ? o.reg[r.lab] || {} : {};
+    if (!r.contr && x.contr) { r.contr = x.contr; lleno = true; }
+    if (r.lab !== 'fert' && !r.impl && x.impl) { r.impl = x.impl; lleno = true; }
+    if (r.lab === 'fert' && !r.prod && x.prod) { r.prod = x.prod; lleno = true; } });
+  if (lleno && ed) { save(); renderEstadoEdicion(); }
   const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   const opt = (v, t, s) => `<option value="${esc(v)}" ${s === v ? 'selected' : ''}>${esc(t)}</option>`;
   const contrSel = r => { const otro = r.contr && !LAB_CONTR.includes(r.contr);
     return `<select ${dis} data-pg="${r.id}|contr">${opt('', '— Contratista —', r.contr || '')}${LAB_CONTR.map(c => opt(c, c, r.contr)).join('')}${opt('__otro', 'Otro…', otro || (labE.pgOtro || {})[r.id] ? '__otro' : '')}</select>${otro || (labE.pgOtro || {})[r.id] ? `<input type="text" ${dis} data-pg="${r.id}|contrTxt" value="${esc(otro ? r.contr : '')}" placeholder="Escribe el contratista" list="lf-dl-contr">` : ''}`; };
-  const filas = F.map((r, i) => { const o = porKey.get(r.key), Lb = LAB_LABORES.find(L => L.k === r.lab) || LAB_LABORES[0], area = o ? o.x.area : null;
+  const fila = (r, i) => { const o = porKey.get(r.key), Lb = LAB_LABORES.find(L => L.k === r.lab) || LAB_LABORES[0], area = o ? o.x.area : null;
     const queCampo = r.lab === 'fert' ? `<input type="text" ${dis} data-pg="${r.id}|prod" value="${esc(r.prod || '')}" placeholder="Producto o mezcla" list="lf-dl-prod">`
       : `<select ${dis} data-pg="${r.id}|impl">${opt('', '— Implemento —', r.impl || '')}${LAB_IMPL.map(x => opt(x, x, r.impl)).join('')}${r.impl && !LAB_IMPL.includes(r.impl) ? opt(r.impl, r.impl, r.impl) : ''}</select>`;
     return `<tr class="${r.ok ? 'pg-ok' : ''}" style="--c:${Lb.col}">
@@ -711,20 +732,28 @@ function labProgramacion(){
       <td data-l="${r.lab === 'fert' ? 'Producto o mezcla' : 'Implemento'}">${queCampo}</td>
       <td data-l="Área (ha)"><input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-pg="${r.id}|ha" value="${esc(r.ha ?? '')}" class="pg-ha"></td>
       <td data-l="Observación"><input type="text" ${dis} data-pg="${r.id}|obs" value="${esc(r.obs || '')}" placeholder="Observación"></td>
-      <td class="pg-bot">${ed ? `<button type="button" class="pg-ej ${r.ok ? 'on' : ''}" data-pg-ok="${r.id}" title="${r.ok ? 'Ejecutada (tócalo para deshacer)' : 'Marcar como ejecutada (queda realizada en la ficha)'}">${r.ok ? '✓ Ejecutada' : 'Ejecutada'}</button><button type="button" class="pg-x" data-pg-x="${r.id}" title="Quitar de la programación">🗑</button>` : (r.ok ? '<span class="lab-chip" style="color:#15803d;background:#dcfce7">Ejecutada</span>' : '<span class="lab-chip" style="color:#1d4ed8;background:#dbeafe">Programada</span>')}</td></tr>`; }).join('');
-  // Totales de la semana: por labor y por contratista (hectáreas y suertes)
-  const tot = (clave, nombre) => { const m = {}; F.forEach(r => { const k = clave(r); const z = m[k] = m[k] || {ha:0, n:0, ok:0}; z.ha += +r.ha || 0; z.n++; if (r.ok) z.ok += +r.ha || 0; });
-    return Object.entries(m).sort((a, b) => b[1].ha - a[1].ha).map(([k, z]) => `<span class="pg-tot"><b>${esc(nombre(k))}</b> ${msN(z.ha, 1)} ha · ${z.n} st${z.ok ? ` · <em>${msN(z.ok, 1)} ha ejecutadas</em>` : ''}</span>`).join(''); };
+      <td class="pg-bot">${ed ? `<button type="button" class="pg-ej ${r.ok ? 'on' : ''}" data-pg-ok="${r.id}" title="${r.ok ? 'Realizada · tócalo para volver a pendiente' : 'Pendiente · tócalo cuando se haga (queda realizada en la ficha)'}">${r.ok ? '✓ Realizada' : 'Pendiente'}</button><button type="button" class="pg-x" data-pg-x="${r.id}" title="Quitar de la programación">🗑</button>` : (r.ok ? '<span class="lab-chip" style="color:#15803d;background:#dcfce7">Realizada</span>' : '<span class="lab-chip" style="color:#b91c1c;background:#fee2e2">Pendiente</span>')}</td></tr>`; };
+  // Separada en Roturación (1ra y 2da) y Fertilización y, dentro de cada una, por contratista, con sus totales.
+  // Filtros: labE.pgSec ('' | 'rot' | 'fert') y labE.pgContr (un contratista o todos)
+  const Fv = labPgFiltrar(F), G = labPgGrupos(Fv), suma = R => sum(R, r => +r.ha || 0), sumOk = R => sum(R.filter(r => r.ok), r => +r.ha || 0);
+  const resumen = R => `${R.length} suerte${R.length === 1 ? '' : 's'} · <b>${msN(suma(R), 1)} ha</b>${sumOk(R) ? ` · <em>${msN(sumOk(R), 1)} ha realizadas</em>` : ''}`;
+  let n = 0;
+  const filas = G.map(g => `<tr class="pg-g1" style="--c:${g.S.col}"><td colspan="9">${g.S.ico} <b>${g.S.n}</b> <span>${resumen(g.R)}</span></td></tr>`
+    + g.contrs.map(c => `<tr class="pg-g2" style="--c:${g.S.col}"><td colspan="9">👷 <b>${esc(c.c)}</b> <span>${resumen(c.filas)}</span></td></tr>${c.filas.map(r => fila(r, n++)).join('')}`).join('')).join('');
+  const contrsSemana = [...new Set(F.map(r => r.contr || 'Sin asignar'))].sort((a, b) => labPgOrdenContr(a) - labPgOrdenContr(b) || a.localeCompare(b));
+  const cuentaSec = k => F.filter(r => !k || LAB_PG_SEC.find(S => S.k === k).labs.includes(r.lab)).length;
+  const filtros = F.length ? `<div class="pg-filtros"><span class="lab-pills">${[['', 'Todo'], ...LAB_PG_SEC.map(S => [S.k, `${S.ico} ${S.n}`])].map(([v, t]) => `<button type="button" class="${(labE.pgSec || '') === v ? 'on' : ''}" data-pg-sec="${v}">${t} <b>${cuentaSec(v)}</b></button>`).join('')}</span>
+      <select data-pg-fc title="Ver un contratista">${opt('', 'Todos los contratistas', labE.pgContr || '')}${contrsSemana.map(c => opt(c, c, labE.pgContr || '')).join('')}</select></div>` : '';
   const haTot = sum(F, r => +r.ha || 0), haOk = sum(F.filter(r => r.ok), r => +r.ha || 0);
   el.innerHTML = `<div class="ms-fondo" data-pg-cerrar><div class="ms-ficha pg-modal" role="dialog" aria-label="Programación semanal">
-    <div class="ms-fh"><div><b>📅 Programación semanal</b><small>Semana del ${msF(w)} al ${msF(dom)} · ${F.length} suertes · ${msN(haTot, 1)} ha${haOk ? ` · ${msN(haOk, 1)} ha ejecutadas (${msN(haOk / (haTot || 1) * 100, 0)}%)` : ''}</small></div><button type="button" class="ms-x" data-pg-cerrar title="Cerrar (Esc)">✕</button></div>
+    <div class="ms-fh"><div><b>📅 Programación semanal</b><small>Semana del ${msF(w)} al ${msF(dom)} · ${F.length} suertes · ${msN(haTot, 1)} ha${haOk ? ` · ${msN(haOk, 1)} ha realizadas (${msN(haOk / (haTot || 1) * 100, 0)}%)` : ''}</small></div><button type="button" class="ms-x" data-pg-cerrar title="Cerrar (Esc)">✕</button></div>
     <div class="ms-cuerpo">
       <div class="pg-barra"><span class="pg-sem"><button type="button" data-pg-sem="-7" title="Semana anterior">◀</button><b>Semana del ${msF(w)}</b><button type="button" data-pg-sem="7" title="Semana siguiente">▶</button>${w !== labLunes(labHoy()) ? '<button type="button" data-pg-sem="hoy">Esta semana</button>' : ''}</span>
         <span class="pg-acc"><button type="button" class="plegar-todo" data-pg-xl ${F.length ? '' : 'disabled'}>⬇️ Excel</button><button type="button" class="plegar-todo" data-pg-imp ${F.length ? '' : 'disabled'}>🖨 Imprimir</button></span></div>
-      ${F.length ? `<div class="pg-tw"><table class="pg-t"><thead><tr><th>#</th><th>Suerte</th><th>Labor</th><th>Día</th><th>Contratista</th><th>Implemento / producto</th><th>Área (ha)</th><th>Observación</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>
-        <div class="pg-tots"><div><span class="meta">Por labor:</span>${tot(r => r.lab, k => (LAB_LABORES.find(L => L.k === k) || {}).n || k)}</div><div><span class="meta">Por contratista:</span>${tot(r => r.contr || 'Sin asignar', k => k)}</div></div>`
+      ${filtros}
+      ${F.length ? (Fv.length ? `<div class="pg-tw"><table class="pg-t"><thead><tr><th>#</th><th>Suerte</th><th>Labor</th><th>Día</th><th>Contratista</th><th>Implemento / producto</th><th>Área (ha)</th><th>Observación</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>` : '<div class="li-vacio">Nada con ese filtro.</div>')
         : `<div class="li-vacio">No hay suertes en esta semana.${ed ? ' En la tabla, toca <b>📤 Enviar</b> en cada suerte que vaya a trabajarse (con una labor elegida arriba se envía esa labor).' : ''}</div>`}
-      ${ed ? '<p class="meta lf-ayuda">El día queda como fecha programada de la labor; contratista, implemento y producto se copian a la ficha 📝; «Ejecutada» la deja realizada. Recuerda 🚀 Publicar.</p>' : ''}
+      ${ed ? '<p class="meta lf-ayuda">El día queda como fecha programada de la labor; contratista, implemento y producto se copian a la ficha 📝; «Pendiente» → «Realizada» la deja hecha en la ficha. Recuerda 🚀 Publicar.</p>' : ''}
     </div></div><datalist id="lf-dl-contr">${labSugerencias('contr').filter(c => !LAB_CONTR.includes(c)).map(v => `<option value="${esc(v)}">`).join('')}</datalist><datalist id="lf-dl-prod">${labSugerencias('prod').map(v => `<option value="${esc(v)}">`).join('')}</datalist></div>`;
 }
 function labPgCerrar(){ const e = document.getElementById('lab-pg'); if (e) e.innerHTML = ''; labE.pgOtro = {}; if (labE.sucio) { labE.sucio = false; renderVista(); } }
@@ -760,6 +789,7 @@ function labPgEventos(e){
   e.addEventListener('click', ev => { const t = ev.target;
     if (t.matches('[data-pg-cerrar]') || t.closest('.ms-x')) { labPgCerrar(); return; }
     const s = t.closest('[data-pg-sem]'); if (s) { const v = s.dataset.pgSem; labE.sem = v === 'hoy' ? labLunes(labHoy()) : labMas(labPgSemana(), +v); labE.pgOtro = {}; labE.sucio = true; labProgramacion(); return; }
+    const sc = t.closest('[data-pg-sec]'); if (sc) { labE.pgSec = sc.dataset.pgSec; labProgramacion(); return; }
     if (t.closest('[data-pg-xl]')) { labPgExcel(); return; }
     if (t.closest('[data-pg-imp]')) { labPgImprimir(); return; }
     if (!MODO_EDICION) return;
@@ -772,38 +802,46 @@ function labPgEventos(e){
       const v = ((DB.labores.reg || {})[r.key] || {})[r.lab] || {}; if (r.dia && v.p === r.dia) labSet(r.key, r.lab, 'p', '');
       DB.labores.prog[w] = L.filter(y => y !== r); if (!DB.labores.prog[w].length) delete DB.labores.prog[w]; if (!Object.keys(DB.labores.prog).length) delete DB.labores.prog;
       save(); renderEstadoEdicion(); labE.sucio = true; labProgramacion(); } });
-  e.addEventListener('change', ev => { const d = ev.target.dataset.pg; if (!d) return; const [id, campo] = d.split('|'), v = ev.target.value.trim();
+  e.addEventListener('change', ev => { if (ev.target.matches('[data-pg-fc]')) { labE.pgContr = ev.target.value; labProgramacion(); return; }
+    const d = ev.target.dataset.pg; if (!d) return; const [id, campo] = d.split('|'), v = ev.target.value.trim();
     if (campo === 'contr' && v === '__otro') { labE.pgOtro = labE.pgOtro || {}; labE.pgOtro[id] = true; labPgPoner(id, 'contr', '', true); return; }
     if (campo === 'contr') { (labE.pgOtro || {})[id] = false; }
     labPgPoner(id, campo, v, campo === 'contr' || campo === 'dia'); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && e.innerHTML) labPgCerrar(); });
 }
+// Filas de la semana con lo que muestra la lista (mismos filtros), agrupadas como en pantalla: sección → contratista → día
 function labPgFilas(){
   const w = labPgSemana(), porKey = new Map(labSuertes().map(o => [o.key, o]));
-  return (labProg()[w] || []).map(r => { const o = porKey.get(r.key), Lb = LAB_LABORES.find(L => L.k === r.lab) || {};
-    return {r, o, Lb, hac:msHacN(o ? o.x.hac : r.hac) || '', zona:o ? o.x.zona : r.z, dia:r.dia ? `${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][new Date(r.dia + 'T00:00:00').getDay()]} ${msF(r.dia)}` : ''}; })
-    .sort((a, b) => (a.r.dia || '9').localeCompare(b.r.dia || '9') || (a.Lb.n || '').localeCompare(b.Lb.n || ''));
+  const info = r => { const o = porKey.get(r.key), Lb = LAB_LABORES.find(L => L.k === r.lab) || {};
+    return {r, o, Lb, hac:msHacN(o ? o.x.hac : r.hac) || '', zona:o ? o.x.zona : r.z, dia:r.dia ? `${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][new Date(r.dia + 'T00:00:00').getDay()]} ${msF(r.dia)}` : ''}; };
+  return labPgGrupos(labPgFiltrar(labProg()[w] || [])).map(g => ({S:g.S, R:g.R, contrs:g.contrs.map(c => ({c:c.c, filas:c.filas.map(info)}))}));
 }
+const labPgFiltroTxt = () => [labE.pgSec ? LAB_PG_SEC.find(S => S.k === labE.pgSec).n : '', labE.pgContr || ''].filter(Boolean).join(' · ');
 function labPgExcel(){
-  cargarXLSX().then(XLSX => { const w = labPgSemana(), F = labPgFilas();
-    const filas = [['Programación semanal · Control labores campo'], [`Semana del ${msF(w)} al ${msF(labMas(w, 6))}`], [],
-      ['Día', 'Suerte', 'Hacienda', 'Zona', 'Labor', 'Contratista', 'Implemento / producto', 'Área (ha)', 'Estado', 'Observación'],
-      ...F.map(f => [f.dia, f.r.s, f.hac, f.zona ?? '', f.Lb.n || f.r.lab, f.r.contr || '', f.r.lab === 'fert' ? (f.r.prod || '') : (f.r.impl || ''), +(+f.r.ha || 0).toFixed(2), f.r.ok ? 'Ejecutada' : 'Programada', f.r.obs || '']),
-      [], ['', '', '', '', 'Total', '', '', +sum(F, f => +f.r.ha || 0).toFixed(2)]];
+  cargarXLSX().then(XLSX => { const w = labPgSemana(), G = labPgFilas(), ha = R => +sum(R, x => +(x.r || x).ha || 0).toFixed(2);
+    const filas = [['Programación semanal · Control labores campo'], [`Semana del ${msF(w)} al ${msF(labMas(w, 6))}${labPgFiltroTxt() ? ' · ' + labPgFiltroTxt() : ''}`], []];
+    const cab = ['Día', 'Suerte', 'Hacienda', 'Zona', 'Labor', 'Contratista', 'Implemento / producto', 'Área (ha)', 'Estado', 'Observación'];
+    G.forEach(g => { filas.push([`${g.S.n.toUpperCase()} · ${g.R.length} suertes · ${ha(g.R)} ha`], cab);
+      g.contrs.forEach(c => { filas.push([`Contratista: ${c.c}`]);
+        c.filas.forEach(f => filas.push([f.dia, f.r.s, f.hac, f.zona ?? '', f.Lb.n || f.r.lab, f.r.contr || '', f.r.lab === 'fert' ? (f.r.prod || '') : (f.r.impl || ''), +(+f.r.ha || 0).toFixed(2), f.r.ok ? 'Realizada' : 'Pendiente', f.r.obs || '']));
+        filas.push(['', '', '', '', `Subtotal ${c.c}`, '', '', ha(c.filas)]); });
+      filas.push(['', '', '', '', `Total ${g.S.n}`, '', '', ha(g.R)], []); });
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, hoja(XLSX, filas), 'Semana');
     XLSX.writeFile(wb, `programacion-labores-${w}.xlsx`); });
 }
 function labPgImprimir(){
-  const w = labPgSemana(), F = labPgFilas(), v = window.open('', '_blank'); if (!v) { toast('⚠ El navegador bloqueó la ventana de impresión'); return; }
-  const porLab = {}; F.forEach(f => { const z = porLab[f.Lb.n || f.r.lab] = porLab[f.Lb.n || f.r.lab] || {ha:0, n:0}; z.ha += +f.r.ha || 0; z.n++; });
+  const w = labPgSemana(), G = labPgFilas(), v = window.open('', '_blank'); if (!v) { toast('⚠ El navegador bloqueó la ventana de impresión'); return; }
+  const ha = R => msN(sum(R, x => +(x.r || x).ha || 0), 1), nT = sum(G, g => g.R.length);
   v.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Programación semanal ${w}</title><style>
     body{font-family:system-ui,Segoe UI,Arial,sans-serif;color:#0f172a;margin:24px}h1{font-size:20px;margin:0}p{margin:4px 0 14px;color:#475569;font-size:13px}
-    table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left}th{background:#f1f5f9}td.n{text-align:right}
-    .tot{margin-top:12px;font-size:12.5px}.firma{margin-top:28px;font-size:12px;color:#475569}@media print{body{margin:10mm}}</style></head><body>
-    <h1>📅 Programación semanal · Control labores campo</h1><p>Riopaila Agrícola S.A. · Semana del ${msF(w)} al ${msF(labMas(w, 6))} · ${F.length} suertes · ${msN(sum(F, f => +f.r.ha || 0), 1)} ha</p>
-    <table><thead><tr><th>Día</th><th>Suerte</th><th>Hacienda</th><th>Labor</th><th>Contratista</th><th>Implemento / producto</th><th>Área (ha)</th><th>Estado</th><th>Observación</th></tr></thead><tbody>
-    ${F.map(f => `<tr><td>${esc(f.dia)}</td><td><b>${esc(f.r.s)}</b></td><td>${esc(f.hac)}</td><td>${esc(f.Lb.n || f.r.lab)}</td><td>${esc(f.r.contr || '')}</td><td>${esc(f.r.lab === 'fert' ? f.r.prod || '' : f.r.impl || '')}</td><td class="n">${msN(f.r.ha, 2)}</td><td>${f.r.ok ? 'Ejecutada' : 'Programada'}</td><td>${esc(f.r.obs || '')}</td></tr>`).join('')}</tbody></table>
-    <div class="tot">${Object.entries(porLab).map(([n, z]) => `<b>${esc(n)}:</b> ${msN(z.ha, 1)} ha (${z.n} suertes)`).join(' &nbsp;·&nbsp; ')}</div>
+    h2{font-size:16px;margin:18px 0 6px;padding:6px 10px;border-left:5px solid var(--c);background:#f8fafc}h2 span,h3 span{font-weight:500;color:#475569;font-size:12.5px}
+    h3{font-size:13px;margin:10px 0 4px}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px}th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left}th{background:#f1f5f9}td.n{text-align:right}
+    .firma{margin-top:28px;font-size:12px;color:#475569}@media print{body{margin:10mm}h2{break-after:avoid}table{break-inside:auto}}</style></head><body>
+    <h1>📅 Programación semanal · Control labores campo</h1><p>Riopaila Agrícola S.A. · Semana del ${msF(w)} al ${msF(labMas(w, 6))}${labPgFiltroTxt() ? ' · ' + esc(labPgFiltroTxt()) : ''} · ${nT} suertes · ${ha(G.flatMap(g => g.R))} ha</p>
+    ${G.map(g => `<h2 style="--c:${g.S.col}">${g.S.ico} ${g.S.n} <span>· ${g.R.length} suertes · ${ha(g.R)} ha</span></h2>
+      ${g.contrs.map(c => `<h3>👷 ${esc(c.c)} <span>· ${c.filas.length} suertes · ${ha(c.filas)} ha</span></h3>
+        <table><thead><tr><th>Día</th><th>Suerte</th><th>Hacienda</th><th>Labor</th><th>${g.S.k === 'fert' ? 'Producto o mezcla' : 'Implemento'}</th><th>Área (ha)</th><th>Estado</th><th>Observación</th></tr></thead><tbody>
+        ${c.filas.map(f => `<tr><td>${esc(f.dia)}</td><td><b>${esc(f.r.s)}</b></td><td>${esc(f.hac)}</td><td>${esc(f.Lb.n || f.r.lab)}</td><td>${esc(f.r.lab === 'fert' ? f.r.prod || '' : f.r.impl || '')}</td><td class="n">${msN(f.r.ha, 2)}</td><td>${f.r.ok ? 'Realizada' : 'Pendiente'}</td><td>${esc(f.r.obs || '')}</td></tr>`).join('')}</tbody></table>`).join('')}`).join('')}
     <div class="firma">Elaborado por: Luis Acosta · Especialista de Ingeniería Agrícola y Operaciones Campo</div>
     <script>setTimeout(() => print(), 300)<\/script></body></html>`);
   v.document.close();
