@@ -155,12 +155,13 @@ function renderLabores(){
     const urg = T.filter((o, i) => labPorHacer(E[i])), ven = T.filter((o, i) => E[i] === 'vencida' || E[i] === 'atrasada');
     // Recuadro compacto: ha pendientes, barra realizadas / pendientes / sin dato y una línea corta (el detalle va en el globo)
     const hech = cuenta('hecha').length + cuenta('noaplica').length, sin = cuenta('sindato').length, tot = T.length || 1, pct = n => (n / tot * 100).toFixed(1);
+    const haR = sum(cuenta('hecha'), o => labHaReal(o, o.reg[Lb.k]));   // hectáreas realizadas (total o parcial anotada)
     return `<button type="button" class="lab-mini ${labE.labor === Lb.k ? 'on' : ''}" style="--c:${Lb.col}" data-lab-labor="${Lb.k}" data-lab-ir
       title="${esc(`${Lb.n} (${P[Lb.k][0]}–${P[Lb.k][1]} días después del corte): ${urg.length} pendientes (${ven.length} vencidas) · ${cuenta('programada').length} programadas · ${hech} realizadas · ${sin} sin dato en el Excel. Toca para ver todas las suertes.`)}">
       <span class="lab-mini-t">${Lb.ico} <span class="lab-lg">${Lb.n}</span><span class="lab-ct">${Lb.c}</span></span>
-      <span class="lab-mini-v"><b>${msN(haL(urg, Lb), 1)}</b> ha pendientes</span>
+      <span class="lab-mini-v"><b>${msN(haL(urg, Lb), 0)} ha</b> pendientes</span>
       <span class="lab-mini-bar"><i style="width:${pct(hech)}%;background:#16a34a"></i><i style="width:${pct(urg.length)}%;background:#dc2626"></i><i style="width:${pct(sin)}%;background:#cbd5e1"></i></span>
-      <span class="lab-mini-s"><span class="ok">${hech} realizadas</span> · <span class="pe">${urg.length} pendientes</span>${sin ? ` · ${sin} sin dato` : ''}</span></button>`; }).join('');
+      <span class="lab-mini-s"><span class="ok">${msN(haR, 0)} ha realizadas</span> <span class="lab-st">(${hech} suertes)</span> · <span class="pe">${urg.length} suertes pendientes</span>${sin ? ` · ${sin} sin dato` : ''}</span></button>`; }).join('');
   // Programa semanal de roturación y fertilización (fechas programadas, de esta semana en adelante)
   const PROG = LAB_LABORES.filter(Lb => Lb.tipo === 'prog'), sem = {};
   T.forEach(o => PROG.forEach(Lb => { const r = o.reg[Lb.k] || {}, e = labEstado(o, Lb).e; if (!r.p || e === 'hecha' || e === 'noaplica') return;
@@ -174,7 +175,7 @@ function renderLabores(){
   const dosBot = (o, Lb, conFechas) => { const s = labEstado(o, Lb), e = s.e, k = esc(o.key), r = o.reg[Lb.k] || {};
     if (!ed || e === 'noaplica') return chip(s);
     const prog = e === 'programada' || e === 'atrasada', hecha = e === 'hecha', tono = hecha ? 'r' : prog ? 'p' : 'x';
-    return `<span class="lab-2b lab-2b-${tono}" title="${esc(s.t)}"><button type="button" class="${prog ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|p">Programada</button><button type="button" class="${hecha ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|r">Realizada</button></span>${conFechas && (r.p || r.r) ? `<small class="lab-t">${r.r ? `Hecha ${msF(r.r)}` : `Prog. ${msF(r.p)}`}</small>` : ''}`; };
+    return `<span class="lab-2b lab-2b-${tono}" title="${esc(s.t)}"><button type="button" class="${prog ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|p">Programada</button><button type="button" class="${hecha ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|r">Ejecutada</button></span>${conFechas && (r.p || r.r) ? `<small class="lab-t">${r.r ? `Hecha ${msF(r.r)}` : `Prog. ${msF(r.p)}`}</small>` : ''}`; };
   // Columnas: lo que trae el Excel (1ra, 2da roturación y fertilización)
   const LAB_COLS = LAB_LABORES;
   const LbSel = LAB_LABORES.find(x => x.k === labE.labor);
@@ -192,7 +193,7 @@ function renderLabores(){
       <tbody>${ord.map(o => filaLabor(o, LbSel)).join('') || `<tr><td colspan="16" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
       ${ord.length ? `<tfoot><tr><td colspan="4">Total · ${ord.length} suertes</td><td class="n b">${msN(ha(ord), 2)}</td><td colspan="4"></td>${LbSel.bd ? `<td class="n b">${msN(sum(ord.filter(o => labPorHacer(labEstado(o, LbSel).e)), o => labHa(o, LbSel)), 2)}</td>` : ''}<td colspan="${ed ? 3 : 2}"></td></tr></tfoot>` : ''}</table>`
     : `<table class="sim-t lab-tab"><thead><tr>${cabDatos}${LAB_COLS.map(Lb => `<th title="${Lb.n}: ${P[Lb.k][0]}–${P[Lb.k][1]} días después del corte">${Lb.ico} ${Lb.c || Lb.n}</th>`).join('')}<th></th></tr></thead>
-      <tbody>${ord.map(o => `<tr>${datos(o)}${LAB_COLS.map(Lb => `<td>${dosBot(o, Lb)}</td>`).join('')}${fichaBtn(o)}</tr>`).join('') || `<tr><td colspan="${10 + LAB_LABORES.length}" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
+      <tbody>${ord.map(o => `<tr>${datos(o)}${LAB_COLS.map(Lb => `<td>${chip(labEstado(o, Lb))}</td>`).join('')}${fichaBtn(o)}</tr>`).join('') || `<tr><td colspan="${10 + LAB_LABORES.length}" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
       ${ord.length ? `<tfoot><tr><td colspan="4">Total · ${ord.length} suertes</td><td class="n b">${msN(ha(ord), 2)}</td><td colspan="${5 + LAB_LABORES.length}"></td></tr></tfoot>` : ''}</table>`;
   // Selector de labor (cuántas suertes pendientes tiene cada una con los demás filtros)
   const pendDe = Lb => T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && labPorHacer(labEstado(o, Lb).e)).length;
@@ -219,7 +220,7 @@ function renderLabores(){
           return `<tr${w === 'atrasadas' ? ' style="background:#fff7ed"' : ''}><td>${w === 'atrasadas' ? '<b style="color:#c2410c">Atrasadas</b>' : `Semana del ${msF(w)}`}</td>${PROG.map(Lb => `<td class="n">${c(Lb.k)}</td>`).join('')}</tr>`; }).join('') || `<tr><td colspan="${PROG.length + 1}" class="nores">Aún no hay labores programadas.</td></tr>`}</tbody></table></div></div>
     </div>
     <div class="sim-card abierta" id="lab-tabla">
-      <div class="lab-barra">${selector}${estBtns}<span class="lab-cuenta">${ed ? '<span class="lab-ley2"><i style="background:#d03b3b"></i>Pendiente <i style="background:#2a78d6"></i>Programada <i style="background:#0ca30c"></i>Realizada</span>' : ''}${L.length} suertes · ${msN(ha(L), 1)} ha</span></div>
+      <div class="lab-barra">${selector}${estBtns}<span class="lab-cuenta">${ed && LbSel ? '<span class="lab-ley2"><i style="background:#d03b3b"></i>Pendiente <i style="background:#2a78d6"></i>Programada <i style="background:#0ca30c"></i>Ejecutada</span>' : ''}${L.length} suertes · ${msN(ha(L), 1)} ha</span></div>
       <div class="lab-filtros">
         <input id="lab-txt" class="pr-buscar" placeholder="🔎 Buscar suerte, hacienda o variedad…" value="${esc(labE.txt)}">
         <select id="lab-zona">${opt('', 'Zona', labE.zona)}${opt('1', 'Zona 1', labE.zona)}${opt('2', 'Zona 2', labE.zona)}</select>
