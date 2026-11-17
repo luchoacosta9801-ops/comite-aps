@@ -100,12 +100,17 @@ function labBD(o, L){
 }
 // Cómo se hizo (o se hará): implemento, contratista, producto y dosis escritos en la ficha
 const labComo = r => [r.impl, r.contr ? `con ${r.contr}` : '', r.prod, r.dosis].filter(Boolean).map(t => ' · ' + t).join('');
+// Tipo de roturación: 'si' = única (subesca o triple), 'no' = 1ra y 2da, 'nr' = no se rotura (plantilla).
+// Lo escrito en la ficha manda; si no hay nada y la suerte va en el corte 1 (plantilla), por defecto no se rotura.
+const labPlantilla = o => +o.x.nCorte === 1;
+const labUnica = o => (o.reg.rotur || {}).unica || (labPlantilla(o) ? 'nr' : '');
 function labEstado(o, L){
   const P = labPar(), [d0, d1] = P[L.k], r = o.reg[L.k] || {}, hoy = labHoy(), b = labBD(o, L);
-  const v = o.bd && L.bd && !o.bd.sn ? o.bd[L.bd] : undefined, como = labComo(r);
+  const v = o.bd && L.bd && !o.bd.sn ? o.bd[L.bd] : undefined, como = labComo(r), un = labUnica(o);
   if (r.r) return {e:'hecha', t:`Hecha ${msF(r.r)}${como}`};
   if (r.tiene === 'si') return {e:'hecha', t:`Hecha${como}`};
-  if (L.k === 'rotur2' && (o.reg.rotur || {}).unica === 'si') { const r1 = o.reg.rotur; return {e:'noaplica', t:`Única roturación${r1.impl ? ' · ' + r1.impl : ''}`}; }
+  if ((L.k === 'rotur' || L.k === 'rotur2') && un === 'nr') return {e:'noaplica', n:'No se rotura', t:`No se rotura${labPlantilla(o) ? ' · plantilla (corte 1)' : ''}`};
+  if (L.k === 'rotur2' && un === 'si') { const r1 = o.reg.rotur || {}; return {e:'noaplica', t:`Única roturación${r1.impl ? ' · ' + r1.impl : ''}`}; }
   if (r.tiene !== 'no' && b === 'hecha') return {e:'hecha', t:o.fuente === 'manual' ? 'Hecha (marcada al agregar la suerte)' : o.bd.sn ? 'Hecha según el Excel (S)' : 'Hecha según el reporte'};
   if (L.tipo === 'alerta' && o.dd > P.dias) return {e:'noaplica', t:`Corte de hace más de ${P.dias} días: sin seguimiento`};
   if (L.tipo === 'alerta' && labEstado(o, LAB_LABORES.find(x => x.k === 'rotur')).e === 'hecha') return {e:'hecha', t:'Se da por hecha: ya se roturó'};
@@ -154,14 +159,15 @@ function renderLabores(){
   const kpi = LAB_LABORES.map(Lb => { const E = T.map(o => labEstado(o, Lb).e), cuenta = e => T.filter((o, i) => E[i] === e);
     const urg = T.filter((o, i) => labPorHacer(E[i])), ven = T.filter((o, i) => E[i] === 'vencida' || E[i] === 'atrasada');
     // Recuadro compacto: ha pendientes, barra realizadas / pendientes / sin dato y una línea corta (el detalle va en el globo)
-    const hech = cuenta('hecha').length + cuenta('noaplica').length, sin = cuenta('sindato').length, tot = T.length || 1, pct = n => (n / tot * 100).toFixed(1);
+    // Las que no aplican (plantillas que no se roturan, 2da de una roturación única) no cuentan en la barra
+    const n0 = cuenta('noaplica').length, hech = cuenta('hecha').length, sin = cuenta('sindato').length, tot = (T.length - n0) || 1, pct = n => (n / tot * 100).toFixed(1);
     const haR = sum(cuenta('hecha'), o => labHaReal(o, o.reg[Lb.k]));   // hectáreas realizadas (total o parcial anotada)
     return `<button type="button" class="lab-mini ${labE.labor === Lb.k ? 'on' : ''}" style="--c:${Lb.col}" data-lab-labor="${Lb.k}" data-lab-ir
-      title="${esc(`${Lb.n} (${P[Lb.k][0]}–${P[Lb.k][1]} días después del corte): ${urg.length} pendientes (${ven.length} vencidas) · ${cuenta('programada').length} programadas · ${hech} realizadas · ${sin} sin dato en el Excel. Toca para ver todas las suertes.`)}">
+      title="${esc(`${Lb.n} (${P[Lb.k][0]}–${P[Lb.k][1]} días después del corte): ${urg.length} pendientes (${ven.length} vencidas) · ${cuenta('programada').length} programadas · ${hech} realizadas · ${sin} sin dato en el Excel${n0 ? ` · ${n0} no aplica (${Lb.k === 'rotur' ? 'plantillas que no se roturan' : 'plantillas o roturación única'})` : ''}. Toca para ver todas las suertes.`)}">
       <span class="lab-mini-t">${Lb.ico} <span class="lab-lg">${Lb.n}</span><span class="lab-ct">${Lb.c}</span></span>
       <span class="lab-mini-v"><b>${msN(haL(urg, Lb), 0)} ha</b> pendientes</span>
       <span class="lab-mini-bar"><i style="width:${pct(hech)}%;background:#16a34a"></i><i style="width:${pct(urg.length)}%;background:#dc2626"></i><i style="width:${pct(sin)}%;background:#cbd5e1"></i></span>
-      <span class="lab-mini-s"><span class="ok">${msN(haR, 0)} ha realizadas</span> <span class="lab-st">(${hech} suertes)</span> · <span class="pe">${urg.length} suertes pendientes</span>${sin ? ` · ${sin} sin dato` : ''}</span></button>`; }).join('');
+      <span class="lab-mini-s"><span class="ok">${msN(haR, 0)} ha realizadas</span> <span class="lab-st">(${hech} suertes)</span> · <span class="pe">${urg.length} suertes pendientes</span>${sin ? ` · ${sin} sin dato` : ''}${n0 ? ` · <span class="lab-st">${n0} no ${Lb.k === 'rotur' ? 'se roturan' : 'aplica'}</span>` : ''}</span></button>`; }).join('');
   // Programa semanal de roturación y fertilización (fechas programadas, de esta semana en adelante)
   const PROG = LAB_LABORES.filter(Lb => Lb.tipo === 'prog'), sem = {};
   T.forEach(o => PROG.forEach(Lb => { const r = o.reg[Lb.k] || {}, e = labEstado(o, Lb).e; if (!r.p || e === 'hecha' || e === 'noaplica') return;
@@ -169,7 +175,7 @@ function renderLabores(){
   const semanas = Object.keys(sem).sort((a, b) => a === 'atrasadas' ? -1 : b === 'atrasadas' ? 1 : a < b ? -1 : 1);
   // Tabla
   const ord = [...L].sort((a, b) => labE.orden === 'excel' ? (a.i ?? 1e6) - (b.i ?? 1e6) || b.dd - a.dd : labE.orden === 'hac' ? (a.x.hac + a.x.s).localeCompare(b.x.hac + b.x.s) : labE.orden === 'area' ? (b.x.area || 0) - (a.x.area || 0) : labE.orden === 'nuevas' ? a.dd - b.dd : b.dd - a.dd);
-  const chip = s => { const E = LAB_EST[s.e]; return `<span class="lab-chip" style="color:${E.col};background:${E.bg}" title="${esc(s.t)}">${E.n}</span>`; };
+  const chip = s => { const E = LAB_EST[s.e]; return `<span class="lab-chip" style="color:${E.col};background:${E.bg}" title="${esc(s.t)}">${s.n || E.n}</span>`; };
   // En modo editor, cada labor lleva dos botones: Programada y Realizada (el activo va pintado; ninguno = pendiente,
   // con borde rojo). Tocar el activo lo quita. Fuera del modo editor se ve solo el estado.
   const dosBot = (o, Lb, conFechas) => { const s = labEstado(o, Lb), e = s.e, k = esc(o.key), r = o.reg[Lb.k] || {};
@@ -421,7 +427,7 @@ function labFicha(key){
   // Fecha: si ya la tiene es la fecha en que se hizo (r); si no, la fecha programada (p)
   const fecha = (k, x) => x.tiene === 'si' || x.r ? `<label>Fecha en que se hizo<input type="date" ${dis} data-lft="${k}|r" value="${esc(x.r || '')}"></label>`
     : `<label>Fecha programada<input type="date" ${dis} data-lft="${k}|p" value="${esc(x.p || '')}"></label>`;
-  const estado = k => { const s = labEstado(o, L(k)), E = LAB_EST[s.e]; return `<span class="lab-chip" style="color:${E.col};background:${E.bg}" title="${esc(s.t)}">${E.n}</span>`; };
+  const estado = k => { const s = labEstado(o, L(k)), E = LAB_EST[s.e]; return `<span class="lab-chip" style="color:${E.col};background:${E.bg}" title="${esc(s.t)}">${s.n || E.n}</span>`; };
   // Contratista: lista fija (LAB_CONTR) + «Otro…» que abre un campo para escribirlo
   const contr = (k, x, etiqueta) => { const otro = (labE.otro || {})[k] || !!(x.contr && !LAB_CONTR.includes(x.contr));
     return `<label>${etiqueta || 'Contratista'}<select ${dis} data-lfc="${k}"><option value="">— Elegir —</option>${LAB_CONTR.map(c => `<option ${x.contr === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}<option value="__otro" ${otro ? 'selected' : ''}>Otro…</option></select>
@@ -433,12 +439,13 @@ function labFicha(key){
     ${conTiene ? `<div class="lf-q">¿Tiene ${titulo.toLowerCase()}? ${seg(k, 'tiene', x.tiene, SINO)}</div>` : ''}
     ${area(k, k === 'rotur' ? rot : x)}
     <div class="lf-campos">${contr(k, x)}<label>Implemento${txt(k, 'impl', x.impl, 'Implemento', 'impl')}</label>${fecha(k, x)}</div></div>`;
-  let cuerpoRot = '';
-  if (rot.unica === 'si') cuerpoRot = `<div class="lf-pase"><div class="lf-pt"><b>Roturación única</b> ${estado('rotur')}</div>
+  let cuerpoRot = ''; const unica = labUnica(o);
+  if (unica === 'nr') cuerpoRot = `<div class="la-info la-auto">🌱 ${labPlantilla(o) ? 'Plantilla (corte 1): ' : ''}<b>no se rotura</b>; la 1ra y la 2da roturación quedan como «no aplica». Si sí se va a roturar, elige «Sí» o «No» arriba.</div>`;
+  else if (unica === 'si') cuerpoRot = `<div class="lf-pase"><div class="lf-pt"><b>Roturación única</b> ${estado('rotur')}</div>
       <div class="lf-q">Implemento ${seg('rotur', 'impl', LAB_IMPL.includes(rot.impl) ? rot.impl : '', LAB_IMPL.map(i => [i, i]))}</div>
       ${area('rotur', rot)}
       <div class="lf-campos">${contr('rotur', rot)}${fecha('rotur', rot)}</div></div>`;
-  else if (rot.unica === 'no') cuerpoRot = pase('rotur', rot, '1ra roturación', false) + pase('rotur2', rot2, '2da roturación', true);
+  else if (unica === 'no') cuerpoRot = pase('rotur', rot, '1ra roturación', false) + pase('rotur2', rot2, '2da roturación', true);
   else cuerpoRot = `<div class="meta lf-ayuda">Responde si es <b>única roturación</b> (subesca o triple) o si lleva <b>1ra y 2da</b> roturación, para anotar contratista, implemento, área y fecha.</div>`;
   const dl = c => `<datalist id="lf-dl-${c}">${labSugerencias(c).map(v => `<option value="${esc(v)}">`).join('')}</datalist>`;
   el.innerHTML = `<div class="ms-fondo lf-fondo" data-lf-cerrar><div class="ms-ficha lf-ficha" role="dialog" aria-label="Ficha de labores de la suerte ${esc(o.x.s)}">
@@ -447,8 +454,8 @@ function labFicha(key){
     <div class="ms-cuerpo">
       ${ed ? '' : '<div class="meta lf-ayuda">Solo lectura: para anotar, entra en modo editor.</div>'}
       <div class="lf-sec" style="--c:#2a78d6"><div class="lf-h">🚜 Roturación ${estado('rotur')} ${exc('rotur')}</div>
-        <div class="lf-q">¿Única roturación? ${seg('rotur', 'unica', rot.unica, [['si', 'Sí (subesca o triple)'], ['no', 'No (1ra y 2da)']])}</div>
-        ${rot.unica ? `<div class="lf-q">¿Tiene ${rot.unica === 'si' ? 'la roturación' : 'la 1ra roturación'}? ${seg('rotur', 'tiene', rot.tiene, SINO)}</div>` : ''}
+        <div class="lf-q">¿Única roturación? ${seg('rotur', 'unica', unica, [['si', 'Sí (subesca o triple)'], ['no', 'No (1ra y 2da)'], ['nr', 'No se rotura']])}</div>
+        ${unica === 'si' || unica === 'no' ? `<div class="lf-q">¿Tiene ${unica === 'si' ? 'la roturación' : 'la 1ra roturación'}? ${seg('rotur', 'tiene', rot.tiene, SINO)}</div>` : ''}
         ${cuerpoRot}</div>
       <div class="lf-sec" style="--c:#1baf7a"><div class="lf-h">🌱 Fertilización ${estado('fert')} ${exc('fert')}</div>
         <div class="lf-q">¿Tiene fertilización? ${seg('fert', 'tiene', fer.tiene, SINO)}</div>
@@ -582,8 +589,8 @@ function labAgregar(){
           <label>Parcial (ha) · opcional<input type="number" inputmode="decimal" step="0.01" min="0" data-la="par" value="${esc(A.par ?? '')}"></label></div>
         ${s ? `<div class="la-info">${m ? `📚 <b>${esc(msHacN(m.hac))}</b> · Zona ${esc(m.zona ?? '—')} · ${msN(m.area, 2)} ha · ${esc(m.variedad || '—')}${m.nCorte != null ? ` · corte ${msN(m.nCorte)}` : ''}${m.ultCorte ? ` · último corte en el maestro: ${msF(m.ultCorte)}` : ''}` : '⚠ Esa suerte no está en el maestro: escribe el área a mano.'}</div>` : A.s ? '<div class="la-info la-mal">Escribe el código completo: sector y suerte, por ejemplo 3501-120.</div>' : ''}
         ${ya ? `<div class="la-info la-mal">Esa suerte ya está en el control (corte ${msF(ya.x.ultCorte)}). Ábrela en la tabla para anotar sus labores.</div>` : ''}
-        ${A.auto ? `<div class="la-info la-auto">✓ Del maestro: fecha de corte <b>${msF(A.f)}</b> y área <b>${msN(A.a, 2)} ha</b> (puedes cambiarlas)</div>` : ''}
-        <div class="lf-q">¿Roturación única? <span class="lf-seg">${[['si', 'Sí (subesca o triple)'], ['no', 'No (1ra y 2da)']].map(([v, t]) => `<button type="button" class="${A.unica === v ? 'on' : ''}" data-la-sn="unica|${v}">${t}</button>`).join('')}</span></div>
+        ${A.auto ? `<div class="la-info la-auto">✓ Del maestro: fecha de corte <b>${msF(A.f)}</b> y área <b>${msN(A.a, 2)} ha</b> (puedes cambiarlas)${A.plantilla ? ' · <b>corte 1 (plantilla): no se rotura</b>' : ''}</div>` : ''}
+        <div class="lf-q">¿Roturación única? <span class="lf-seg">${[['si', 'Sí (subesca o triple)'], ['no', 'No (1ra y 2da)'], ['nr', 'No se rotura']].map(([v, t]) => `<button type="button" class="${A.unica === v ? 'on' : ''}" data-la-sn="unica|${v}">${t}</button>`).join('')}</span></div>
         ${A.unica === 'si' ? sn('r1', 'la roturación') : A.unica === 'no' ? sn('r1', '1ra roturación') + sn('r2', '2da roturación') : ''}${sn('fe', 'fertilización')}
         <button type="button" class="lab-ind-btn la-ok" data-la-ok ${s && A.f && !ya ? '' : 'disabled'}>➕ Agregar suerte</button></div>
       <div class="lf-sec" style="--c:#1baf7a"><div class="lf-h">📂 Desde un Excel</div>
@@ -595,7 +602,8 @@ function labAgregar(){
 function labLaLeer(A, foco){
   const s = frCodSuerte(A.s); A.leida = s || null;
   if (s) { A.s = s; const m = labMaestroDe(s);
-    if (m) { A.a = m.area != null ? +(+m.area).toFixed(2) : ''; A.f = [m.ultCorte, m.siembra].filter(Boolean).sort().pop() || A.f || ''; A.auto = !!(A.f || A.a); }
+    if (m) { A.a = m.area != null ? +(+m.area).toFixed(2) : ''; A.f = [m.ultCorte, m.siembra].filter(Boolean).sort().pop() || A.f || ''; A.auto = !!(A.f || A.a);
+      A.plantilla = +m.nCorte === 1; A.unica = A.plantilla ? 'nr' : A.unica === 'nr' ? '' : A.unica; }   // corte 1 = plantilla: no se rotura
     else { A.auto = false; } }
   labAgregar();
   if (foco) { const i = document.querySelector('#lab-add [data-la="f"]'); if (i) i.focus(); }
@@ -611,7 +619,7 @@ function labAgregarEventos(e){
       if (!a) { toast('⚠ Escribe el área de la suerte'); return; }
       if (labEnControl(s, A.f)) { toast('⚠ Esa suerte ya está en el control'); return; }
       const par = +String(A.par ?? '').replace(',', '.') || undefined;
-      modCambio(() => { labAgregarExtra([{s, f:A.f, a, par, r1:A.r1, r2:A.unica === 'si' ? undefined : A.r2, fe:A.fe, hac:m.hac, z:m.zona, za:m.zonaAgro, v:m.variedad, nc:m.nCorte}]);
+      modCambio(() => { labAgregarExtra([{s, f:A.f, a, par, r1:A.unica === 'nr' ? undefined : A.r1, r2:A.unica === 'si' || A.unica === 'nr' ? undefined : A.r2, fe:A.fe, hac:m.hac, z:m.zona, za:m.zonaAgro, v:m.variedad, nc:m.nCorte}]);
         if (A.unica) labSet(`${s}|${A.f}`, 'rotur', 'unica', A.unica); });   // única = sí: la 2da roturación no aplica
       labAgregarCerrar(); toast(`➕ Suerte ${s} agregada · recuerda 🚀 Publicar`); labFicha(`${s}|${A.f}`); } });
   e.addEventListener('change', ev => { const t = ev.target;
