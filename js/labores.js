@@ -195,7 +195,7 @@ function renderLabores(){
   const origen = !B ? 'Sin Excel de labores pendientes cargado'
     : `${B.sn ? 'Excel' : 'Reporte'} ${B.archivo}${B.hoja ? ` · hoja ${B.hoja}` : ''} (${msF(B.fecha)}): ${nRep} suertes${nMs ? ` + ${nMs} cosechadas según el maestro que el Excel aún no trae` : ''} · ${msN(ha(T), 1)} ha`;
   cont.innerHTML = `
-    <div class="lab-top"><div class="sim-tit" title="${esc(origen)}">🚜 Control labores campo${B ? '' : ' <small class="lab-aviso">sin Excel cargado</small>'}</div>
+    <div class="lab-top"><div class="sim-tit" title="${esc(origen)}">🚜 Control labores campo${B ? '' : ' <small class="lab-aviso">sin Excel cargado</small>'}${B && B.mod ? `<small class="lab-ver" title="Hora en que se guardó el Excel que muestra el panel">Excel guardado ${labHoraTxt(B.mod)}</small>` : ''}</div>
       <div class="lab-acc">${ed ? `<label class="lab-ico" title="Cargar Excel de labores pendientes">📂<input type="file" id="lab-archivo" accept=".xlsx,.xls,.xlsm" hidden></label>
         <button type="button" class="lab-ico" data-lab-servidor title="Traer el último Excel de Documents\\OPERACIONES CAMPO - LEVANTE">🔄</button>` : ''}
         <button type="button" class="lab-ico" data-lab-excel title="Descargar en Excel">⬇️</button></div></div>
@@ -316,6 +316,8 @@ function labAplicar(R){
   toast(`🚜 Reporte cargado: ${R.filas.length} cortes · pendiente 1ra ${msN(pend('r1'), 1)} ha · 2da ${msN(pend('r2'), 1)} ha · fertilización ${msN(pend('fe'), 1)} ha · recuerda 🚀 Publicar`);
 }
 // Hora local del archivo (AAAA-MM-DDTHH:MM:SS): se guarda en DB.levante.mod para saber si el Excel de la carpeta cambió
+// «16 nov 2026, 9:09 p. m.» a partir de AAAA-MM-DDTHH:MM
+const labHoraTxt = iso => { const h = +String(iso).slice(11, 13), m = String(iso).slice(14, 16); return `${msF(iso)}${m ? `, ${h % 12 || 12}:${m} ${h < 12 ? 'a. m.' : 'p. m.'}` : ''}`; };
 const labHoraISO = d => `${labISO(d)}T${[d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':')}`;
 function labCargarArchivo(file){
   if (!file) return; toast(`⏳ Leyendo ${file.name}…`);
@@ -326,10 +328,14 @@ function labCargarArchivo(file){
 let labRevisado = false, labTrayendo = false;
 function labDesdeServidor(auto){
   if (labTrayendo) return; const H = {cache:'no-store', headers:{'X-Comite':'1'}};
-  const traer = () => { labTrayendo = true;
+  const traer = () => { labTrayendo = true; const antes = labReporte();
     return fetch(API_BASE + 'api/levante', H).then(r => { if (!r.ok) return r.json().then(j => { throw new Error(j.error || 'No se pudo traer'); });
       const nom = decodeURIComponent(r.headers.get('X-Archivo') || 'reporte.xlsx'), fh = r.headers.get('X-Fecha') || '';
-      return Promise.all([cargarXLSX(), r.arrayBuffer()]).then(([X, buf]) => labAplicar(Object.assign(labLeerReporte(X, buf, nom, fh.slice(0, 10)), {mod:fh.slice(0, 19)}))); })
+      return Promise.all([cargarXLSX(), r.arrayBuffer()]).then(([X, buf]) => {
+        // Mismo archivo y misma hora de guardado: los cambios hechos en Excel aún no se han guardado
+        if (!auto && antes && antes.archivo === nom && antes.mod === fh.slice(0, 19)) {
+          toast(`ℹ️ El Excel de la carpeta no ha cambiado: sigue guardado el ${labHoraTxt(antes.mod)} · Si hiciste cambios, guárdalo en Excel (Ctrl+G) y vuelve a tocar 🔄`, 9000); return; }
+        labAplicar(Object.assign(labLeerReporte(X, buf, nom, fh.slice(0, 10)), {mod:fh.slice(0, 19)})); }); })
       .finally(() => { labTrayendo = false; }); };
   if (!auto) { toast('⏳ Buscando el último Excel de labores pendientes…');
     traer().catch(e => toast('⚠ ' + (e.message === 'Failed to fetch' ? 'El servidor de este PC no responde' : e.message || e))); return; }

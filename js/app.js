@@ -11,7 +11,7 @@ function money(n){return '$'+Math.round(n||0).toLocaleString('en-US')}
 function redibujarConservando(id,fn){const viejo=q(id);fn();const nuevo=q(id);if(viejo&&nuevo&&nuevo!==viejo)nuevo.replaceWith(viejo);if(viejo&&document.activeElement!==viejo)viejo.focus({preventScroll:true});}
 
 let tt;
-function toast(msg){const t=q('toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200);}
+function toast(msg,ms){const t=q('toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),ms||2200);}
 function updateSaveDot(){
   const d=q('save-dot'); if(!d) return;
   const t=DB.meta.actualizado?new Date(DB.meta.actualizado):null;
