@@ -22,24 +22,29 @@
 
 const LAB_LABORES = [
   // Despaje y reencalle (alertas por días después del corte) se quitaron el 16 nov 2026 a pedido de Luis
-  {k:'rotur',     n:'1ra roturación', c:'1ra rot.', ico:'🚜', tipo:'prog',   col:'#0369a1', bd:'r1'},
-  {k:'rotur2',    n:'2da roturación', c:'2da rot.', ico:'🚜', tipo:'prog',   col:'#0e7490', bd:'r2'},
-  {k:'fert',      n:'Fertilización',  c:'Fertiliz.', ico:'🌱', tipo:'prog',   col:'#15803d', bd:'fe'},
+  // Colores: primeros puestos de la paleta categórica validada (azul, naranja, aguamarina) para que se distingan en los gráficos
+  {k:'rotur',     n:'1ra roturación', c:'1ra rot.', ico:'🚜', tipo:'prog',   col:'#2a78d6', bd:'r1'},
+  {k:'rotur2',    n:'2da roturación', c:'2da rot.', ico:'🚜', tipo:'prog',   col:'#eb6834', bd:'r2'},
+  {k:'fert',      n:'Fertilización',  c:'Fertiliz.', ico:'🌱', tipo:'prog',   col:'#1baf7a', bd:'fe'},
 ];
+// Contratistas de levante (16 nov 2026); «Otro» deja escribir uno que falte
+const LAB_CONTR = ['Bienes y Maquinaria', 'Riocas', 'Camaro', 'Galvil', 'Agromorales'];
 // Ventanas por defecto (días después del corte); el editor las cambia en «Parámetros»
 const LAB_DEF = {dias:60, despaje:[0, 10], reencalle:[5, 15], rotur:[15, 30], rotur2:[30, 50], fert:[25, 45]};
 const LAB_EST = {
   hecha:      {n:'Realizada',  col:'#15803d', bg:'#dcfce7'},
   programada: {n:'Programada', col:'#1d4ed8', bg:'#dbeafe'},
   atrasada:   {n:'Atrasada',   col:'#c2410c', bg:'#ffedd5'},
-  pendiente:  {n:'Pendiente',  col:'#a16207', bg:'#fef9c3'},
-  vencida:    {n:'Vencida',    col:'#b91c1c', bg:'#fee2e2'},
+  pendiente:  {n:'Pendiente',  col:'#b91c1c', bg:'#fee2e2'},
+  vencida:    {n:'Pendiente',  col:'#b91c1c', bg:'#fee2e2'},   // se muestra como «Pendiente» (pedido de Luis); el globo dice hace cuánto venció
   proxima:    {n:'Próxima',    col:'#64748b', bg:'#f1f5f9'},
   sindato:    {n:'Sin dato',   col:'#6b7280', bg:'#f3f4f6'},
   noaplica:   {n:'No aplica',  col:'#94a3b8', bg:'#f8fafc'},
 };
 const labE = {zona:'', hac:'', txt:'', labor:'', estado:'', orden:'excel', progFecha:'', fuente:'', ficha:null, sucio:false};
-const LAB_IMPL = ['Subsolador', 'Triple'];   // implementos de la roturación única
+const LAB_IMPL = ['Subesca', 'Triple'];   // implementos de la roturación única
+// Área realizada de una labor: total = área del maestro; parcial = la escrita en la ficha, o la «parcial (ha)» del Excel
+const labHaReal = (o, x) => x && x.at === 'parcial' ? (+x.ha || +o.x.par || +o.x.area || 0) : (+o.x.area || 0);
 
 function labDatos(){
   if (DB.labores === undefined && typeof SEED !== 'undefined' && SEED.labores) DB.labores = clone(SEED.labores);
@@ -145,7 +150,7 @@ function renderLabores(){
     const hech = cuenta('hecha').length + cuenta('noaplica').length, sin = cuenta('sindato').length, tot = T.length || 1, pct = n => (n / tot * 100).toFixed(1);
     return `<button type="button" class="lab-mini ${labE.labor === Lb.k ? 'on' : ''}" style="--c:${Lb.col}" data-lab-labor="${Lb.k}" data-lab-ir
       title="${esc(`${Lb.n} (${P[Lb.k][0]}–${P[Lb.k][1]} días después del corte): ${urg.length} pendientes (${ven.length} vencidas) · ${cuenta('programada').length} programadas · ${hech} realizadas · ${sin} sin dato en el Excel. Toca para ver todas las suertes.`)}">
-      <span class="lab-mini-t">${Lb.ico} ${Lb.n}</span>
+      <span class="lab-mini-t">${Lb.ico} <span class="lab-lg">${Lb.n}</span><span class="lab-ct">${Lb.c}</span></span>
       <span class="lab-mini-v"><b>${msN(haL(urg, Lb), 1)}</b> ha pendientes</span>
       <span class="lab-mini-bar"><i style="width:${pct(hech)}%;background:#16a34a"></i><i style="width:${pct(urg.length)}%;background:#dc2626"></i><i style="width:${pct(sin)}%;background:#cbd5e1"></i></span>
       <span class="lab-mini-s"><span class="ok">${hech} realizadas</span> · <span class="pe">${urg.length} pendientes</span>${sin ? ` · ${sin} sin dato` : ''}</span></button>`; }).join('');
@@ -166,7 +171,7 @@ function renderLabores(){
   const datos = o => `<td class="b lab-cod"><a href="#" data-lab-ficha="${esc(o.key)}" title="Abrir la ficha de labores">${esc(o.x.s)}</a>${o.fuente === 'maestro' ? ' <small class="lab-fu" title="Cosechada según el maestro; aún no está en el Excel de labores pendientes">maestro</small>' : ''}</td>
     <td>${esc(msHacN(o.x.hac)) || '<span class="meta">—</span>'}</td><td>${esc(o.x.zona ?? '')}</td><td>${esc(o.x.zonaAgro || '')}</td><td class="n">${msN(o.x.area, 2)}${o.x.par ? `<small class="lab-t" title="Parcial (ha) según el Excel">parcial ${msN(o.x.par, 2)}</small>` : ''}</td>
     <td>${esc(o.x.variedad || '—')}</td><td class="n">${o.x.nCorte != null ? msN(o.x.nCorte) : esc(o.x.tipo || '')}</td><td>${msF(o.x.ultCorte)}${o.x.desdeSiembra ? '<small class="lab-t">siembra</small>' : ''}</td><td class="n">${o.dd}</td>`;
-  const cabDatos = '<th>Suerte</th><th>Hacienda</th><th title="Zona">Z</th><th title="Zona agroecológica">Z. agro</th><th class="n">Área</th><th>Variedad</th><th class="n">Corte</th><th>Cosechada</th><th class="n" title="Días desde el corte (o la siembra)">Días</th>';
+  const cabDatos = '<th>Suerte</th><th>Hacienda</th><th title="Zona">Z</th><th title="Zona agroecológica">Z. agro</th><th class="n">Área</th><th>Variedad</th><th class="n">Corte</th><th>Cosechada</th><th class="n lab-th2" title="Días de lucro: desde el corte (o la siembra) hasta hoy">Días de<br>lucro</th>';
   // Una labor elegida: una fila por suerte con su estado y, en modo editor, las fechas para programar o marcar hecha
   const filaLabor = (o, Lb) => { const s = labEstado(o, Lb), r = o.reg[Lb.k] || {}, k = esc(o.key), cerrada = s.e === 'noaplica' || (s.e === 'hecha' && !r.r);
     return `<tr>${datos(o)}${Lb.bd ? `<td class="n b">${labPorHacer(s.e) ? msN(labHa(o, Lb), 2) : '<span class="meta">—</span>'}</td>` : ''}<td>${chip(s)}${xl(o, Lb)}</td>
@@ -184,13 +189,13 @@ function renderLabores(){
   // Botones de estado con su cuenta (con los demás filtros): todas / realizadas / pendientes / vencidas / sin dato
   const base = T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!labE.fuente || o.fuente === labE.fuente));
   const nEst = v => !v ? base.length : base.filter(o => LbSel ? labCumple(labEstado(o, LbSel).e, v) : (() => { const E = LAB_LABORES.map(Lb => labEstado(o, Lb).e); return v === 'hecha' ? E.every(e => labCumple(e, v)) : E.some(e => labCumple(e, v)); })()).length;
-  const estBtns = `<div class="lab-pills">${[['', 'Todas'], ['hecha', 'Realizadas'], ['pend', 'Pendientes'], ['venc', 'Vencidas'], ['sindato', 'Sin dato']].map(([v, t]) =>
+  const estBtns = `<div class="lab-pills">${[['', 'Todas'], ['hecha', 'Realizadas'], ['pend', 'Pendientes'], ['sindato', 'Sin dato']].map(([v, t]) =>
     `<button type="button" class="${labE.estado === v ? 'on' : ''} est-${v || 'todas'}" data-lab-est="${v}">${t} <b>${nEst(v)}</b></button>`).join('')}</div>`;
   // De dónde salen los datos: solo en el globo del título (para no llenar la página de texto)
   const origen = !B ? 'Sin Excel de labores pendientes cargado'
     : `${B.sn ? 'Excel' : 'Reporte'} ${B.archivo}${B.hoja ? ` · hoja ${B.hoja}` : ''} (${msF(B.fecha)}): ${nRep} suertes${nMs ? ` + ${nMs} cosechadas según el maestro que el Excel aún no trae` : ''} · ${msN(ha(T), 1)} ha`;
   cont.innerHTML = `
-    <div class="lab-top"><div class="sim-tit" title="${esc(origen)}">🚜 Control de labores${B ? '' : ' <small class="lab-aviso">sin Excel cargado</small>'}</div>
+    <div class="lab-top"><div class="sim-tit" title="${esc(origen)}">🚜 Control labores campo${B ? '' : ' <small class="lab-aviso">sin Excel cargado</small>'}</div>
       <div class="lab-acc">${ed ? `<label class="lab-ico" title="Cargar Excel de labores pendientes">📂<input type="file" id="lab-archivo" accept=".xlsx,.xls,.xlsm" hidden></label>
         <button type="button" class="lab-ico" data-lab-servidor title="Traer el último Excel de Documents\\OPERACIONES CAMPO - LEVANTE">🔄</button>` : ''}
         <button type="button" class="lab-ico" data-lab-excel title="Descargar en Excel">⬇️</button></div></div>
@@ -207,7 +212,8 @@ function renderLabores(){
         <input id="lab-txt" class="pr-buscar" placeholder="🔎 Buscar suerte, hacienda o variedad…" value="${esc(labE.txt)}">
         <select id="lab-zona">${opt('', 'Zona', labE.zona)}${opt('1', 'Zona 1', labE.zona)}${opt('2', 'Zona 2', labE.zona)}</select>
         <select id="lab-hac">${opt('', 'Hacienda', labE.hac)}${hacs.map(h => opt(h, msHacN(h), labE.hac)).join('')}</select>
-        <select id="lab-orden" title="Orden">${opt('excel', 'Orden del Excel', labE.orden)}${opt('corte', 'Más antiguas', labE.orden)}${opt('nuevas', 'Más recientes', labE.orden)}${opt('hac', 'Por hacienda', labE.orden)}${opt('area', 'Por área', labE.orden)}</select></div>
+        <select id="lab-orden" title="Orden">${opt('excel', 'Orden del Excel', labE.orden)}${opt('corte', 'Más antiguas', labE.orden)}${opt('nuevas', 'Más recientes', labE.orden)}${opt('hac', 'Por hacienda', labE.orden)}${opt('area', 'Por área', labE.orden)}</select>
+        <button type="button" class="lab-ind-btn" data-lab-ind title="Gráficos de lo que muestra la tabla (con estos filtros)">📊 Indicadores</button></div>
       ${ed ? `<details class="lab-prog"><summary>⚡ En bloque <span class="meta">· programar o marcar las suertes de la tabla</span></summary>
         <div>Fecha <input type="date" id="lab-pf" value="${esc(labE.progFecha || hoy)}"> <span class="meta">Programar:</span>
           ${PROG.filter(Lb => !LbSel || Lb === LbSel).map(Lb => { const n = labBloque(L, Lb, 'p').length; return `<button type="button" class="plegar-todo" data-lab-bloque="${Lb.k}|p" ${n ? '' : 'disabled'}>${Lb.ico} ${Lb.n} (${n})</button>`; }).join('') || '<span class="meta">—</span>'}
@@ -345,6 +351,7 @@ function labSugerencias(campo){
 function labFicha(key){
   const el = labFichaEl(), o = labSuertes().find(y => y.key === key);
   if (!o) { el.innerHTML = ''; labE.ficha = null; return; }
+  if (labE.ficha !== key) labE.otro = {};   // «Otro contratista» abierto, por labor, solo mientras se edita esta ficha
   labE.ficha = key;
   const ed = MODO_EDICION, dis = ed ? '' : 'disabled', R = o.reg, rot = R.rotur || {}, rot2 = R.rotur2 || {}, fer = R.fert || {}, nota = R.nota || {};
   const L = k => LAB_LABORES.find(x => x.k === k);
@@ -358,28 +365,38 @@ function labFicha(key){
   const fecha = (k, x) => x.tiene === 'si' || x.r ? `<label>Fecha en que se hizo<input type="date" ${dis} data-lft="${k}|r" value="${esc(x.r || '')}"></label>`
     : `<label>Fecha programada<input type="date" ${dis} data-lft="${k}|p" value="${esc(x.p || '')}"></label>`;
   const estado = k => { const s = labEstado(o, L(k)), E = LAB_EST[s.e]; return `<span class="lab-chip" style="color:${E.col};background:${E.bg}" title="${esc(s.t)}">${E.n}</span>`; };
+  // Contratista: lista fija (LAB_CONTR) + «Otro…» que abre un campo para escribirlo
+  const contr = (k, x, etiqueta) => { const otro = (labE.otro || {})[k] || !!(x.contr && !LAB_CONTR.includes(x.contr));
+    return `<label>${etiqueta || 'Contratista'}<select ${dis} data-lfc="${k}"><option value="">— Elegir —</option>${LAB_CONTR.map(c => `<option ${x.contr === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}<option value="__otro" ${otro ? 'selected' : ''}>Otro…</option></select>
+      ${otro ? txt(k, 'contr', LAB_CONTR.includes(x.contr) ? '' : x.contr, 'Escribe el contratista', 'contr') : ''}</label>`; };
+  // Área realizada (cuando ya la tiene): total = área del maestro; parcial = escribirla (trae la «parcial (ha)» del Excel)
+  const area = (k, x) => !(x.tiene === 'si' || x.r) ? '' : `<div class="lf-q lf-area">Área realizada ${seg(k, 'at', x.at || 'total', [['total', `Total · ${msN(o.x.area, 2)} ha`], ['parcial', 'Parcial']])}
+    ${x.at === 'parcial' ? `<span class="lf-ha"><input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-lft="${k}|ha" value="${esc(x.ha ?? o.x.par ?? '')}" placeholder="0,00"> ha</span>${o.x.par ? `<small class="meta">parcial del Excel: ${msN(o.x.par, 2)} ha</small>` : ''}` : ''}</div>`;
   const pase = (k, x, titulo, conTiene) => `<div class="lf-pase"><div class="lf-pt"><b>${titulo}</b> ${estado(k)}${conTiene ? ` ${exc(k)}` : ''}</div>
     ${conTiene ? `<div class="lf-q">¿Tiene ${titulo.toLowerCase()}? ${seg(k, 'tiene', x.tiene, SINO)}</div>` : ''}
-    <div class="lf-campos"><label>Contratista${txt(k, 'contr', x.contr, '¿Con quién?', 'contr')}</label><label>Implemento${txt(k, 'impl', x.impl, 'Implemento', 'impl')}</label>${fecha(k, x)}</div></div>`;
+    ${area(k, k === 'rotur' ? rot : x)}
+    <div class="lf-campos">${contr(k, x)}<label>Implemento${txt(k, 'impl', x.impl, 'Implemento', 'impl')}</label>${fecha(k, x)}</div></div>`;
   let cuerpoRot = '';
   if (rot.unica === 'si') cuerpoRot = `<div class="lf-pase"><div class="lf-pt"><b>Roturación única</b> ${estado('rotur')}</div>
-      <div class="lf-q">Implemento ${seg('rotur', 'impl', LAB_IMPL.includes(rot.impl) ? rot.impl : '', LAB_IMPL.map(i => [i, i]))} ${txt('rotur', 'impl', LAB_IMPL.includes(rot.impl) ? '' : rot.impl, 'Otro implemento', 'impl')}</div>
-      <div class="lf-campos"><label>Contratista${txt('rotur', 'contr', rot.contr, '¿Con quién?', 'contr')}</label>${fecha('rotur', rot)}</div></div>`;
+      <div class="lf-q">Implemento ${seg('rotur', 'impl', LAB_IMPL.includes(rot.impl) ? rot.impl : '', LAB_IMPL.map(i => [i, i]))}</div>
+      ${area('rotur', rot)}
+      <div class="lf-campos">${contr('rotur', rot)}${fecha('rotur', rot)}</div></div>`;
   else if (rot.unica === 'no') cuerpoRot = pase('rotur', rot, '1ra roturación', false) + pase('rotur2', rot2, '2da roturación', true);
-  else cuerpoRot = `<div class="meta lf-ayuda">Responde si es <b>única roturación</b> (subsolador o triple) o si lleva <b>1ra y 2da</b> roturación, para anotar contratista, implemento y fecha.</div>`;
+  else cuerpoRot = `<div class="meta lf-ayuda">Responde si es <b>única roturación</b> (subesca o triple) o si lleva <b>1ra y 2da</b> roturación, para anotar contratista, implemento, área y fecha.</div>`;
   const dl = c => `<datalist id="lf-dl-${c}">${labSugerencias(c).map(v => `<option value="${esc(v)}">`).join('')}</datalist>`;
   el.innerHTML = `<div class="ms-fondo lf-fondo" data-lf-cerrar><div class="ms-ficha lf-ficha" role="dialog" aria-label="Ficha de labores de la suerte ${esc(o.x.s)}">
     <div class="ms-fh"><span class="ms-cod">${esc(o.x.s)}</span><div><b>${esc(msHacN(o.x.hac) || 'Suerte ' + o.x.s)}</b><small>Zona ${esc(o.x.zona ?? '—')} · ${msN(o.x.area, 2)} ha · ${esc(o.x.variedad || '—')}${o.x.nCorte != null ? ` · corte ${msN(o.x.nCorte)}` : ''} · ${o.x.desdeSiembra ? 'sembrada' : 'cosechada'} ${msF(o.x.ultCorte)} (hace ${o.dd} d)${o.x.par ? ` · parcial ${msN(o.x.par, 2)} ha` : ''}</small></div>
       <button type="button" class="ms-x" data-lf-cerrar title="Cerrar (Esc)">✕</button></div>
     <div class="ms-cuerpo">
       ${ed ? '' : '<div class="meta lf-ayuda">Solo lectura: para anotar, entra en modo editor.</div>'}
-      <div class="lf-sec" style="--c:#0369a1"><div class="lf-h">🚜 Roturación ${estado('rotur')} ${exc('rotur')}</div>
+      <div class="lf-sec" style="--c:#2a78d6"><div class="lf-h">🚜 Roturación ${estado('rotur')} ${exc('rotur')}</div>
         <div class="lf-q">¿Tiene roturación? ${seg('rotur', 'tiene', rot.tiene, SINO)}</div>
-        <div class="lf-q">¿Única roturación? ${seg('rotur', 'unica', rot.unica, [['si', 'Sí (subsolador o triple)'], ['no', 'No (1ra y 2da)']])}</div>
+        <div class="lf-q">¿Única roturación? ${seg('rotur', 'unica', rot.unica, [['si', 'Sí (subesca o triple)'], ['no', 'No (1ra y 2da)']])}</div>
         ${cuerpoRot}</div>
-      <div class="lf-sec" style="--c:#15803d"><div class="lf-h">🌱 Fertilización ${estado('fert')} ${exc('fert')}</div>
+      <div class="lf-sec" style="--c:#1baf7a"><div class="lf-h">🌱 Fertilización ${estado('fert')} ${exc('fert')}</div>
         <div class="lf-q">¿Tiene fertilización? ${seg('fert', 'tiene', fer.tiene, SINO)}</div>
-        <div class="lf-campos"><label>¿Con quién?${txt('fert', 'contr', fer.contr, 'Contratista', 'contr')}</label>
+        ${area('fert', fer)}
+        <div class="lf-campos">${contr('fert', fer, '¿Con quién?')}
           <label>Producto o mezcla${txt('fert', 'prod', fer.prod, 'Ej.: urea + KCl', 'prod')}</label>
           <label>Dosis${txt('fert', 'dosis', fer.dosis, 'Ej.: 6 bultos/ha')}</label>${fecha('fert', fer)}</div></div>
       <div class="lf-sec" style="--c:#64748b"><div class="lf-h">📝 Observaciones</div>
@@ -401,7 +418,13 @@ labFichaEl().addEventListener('click', e => {
   const [k, campo, v] = b.dataset.lf.split('|'), actual = ((labSuertes().find(y => y.key === labE.ficha) || {reg:{}}).reg[k] || {})[campo];
   labFichaGuardar(k, campo, actual === v ? '' : v, true);
 });
-labFichaEl().addEventListener('change', e => { const d = e.target.dataset.lft; if (!d) return; const [k, campo] = d.split('|'); labFichaGuardar(k, campo, e.target.value.trim(), e.target.type === 'date'); });
+labFichaEl().addEventListener('change', e => {
+  const c = e.target.dataset.lfc;
+  if (c) { labE.otro = labE.otro || {}; const v = e.target.value;
+    if (v === '__otro') { labE.otro[c] = true; const x = ((labSuertes().find(y => y.key === labE.ficha) || {reg:{}}).reg[c] || {}); if (LAB_CONTR.includes(x.contr)) labFichaGuardar(c, 'contr', '', false); labFicha(labE.ficha); }
+    else { labE.otro[c] = false; labFichaGuardar(c, 'contr', v, true); }
+    return; }
+  const d = e.target.dataset.lft; if (!d) return; const [k, campo] = d.split('|'); labFichaGuardar(k, campo, e.target.value.trim(), e.target.type === 'date'); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && labE.ficha) labFichaCerrar(); });
 // Se borran los registros de cortes de hace más de 400 días que ya no están en el control, para no crecer sin fin
 function labLimpiar(D){
@@ -412,6 +435,7 @@ q('labores').addEventListener('click', e => {
   const t = e.target;
   const ir = t.closest('[data-ir]'); if (ir) { irA(ir.dataset.ir); return; }
   const fi = t.closest('[data-lab-ficha]'); if (fi) { e.preventDefault(); labFicha(fi.dataset.labFicha); return; }
+  if (t.closest('[data-lab-ind]')) { labIndicadores(); return; }
   if (t.closest('[data-lab-excel]')) { labExcel(); return; }
   if (t.closest('[data-lab-servidor]')) { labDesdeServidor(); return; }
   if (t.closest('[data-lab-quitar]')) { if (confirm('¿Quitar el Excel de labores pendientes? Quedan solo las suertes cosechadas según el maestro (lo anotado en las fichas no se borra).')) modCambio(() => { delete DB.levante; }); return; }
@@ -449,17 +473,108 @@ function labExcel(){
     const B = labReporte(), sn = !!(B && B.sn);
     cab.push('Parcial (ha)');
     LAB_LABORES.forEach(Lb => cab.push(`${Lb.n} (${P[Lb.k][0]}–${P[Lb.k][1]} d)`, ...(Lb.bd ? [sn ? `${Lb.n} · Excel (S/N)` : `${Lb.n} · ha pendientes (reporte)`] : []), `${Lb.n} programada`, `${Lb.n} hecha`));
-    cab.push('¿Tiene roturación?', '¿Única roturación?', 'Roturación · implemento', 'Roturación · contratista', '¿Tiene 2da roturación?', '2da · implemento', '2da · contratista',
-      '¿Tiene fertilización?', 'Fertilización · contratista', 'Producto o mezcla', 'Dosis', 'Observaciones');
+    cab.push('¿Tiene roturación?', '¿Única roturación?', 'Roturación · implemento', 'Roturación · contratista', 'Roturación · área realizada (ha)', '¿Tiene 2da roturación?', '2da · implemento', '2da · contratista', '2da · área realizada (ha)',
+      '¿Tiene fertilización?', 'Fertilización · contratista', 'Producto o mezcla', 'Dosis', 'Fertilización · área realizada (ha)', 'Observaciones');
     const sino = v => v === 'si' ? 'Sí' : v === 'no' ? 'No' : '';
     const filas = [cab, ...L.map(o => { const f = [o.x.s, msHacN(o.x.hac), o.x.zona ?? '', o.x.zonaAgro || '', +(+o.x.area || 0).toFixed(2), o.x.variedad || '', o.x.nCorte ?? '', o.x.ultCorte, o.dd, o.fuente === 'reporte' ? (sn ? 'Excel labores pendientes' : 'Reporte de levante') : 'Maestro', o.x.par || ''];
       LAB_LABORES.forEach(Lb => { const r = o.reg[Lb.k] || {}; f.push(LAB_EST[labEstado(o, Lb).e].n); if (Lb.bd) f.push(o.bd ? (sn ? String(o.bd[Lb.bd] || '').toUpperCase() : o.bd[Lb.bd] ?? '') : ''); f.push(r.p || '', r.r || ''); });
       const a = o.reg.rotur || {}, b = o.reg.rotur2 || {}, c = o.reg.fert || {};
-      f.push(sino(a.tiene), sino(a.unica), a.impl || '', a.contr || '', sino(b.tiene), b.impl || '', b.contr || '', sino(c.tiene), c.contr || '', c.prod || '', c.dosis || '', (o.reg.nota || {}).obs || '');
+      const hr = (k, x) => labEstado(o, LAB_LABORES.find(Lb => Lb.k === k)).e === 'hecha' ? +labHaReal(o, x).toFixed(2) : '';
+      f.push(sino(a.tiene), sino(a.unica), a.impl || '', a.contr || '', hr('rotur', a), sino(b.tiene), b.impl || '', b.contr || '', hr('rotur2', b), sino(c.tiene), c.contr || '', c.prod || '', c.dosis || '', hr('fert', c), (o.reg.nota || {}).obs || '');
       return f; })];
     XLSX.utils.book_append_sheet(wb, hoja(XLSX, filas), 'Labores');
     XLSX.writeFile(wb, `control-labores-${labHoy()}.xlsx`);
   });
+}
+
+// ── 📊 Indicadores: gráficos de las suertes de la tabla (con los filtros de zona, hacienda y búsqueda) ──
+// Colores: estados con la paleta de estado (verde realizada, rojo pendiente, gris sin dato); contratistas y labores con
+// los puestos de la paleta categórica validada, siempre en el mismo orden (el color sigue al contratista, no a su puesto).
+const LAB_IND_EST = [['hecha', 'Realizada', '#0ca30c'], ['pend', 'Pendiente', '#d03b3b'], ['sin', 'Sin dato', '#a3aab5']];
+const LAB_CAT = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300'];
+const LAB_GRIS = '#64748b', LAB_SIN = '#cbd5e1';
+const labColorContr = n => n === 'Sin anotar' ? LAB_SIN : LAB_CONTR.includes(n) ? LAB_CAT[LAB_CONTR.indexOf(n)] : LAB_GRIS;
+function labIndDatos(){
+  const t = norm(labE.txt);
+  const A = labSuertes().filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac)
+    && (!t || norm(`${o.x.s} ${o.x.hac} ${o.x.variedad || ''} ${o.x.zonaAgro || ''}`).includes(t)));
+  const suma = (m, k, v) => { m[k] = (m[k] || 0) + v; };
+  const impl = {}, prod = {}, hac = {};
+  const por = LAB_LABORES.map(Lb => { const d = {Lb, hecha:0, pend:0, sin:0, nH:0, nP:0, nS:0, contr:{}};
+    A.forEach(o => { const e = labEstado(o, Lb).e, x = o.reg[Lb.k] || {};
+      if (e === 'hecha') { const h = labHaReal(o, x); d.hecha += h; d.nH++;
+        suma(d.contr, !x.contr ? 'Sin anotar' : LAB_CONTR.includes(x.contr) ? x.contr : 'Otros', h);
+        if (Lb.k !== 'fert') suma(impl, x.impl || 'Sin anotar', h); else suma(prod, x.prod || 'Sin anotar', h); }
+      else if (e === 'sindato') { d.sin += o.x.area || 0; d.nS++; }
+      else if (labPorHacer(e)) { const h = labHa(o, Lb); d.pend += h; d.nP++; const z = hac[o.x.hac || '—'] = hac[o.x.hac || '—'] || {}; suma(z, Lb.k, h); } });
+    return d; });
+  return {A, por, impl, prod, hac};
+}
+// Dona en SVG: items [{n, v, c}]; cada pedazo con su globo
+function labDona(items, centro, sub){
+  const R = 40, C = 2 * Math.PI * R, I = items.filter(i => i.v > 0), tot = sum(I, i => i.v) || 1, gap = I.length > 1 ? 1.6 : 0;
+  let off = 0;
+  const segs = I.map(i => { const len = i.v / tot * C, s = `<circle r="${R}" cx="50" cy="50" fill="none" stroke="${i.c}" stroke-width="15" stroke-dasharray="${Math.max(len - gap, 0.01)} ${C}" stroke-dashoffset="${-off}" data-tip="${esc(`${i.n}: ${msN(i.v, 1)} ha · ${msN(i.v / tot * 100, 0)}%`)}"/>`; off += len; return s; }).join('');
+  return `<svg viewBox="0 0 100 100" class="li-dona" role="img" aria-label="${esc(sub)}"><g transform="rotate(-90 50 50)"><circle r="${R}" cx="50" cy="50" fill="none" stroke="#f1f5f9" stroke-width="15"/>${segs}</g>
+    <text x="50" y="50" text-anchor="middle" class="li-dona-v">${centro}</text><text x="50" y="62" text-anchor="middle" class="li-dona-s">${esc(sub)}</text></svg>`;
+}
+const labLeyenda = items => `<div class="li-ley">${items.map(i => `<span><i style="background:${i.c}"></i>${esc(i.n)}${i.v != null ? ` <b>${msN(i.v, 1)} ha</b>` : ''}</span>`).join('')}</div>`;
+// Barra horizontal apilada: segmentos [{n, v, c}], largo proporcional a max
+const labBarra = (segs, max, etiqueta) => { const tot = sum(segs, s => s.v);
+  return `<div class="li-fila"><span class="li-fila-n" title="${esc(etiqueta)}">${esc(etiqueta)}</span><div class="li-pista"><div class="li-hbar" style="width:${max ? tot / max * 100 : 0}%">${segs.filter(s => s.v > 0).map(s =>
+    `<i style="flex:${s.v};background:${s.c}" data-tip="${esc(`${etiqueta} · ${s.n}: ${msN(s.v, 1)} ha (${msN(s.v / tot * 100, 0)}%)`)}"></i>`).join('')}</div></div><span class="li-fila-v">${msN(tot, 1)}</span></div>`; };
+function labIndicadores(){
+  const el = (() => { let e = document.getElementById('lab-ind'); if (!e) { e = document.createElement('div'); e.id = 'lab-ind'; document.body.appendChild(e); labIndEventos(e); } return e; })();
+  const D = labIndDatos(), haT = sum(D.A, o => o.x.area || 0);
+  const filtros = [labE.zona ? `Zona ${labE.zona}` : '', labE.hac ? msHacN(labE.hac) : '', labE.txt ? `«${labE.txt}»` : ''].filter(Boolean).join(' · ') || 'Todas las suertes';
+  // Recuadros: % del área realizada por labor
+  const tiles = D.por.map(d => { const tot = d.hecha + d.pend + d.sin, p = tot ? d.hecha / tot * 100 : 0;
+    return `<div class="li-tile" style="--c:${d.Lb.col}"><span class="li-tile-t">${d.Lb.ico} ${d.Lb.n}</span><b>${msN(p, 0)}%</b><small>${msN(d.hecha, 1)} de ${msN(tot, 1)} ha realizadas</small></div>`; }).join('');
+  // 1. Área por labor: realizada / pendiente / sin dato
+  const maxL = Math.max(...D.por.map(d => d.hecha + d.pend + d.sin), 0);
+  const g1 = D.por.map(d => labBarra(LAB_IND_EST.map(([k, n, c]) => ({n, v:d[k], c})), maxL, d.Lb.n)).join('');
+  // 2. Participación por contratista (ha realizadas), una dona por labor
+  // Las donas muestran solo lo anotado en las fichas; lo realizado sin anotar va en una nota debajo
+  const nota = v => v > 0.005 ? `<div class="li-nota">+ ${msN(v, 1)} ha realizadas sin anotar en la ficha</div>` : '';
+  const nombresC = [...LAB_CONTR, 'Otros'];
+  const g2 = D.por.map(d => { const I = nombresC.map(n => ({n, v:d.contr[n] || 0, c:labColorContr(n)})), an = sum(I, i => i.v);
+    return `<div class="li-dona-c"><div class="li-sub">${d.Lb.ico} ${d.Lb.n}</div>${an ? labDona(I, msN(an, 1), 'ha anotadas') : `<div class="li-vacio">${d.hecha ? 'Sin contratistas anotados' : 'Sin labores realizadas'}</div>`}${nota(d.contr['Sin anotar'] || 0)}</div>`; }).join('');
+  const usadosC = nombresC.filter(n => D.por.some(d => d.contr[n]));
+  // 3. Implemento (roturaciones realizadas) y 4. productos de fertilización (orden por hectáreas; Subesca y Triple con color fijo)
+  const lista = (M, color) => Object.entries(M).filter(([n]) => n !== 'Sin anotar').sort((a, b) => b[1] - a[1]).map(([n, v], i) => ({n, v, c:color(n, i)}));
+  const Im = lista(D.impl, (n, i) => LAB_IMPL.includes(n) ? LAB_CAT[LAB_IMPL.indexOf(n)] : LAB_GRIS), Pr = lista(D.prod, (n, i) => LAB_CAT[i] || LAB_GRIS);
+  const donaL = (I, M, vacio) => I.length ? `<div class="li-dona-l">${labDona(I, msN(sum(I, i => i.v), 1), 'ha anotadas')}${labLeyenda(I)}</div>${nota(M['Sin anotar'] || 0)}` : `<div class="li-vacio">${vacio}</div>${nota(M['Sin anotar'] || 0)}`;
+  // 5. Pendiente por hacienda (apilado por labor)
+  const H = Object.entries(D.hac).map(([h, z]) => ({h, z, t:sum(Object.values(z), v => v)})).sort((a, b) => b.t - a.t), maxH = H.length ? H[0].t : 0;
+  const g5 = H.slice(0, 14).map(r => labBarra(LAB_LABORES.map(Lb => ({n:Lb.n, v:r.z[Lb.k] || 0, c:Lb.col})), maxH, msHacN(r.h) || r.h)).join('');
+  const tarjeta = (tit, sub, cuerpo, ancho) => `<section class="li-card${ancho ? ' li-ancha' : ''}"><h3>${tit}</h3>${sub ? `<p class="li-p">${sub}</p>` : ''}${cuerpo}</section>`;
+  el.innerHTML = `<div class="ms-fondo li-fondo" data-li-cerrar><div class="ms-ficha li-modal" role="dialog" aria-label="Indicadores del control de labores">
+    <div class="ms-fh"><div><b>📊 Indicadores · Control labores campo</b><small>${esc(filtros)} · ${D.A.length} suertes · ${msN(haT, 1)} ha</small></div><button type="button" class="ms-x" data-li-cerrar title="Cerrar (Esc)">✕</button></div>
+    <div class="ms-cuerpo">
+      <div class="li-tiles">${tiles}</div>
+      <div class="li-grid">
+        ${tarjeta('Área realizada vs pendiente por labor', 'Hectáreas · pasa el mouse (o toca) cada color para ver el detalle', `${labLeyenda(LAB_IND_EST.map(([, n, c]) => ({n, c})))}${g1}`, true)}
+        ${tarjeta('Participación por contratista', 'Hectáreas realizadas por contratista en cada labor (lo anotado en la ficha 📝)', `${usadosC.length ? labLeyenda(usadosC.map(n => ({n, c:labColorContr(n)}))) : ''}<div class="li-donas">${g2}</div>`, true)}
+        ${tarjeta('Implemento en roturación', 'Hectáreas de roturación realizadas (1ra y 2da) por implemento', donaL(Im, D.impl, 'Aún no hay implementos anotados'))}
+        ${tarjeta('Productos de fertilización', 'Hectáreas fertilizadas por producto o mezcla', donaL(Pr, D.prod, 'Aún no hay productos anotados'))}
+        ${tarjeta('Área pendiente por hacienda', `Hectáreas pendientes por labor${H.length > 14 ? ` · las 14 haciendas con más área (de ${H.length})` : ''}`, H.length ? `${labLeyenda(LAB_LABORES.map(Lb => ({n:Lb.n, c:Lb.col})))}${g5}` : '<div class="li-vacio">Nada pendiente ✓</div>', true)}
+      </div>
+      <div class="li-tip" hidden></div>
+    </div></div></div>`;
+}
+function labIndCerrar(){ const e = document.getElementById('lab-ind'); if (e) e.innerHTML = ''; }
+// Globo de los gráficos: con el mouse sigue el puntero; en el celular aparece al tocar
+function labIndEventos(e){
+  const tip = () => e.querySelector('.li-tip');
+  const mostrar = ev => { const m = ev.target.closest && ev.target.closest('[data-tip]'), T = tip(); if (!T) return;
+    if (!m) { T.hidden = true; return; }
+    T.textContent = m.dataset.tip; T.hidden = false;
+    const w = T.offsetWidth, x = Math.min(ev.clientX + 12, innerWidth - w - 8), y = ev.clientY - T.offsetHeight - 10;
+    T.style.left = Math.max(8, x) + 'px'; T.style.top = (y < 8 ? ev.clientY + 16 : y) + 'px'; };
+  e.addEventListener('pointermove', mostrar); e.addEventListener('pointerdown', mostrar);
+  e.addEventListener('pointerleave', () => { const T = tip(); if (T) T.hidden = true; });
+  e.addEventListener('click', ev => { if (ev.target.matches('[data-li-cerrar]') || ev.target.closest('.ms-x')) labIndCerrar(); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && e.innerHTML) labIndCerrar(); });
 }
 
 // Resumen para el Inge Virtual y la tarjeta del portal

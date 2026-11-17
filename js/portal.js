@@ -16,7 +16,7 @@ const VISTAS = {
   freat:      {hash:'#freaticos',  titulo:'Niveles freáticos',        sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Niveles freáticos · Ingeniería Agrícola'},
   usu:        {hash:'#usuarios',    titulo:'Usuarios y accesos',       sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Usuarios · Ingeniería Agrícola'},
   maes:       {hash:'#maestro',    titulo:'Maestro de suertes',       sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Maestro de suertes · Ingeniería Agrícola'},
-  lab:        {hash:'#labores',    titulo:'Control de labores',       sub:'Levante de socas · Comité APS',            doc:'Control de labores · Comité APS'},
+  lab:        {hash:'#labores',    titulo:'Control labores campo',    sub:'Levante de socas',                          doc:'Control labores campo'},
   nfcos:      {hash:'#cosecha-niveles', titulo:'Cosecha vs niveles freáticos', sub:'Ingeniería Agrícola · Riopaila Agrícola', doc:'Cosecha vs niveles freáticos · Ingeniería Agrícola'},
 };
 // Video institucional vigente de la portada (al regrabarlo con otro nombre, cambiar aquí)
@@ -112,8 +112,8 @@ function renderPortal(){
       ${card('simulador', '💰', 'Simulador de costos', 'Costo por suerte según labor, contratista y pases, comparado con el presupuesto.',
         `${S.length} suertes en proceso · <b>${moneyM(simTot)}</b> · ${simDifT >= 0 ? 'ahorro' : 'sobrecosto'} ${moneyM(Math.abs(simDifT))}`, 'var(--green)')}
       ${typeof labResumen !== 'function' || typeof maestroSuertes !== 'function' || !maestroSuertes() ? '' : (() => { const R = labResumen(), u = R.L.reduce((a, l) => a + l.urg.length, 0), v = R.L.reduce((a, l) => a + l.ven.length, 0);
-        return card('lab', '🚜', 'Control de labores', 'Levante de las suertes cosechadas (maestro): alertas de despaje y reencalle, y programación de roturación y fertilización.',
-        `<b>${R.n}</b> suertes cosechadas · <b>${u}</b> labores por hacer${v ? ` · <b style="color:#b91c1c">${v} vencidas</b>` : ''}`, '#b45309'); })()}
+        return card('lab', '🚜', 'Control labores campo', 'Levante de socas: 1ra y 2da roturación y fertilización por suerte, con contratista, área realizada e indicadores.',
+        `<b>${R.n}</b> suertes · <b>${u}</b> labores pendientes`, '#b45309'); })()}
       ${typeof maestroSuertes !== 'function' ? '' : (() => { const M = maestroSuertes(), L = M ? msFilas().filter(x => x.emp === 'RIOP') : [];
         return card('maes', '📚', 'Maestro de suertes', 'El maestro de suertes en versión digital: áreas, variedades, edades, cortes y próximos cortes de cada suerte, con mapa.',
         M ? `<b>${L.length}</b> suertes Riopaila · <b>${f2(sum(L, x => x.area || 0))} ha</b>${M.fecha ? ` · ${esc(M.fecha)}` : ''}` : 'Por cargar', '#7c3aed'); })()}
