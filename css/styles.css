@@ -1372,3 +1372,17 @@ html.ms-full-on body[data-vista="maes"] .iv-fab{z-index:960}
 details.lab-prog{padding:6px 12px}
 details.lab-prog summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--dim)}
 @media (max-width:760px){.lab-minis{grid-template-columns:1fr;gap:6px}.lab-cuenta{margin-left:0;width:100%}.lab-seg{flex-wrap:wrap}}
+/* Tabla del control de labores sin deslizar a la derecha (16 nov 2026): celdas más angostas */
+#lab-tabla .lab-tab td,#lab-tabla .lab-tab th{padding-left:6px;padding-right:6px}
+#lab-tabla .lab-tab th{font-size:11px}
+#lab-tabla .lab-tab .lab-fu{display:block;width:max-content;margin-top:2px}
+#lab-tabla .lab-tab .lab-chip{padding:2px 7px}
+#lab-tabla .lab-fbtn{padding:3px 7px;font-size:13px}
+/* Aire alrededor del buscador */
+#lab-tabla .lab-barra{padding-bottom:10px;border-bottom:1px solid var(--bdr)}
+#lab-tabla .lab-filtros{padding:14px 12px 12px}
+details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
+#lab-tabla .lab-in{font:inherit;font-size:11px;padding:2px 4px;border:1px solid var(--bdr);border-radius:6px;width:112px}
+#lab-tabla td.lab-hecha{white-space:nowrap}
+#lab-tabla td.lab-hecha .plegar-todo{margin-left:4px}
+#lab-tabla td.lab-hecha .plegar-todo{font-size:11px;padding:2px 6px;white-space:nowrap}
