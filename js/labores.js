@@ -42,7 +42,8 @@ const LAB_EST = {
   noaplica:   {n:'No aplica',  col:'#94a3b8', bg:'#f8fafc'},
 };
 const labE = {zona:'', hac:'', txt:'', labor:'', estado:'', orden:'excel', progFecha:'', fuente:'', ficha:null, sucio:false};
-const LAB_IMPL = ['Subesca', 'Triple'];   // implementos de la roturación única
+const LAB_IMPL = ['Convencional', 'Subesca', 'Triple'];   // implementos de roturación (1ra, 2da y programación; «Otro…» para escribir)
+const LAB_IMPL_UNICA = ['Subesca', 'Triple'];              // la roturación única es con subesca o triple
 // Área realizada de una labor: total = área del maestro; parcial = la escrita en la ficha, o la «parcial (ha)» del Excel
 const labHaReal = (o, x) => x && x.at === 'parcial' ? (+x.ha || +o.x.par || +o.x.area || 0) : (+o.x.area || 0);
 
@@ -435,14 +436,18 @@ function labFicha(key){
   // Área realizada (cuando ya la tiene): total = área del maestro; parcial = escribirla (trae la «parcial (ha)» del Excel)
   const area = (k, x) => !(x.tiene === 'si' || x.r) ? '' : `<div class="lf-q lf-area">Área realizada ${seg(k, 'at', x.at || 'total', [['total', `Total · ${msN(o.x.area, 2)} ha`], ['parcial', 'Parcial']])}
     ${x.at === 'parcial' ? `<span class="lf-ha"><input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-lft="${k}|ha" value="${esc(x.ha ?? o.x.par ?? '')}" placeholder="0,00"> ha</span>${o.x.par ? `<small class="meta">parcial del Excel: ${msN(o.x.par, 2)} ha</small>` : ''}` : ''}</div>`;
+  // Implemento: lista (Convencional, Subesca, Triple) + «Otro…» que abre un campo para escribirlo
+  const implSel = (k, x) => { const otro = (labE.otro || {})[k + ':impl'] || !!(x.impl && !LAB_IMPL.includes(x.impl));
+    return `<label>Implemento<select ${dis} data-lfi="${k}"><option value="">— Elegir —</option>${LAB_IMPL.map(c => `<option ${x.impl === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}<option value="__otro" ${otro ? 'selected' : ''}>Otro…</option></select>
+      ${otro ? txt(k, 'impl', LAB_IMPL.includes(x.impl) ? '' : x.impl, 'Escribe el implemento', 'impl') : ''}</label>`; };
   const pase = (k, x, titulo, conTiene) => `<div class="lf-pase"><div class="lf-pt"><b>${titulo}</b> ${estado(k)}${conTiene ? ` ${exc(k)}` : ''}</div>
     ${conTiene ? `<div class="lf-q">¿Tiene ${titulo.toLowerCase()}? ${seg(k, 'tiene', x.tiene, SINO)}</div>` : ''}
     ${area(k, k === 'rotur' ? rot : x)}
-    <div class="lf-campos">${contr(k, x)}<label>Implemento${txt(k, 'impl', x.impl, 'Implemento', 'impl')}</label>${fecha(k, x)}</div></div>`;
+    <div class="lf-campos">${contr(k, x)}${implSel(k, x)}${fecha(k, x)}</div></div>`;
   let cuerpoRot = ''; const unica = labUnica(o);
   if (unica === 'nr') cuerpoRot = `<div class="la-info la-auto">🌱 ${labPlantilla(o) ? 'Plantilla (corte 1): ' : ''}<b>no se rotura</b>; la 1ra y la 2da roturación quedan como «no aplica». Si sí se va a roturar, elige «Sí» o «No» arriba.</div>`;
   else if (unica === 'si') cuerpoRot = `<div class="lf-pase"><div class="lf-pt"><b>Roturación única</b> ${estado('rotur')}</div>
-      <div class="lf-q">Implemento ${seg('rotur', 'impl', LAB_IMPL.includes(rot.impl) ? rot.impl : '', LAB_IMPL.map(i => [i, i]))}</div>
+      <div class="lf-q">Implemento ${seg('rotur', 'impl', LAB_IMPL_UNICA.includes(rot.impl) ? rot.impl : '', LAB_IMPL_UNICA.map(i => [i, i]))}</div>
       ${area('rotur', rot)}
       <div class="lf-campos">${contr('rotur', rot)}${fecha('rotur', rot)}</div></div>`;
   else if (unica === 'no') cuerpoRot = pase('rotur', rot, '1ra roturación', false) + pase('rotur2', rot2, '2da roturación', true);
@@ -493,6 +498,11 @@ labFichaEl().addEventListener('change', e => {
   if (c) { labE.otro = labE.otro || {}; const v = e.target.value;
     if (v === '__otro') { labE.otro[c] = true; const x = ((labSuertes().find(y => y.key === labE.ficha) || {reg:{}}).reg[c] || {}); if (LAB_CONTR.includes(x.contr)) labFichaGuardar(c, 'contr', '', false); labFicha(labE.ficha); }
     else { labE.otro[c] = false; labFichaGuardar(c, 'contr', v, true); }
+    return; }
+  const im = e.target.dataset.lfi;
+  if (im) { labE.otro = labE.otro || {}; const v = e.target.value, ko = im + ':impl';
+    if (v === '__otro') { labE.otro[ko] = true; const x = ((labSuertes().find(y => y.key === labE.ficha) || {reg:{}}).reg[im] || {}); if (LAB_IMPL.includes(x.impl)) labFichaGuardar(im, 'impl', '', false); labFicha(labE.ficha); }
+    else { labE.otro[ko] = false; labFichaGuardar(im, 'impl', v, true); }
     return; }
   const d = e.target.dataset.lft; if (!d) return; const [k, campo] = d.split('|'); labFichaGuardar(k, campo, e.target.value.trim(), e.target.type === 'date'); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && labE.ficha) labFichaCerrar(); });
