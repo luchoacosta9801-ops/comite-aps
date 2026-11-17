@@ -4,7 +4,7 @@
 // DB.ppto2027, que se publican en datos.js como el resto.
 
 const VISTAS = {
-  portal:     {hash:'#inicio',     titulo:'Ingeniería Agrícola',     sub:'Riopaila Agrícola S.A.',                   doc:'Ingeniería Agrícola · Riopaila Agrícola'},
+  portal:     {hash:'#inicio',     titulo:'Ingeniería Agrícola y Operaciones Campo', sub:'Riopaila Agrícola S.A.',     doc:'Ingeniería Agrícola y Operaciones Campo · Riopaila Agrícola'},
   aps:        {hash:'#aps',        titulo:'Comité APS · Dashboard',  sub:'Renovación y siembra · Riopaila Agrícola', doc:'Comité APS · Dashboard Ejecutivo'},
   simulador:  {hash:'#simulador',  titulo:'Comité APS · Simulador',  sub:'Costos por suerte · Riopaila Agrícola',    doc:'Simulador de costos · Comité APS'},
   estructura: {hash:'#estructura', titulo:'Estructura del área',      sub:'Ingeniería Agrícola · Riopaila Agrícola',  doc:'Estructura del área · Ingeniería Agrícola'},
