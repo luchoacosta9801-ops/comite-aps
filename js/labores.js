@@ -106,7 +106,7 @@ function labEstado(o, L){
   if (r.r) return {e:'hecha', t:`Hecha ${msF(r.r)}${como}`};
   if (r.tiene === 'si') return {e:'hecha', t:`Hecha${como}`};
   if (L.k === 'rotur2' && (o.reg.rotur || {}).unica === 'si') { const r1 = o.reg.rotur; return {e:'noaplica', t:`Única roturación${r1.impl ? ' · ' + r1.impl : ''}`}; }
-  if (r.tiene !== 'no' && b === 'hecha') return {e:'hecha', t:o.bd.sn ? 'Hecha según el Excel (S)' : 'Hecha según el reporte'};
+  if (r.tiene !== 'no' && b === 'hecha') return {e:'hecha', t:o.fuente === 'manual' ? 'Hecha (marcada al agregar la suerte)' : o.bd.sn ? 'Hecha según el Excel (S)' : 'Hecha según el reporte'};
   if (L.tipo === 'alerta' && o.dd > P.dias) return {e:'noaplica', t:`Corte de hace más de ${P.dias} días: sin seguimiento`};
   if (L.tipo === 'alerta' && labEstado(o, LAB_LABORES.find(x => x.k === 'rotur')).e === 'hecha') return {e:'hecha', t:'Se da por hecha: ya se roturó'};
   const pend = v > 0 ? ` · ${msN(v, 2)} ha pendientes` : '';
@@ -447,8 +447,8 @@ function labFicha(key){
     <div class="ms-cuerpo">
       ${ed ? '' : '<div class="meta lf-ayuda">Solo lectura: para anotar, entra en modo editor.</div>'}
       <div class="lf-sec" style="--c:#2a78d6"><div class="lf-h">🚜 Roturación ${estado('rotur')} ${exc('rotur')}</div>
-        <div class="lf-q">¿Tiene roturación? ${seg('rotur', 'tiene', rot.tiene, SINO)}</div>
         <div class="lf-q">¿Única roturación? ${seg('rotur', 'unica', rot.unica, [['si', 'Sí (subesca o triple)'], ['no', 'No (1ra y 2da)']])}</div>
+        ${rot.unica ? `<div class="lf-q">¿Tiene ${rot.unica === 'si' ? 'la roturación' : 'la 1ra roturación'}? ${seg('rotur', 'tiene', rot.tiene, SINO)}</div>` : ''}
         ${cuerpoRot}</div>
       <div class="lf-sec" style="--c:#1baf7a"><div class="lf-h">🌱 Fertilización ${estado('fert')} ${exc('fert')}</div>
         <div class="lf-q">¿Tiene fertilización? ${seg('fert', 'tiene', fer.tiene, SINO)}</div>
@@ -582,12 +582,23 @@ function labAgregar(){
           <label>Parcial (ha) · opcional<input type="number" inputmode="decimal" step="0.01" min="0" data-la="par" value="${esc(A.par ?? '')}"></label></div>
         ${s ? `<div class="la-info">${m ? `📚 <b>${esc(msHacN(m.hac))}</b> · Zona ${esc(m.zona ?? '—')} · ${msN(m.area, 2)} ha · ${esc(m.variedad || '—')}${m.nCorte != null ? ` · corte ${msN(m.nCorte)}` : ''}${m.ultCorte ? ` · último corte en el maestro: ${msF(m.ultCorte)}` : ''}` : '⚠ Esa suerte no está en el maestro: escribe el área a mano.'}</div>` : A.s ? '<div class="la-info la-mal">Escribe el código completo: sector y suerte, por ejemplo 3501-120.</div>' : ''}
         ${ya ? `<div class="la-info la-mal">Esa suerte ya está en el control (corte ${msF(ya.x.ultCorte)}). Ábrela en la tabla para anotar sus labores.</div>` : ''}
-        ${sn('r1', '1ra roturación')}${sn('r2', '2da roturación')}${sn('fe', 'fertilización')}
+        ${A.auto ? `<div class="la-info la-auto">✓ Del maestro: fecha de corte <b>${msF(A.f)}</b> y área <b>${msN(A.a, 2)} ha</b> (puedes cambiarlas)</div>` : ''}
+        <div class="lf-q">¿Roturación única? <span class="lf-seg">${[['si', 'Sí (subesca o triple)'], ['no', 'No (1ra y 2da)']].map(([v, t]) => `<button type="button" class="${A.unica === v ? 'on' : ''}" data-la-sn="unica|${v}">${t}</button>`).join('')}</span></div>
+        ${A.unica === 'si' ? sn('r1', 'la roturación') : A.unica === 'no' ? sn('r1', '1ra roturación') + sn('r2', '2da roturación') : ''}${sn('fe', 'fertilización')}
         <button type="button" class="lab-ind-btn la-ok" data-la-ok ${s && A.f && !ya ? '' : 'disabled'}>➕ Agregar suerte</button></div>
       <div class="lf-sec" style="--c:#1baf7a"><div class="lf-h">📂 Desde un Excel</div>
         <p class="meta lf-ayuda">Agrega las suertes de otro Excel que aún no están en el control (no reemplaza el Excel principal). Debe tener la columna <b>SUERTE</b> y la <b>FECHA DE ULTIMO CORTE</b> (o de siembra); si trae <b>1ra</b>, <b>2da</b> y <b>abono</b> con S/N, también se toman.</p>
         <label class="plegar-todo pt-file">📂 Elegir Excel…<input type="file" data-la-xl accept=".xlsx,.xls,.xlsm" hidden></label></div>
     </div></div><datalist id="la-dl">${codigos.map(c => `<option value="${c}">`).join('')}</datalist></div>`;
+}
+// Trae del maestro la fecha del último corte (o de siembra si es más reciente) y el área de la suerte escrita
+function labLaLeer(A, foco){
+  const s = frCodSuerte(A.s); A.leida = s || null;
+  if (s) { A.s = s; const m = labMaestroDe(s);
+    if (m) { A.a = m.area != null ? +(+m.area).toFixed(2) : ''; A.f = [m.ultCorte, m.siembra].filter(Boolean).sort().pop() || A.f || ''; A.auto = !!(A.f || A.a); }
+    else { A.auto = false; } }
+  labAgregar();
+  if (foco) { const i = document.querySelector('#lab-add [data-la="f"]'); if (i) i.focus(); }
 }
 function labAgregarCerrar(){ const e = document.getElementById('lab-add'); if (e) e.innerHTML = ''; labE.add = null; }
 function labAgregarEventos(e){
@@ -600,13 +611,18 @@ function labAgregarEventos(e){
       if (!a) { toast('⚠ Escribe el área de la suerte'); return; }
       if (labEnControl(s, A.f)) { toast('⚠ Esa suerte ya está en el control'); return; }
       const par = +String(A.par ?? '').replace(',', '.') || undefined;
-      modCambio(() => labAgregarExtra([{s, f:A.f, a, par, r1:A.r1, r2:A.r2, fe:A.fe, hac:m.hac, z:m.zona, za:m.zonaAgro, v:m.variedad, nc:m.nCorte}]));
+      modCambio(() => { labAgregarExtra([{s, f:A.f, a, par, r1:A.r1, r2:A.unica === 'si' ? undefined : A.r2, fe:A.fe, hac:m.hac, z:m.zona, za:m.zonaAgro, v:m.variedad, nc:m.nCorte}]);
+        if (A.unica) labSet(`${s}|${A.f}`, 'rotur', 'unica', A.unica); });   // única = sí: la 2da roturación no aplica
       labAgregarCerrar(); toast(`➕ Suerte ${s} agregada · recuerda 🚀 Publicar`); labFicha(`${s}|${A.f}`); } });
   e.addEventListener('change', ev => { const t = ev.target;
     if (t.dataset.laXl !== undefined && t.files && t.files[0]) { labAgregarDeExcel(t.files[0]); t.value = ''; return; }
     const k = t.dataset.la; if (!k) return; const A = labE.add; A[k] = t.value.trim();
-    if (k === 's') { const s = frCodSuerte(A.s); if (s) { A.s = s; const m = labMaestroDe(s); A.a = m && m.area != null ? +(+m.area).toFixed(2) : ''; if (!A.f && m && m.ultCorte && labDias(m.ultCorte, labHoy()) <= 120) A.f = m.ultCorte; } }
+    if (k === 's') { labLaLeer(A); return; }
+    if (k === 'f' || k === 'a') A.auto = false;
     labAgregar(); });
+  // Al escribir el código completo (7 cifras) se lee solo del maestro: fecha del último corte y área
+  e.addEventListener('input', ev => { const t = ev.target; if (t.dataset.la !== 's') return; const A = labE.add; A.s = t.value.trim();
+    if (frCodSuerte(A.s) && frCodSuerte(A.s) !== A.leida) labLaLeer(A, true); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && e.innerHTML) labAgregarCerrar(); });
 }
 // Lee cualquier Excel con SUERTE + fecha (usa el lector de la hoja de labores; si no la encuentra, busca la fila SUERTE en cada hoja)
