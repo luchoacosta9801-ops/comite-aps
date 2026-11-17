@@ -179,7 +179,10 @@ function renderLabores(){
   // Columnas: lo que trae el Excel (1ra, 2da roturación y fertilización)
   const LAB_COLS = LAB_LABORES;
   const LbSel = LAB_LABORES.find(x => x.k === labE.labor);
-  const fichaBtn = o => `<td><button type="button" class="plegar-todo lab-fbtn" data-lab-ficha="${esc(o.key)}" title="Ficha de labores: roturación y fertilización (con quién, implemento, producto)">📝</button></td>`;
+  // Última columna: ficha 📝 y, en modo editor, «Enviar» a la programación semanal (✓ si ya está en la semana elegida)
+  const semPg = labPgSemana(), enSem = new Set((labProg()[semPg] || []).map(r => r.key + '|' + r.lab));
+  const fichaBtn = o => { const yaEn = LAB_LABORES.some(Lb => enSem.has(o.key + '|' + Lb.k) && (!LbSel || Lb === LbSel));
+    return `<td class="lab-acc-fila"><button type="button" class="plegar-todo lab-fbtn" data-lab-ficha="${esc(o.key)}" title="Ficha de labores: roturación y fertilización (con quién, implemento, producto)">📝</button>${ed ? `<button type="button" class="lab-env${yaEn ? ' ya' : ''}" data-lab-env="${esc(o.key)}" title="${yaEn ? `Ya está en la programación de la semana del ${msF(semPg)} (tócalo para enviar otra labor)` : `Enviar a la programación de la semana del ${msF(semPg)}`}">${yaEn ? '✓ Enviada' : '📤 Enviar'}</button>` : ''}</td>`; };
   const datos = o => `<td class="b lab-cod"><a href="#" data-lab-ficha="${esc(o.key)}" title="Abrir la ficha de labores">${esc(o.x.s)}</a>${o.fuente === 'maestro' ? ' <small class="lab-fu" title="Cosechada según el maestro; aún no está en el Excel de labores pendientes">maestro</small>' : o.fuente === 'manual' ? ' <small class="lab-fu lab-fu-man" title="Agregada a mano o desde otro Excel; aún no está en el Excel de labores pendientes">agregada</small>' : ''}</td>
     <td>${esc(msHacN(o.x.hac)) || '<span class="meta">—</span>'}</td><td>${esc(o.x.zona ?? '')}</td><td>${esc(o.x.zonaAgro || '')}</td><td class="n">${msN(o.x.area, 2)}${o.x.par ? `<small class="lab-t" title="Parcial (ha) según el Excel">parcial ${msN(o.x.par, 2)}</small>` : ''}</td>
     <td>${esc(o.x.variedad || '—')}</td><td class="n">${o.x.nCorte != null ? msN(o.x.nCorte) : esc(o.x.tipo || '')}</td><td>${msF(o.x.ultCorte)}${o.x.desdeSiembra ? '<small class="lab-t">siembra</small>' : ''}</td><td class="n">${o.dd}</td>`;
@@ -213,7 +216,7 @@ function renderLabores(){
         <button type="button" class="lab-add-btn" data-lab-add title="Agregar una suerte (por ejemplo, una cosechada hace poco) a mano o desde un Excel">➕ Suerte</button>` : ''}
         <button type="button" class="lab-ico" data-lab-excel title="Descargar en Excel">⬇️</button></div></div>
     <div class="lab-minis">${kpi}</div>
-    <div${semanas.length ? '' : ' hidden'}>
+    <div hidden><!-- reemplazado por 📅 Programación semanal (17 nov 2026) -->
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>📅 Programa de roturación y fertilización</b> <span class="meta">· por semana</span></div>
         <div class="sim-tw"><table class="sim-t"><thead><tr><th>Semana</th>${PROG.map(Lb => `<th class="n">${Lb.ico} ${Lb.n}</th>`).join('')}</tr></thead><tbody>
         ${semanas.map(w => { const s = sem[w], c = k => s[k] ? `${s[k].n} st · <b>${msN(s[k].a, 1)} ha</b>` : '<span class="meta">—</span>';
@@ -226,7 +229,8 @@ function renderLabores(){
         <select id="lab-zona">${opt('', 'Zona', labE.zona)}${opt('1', 'Zona 1', labE.zona)}${opt('2', 'Zona 2', labE.zona)}</select>
         <select id="lab-hac">${opt('', 'Hacienda', labE.hac)}${hacs.map(h => opt(h, msHacN(h), labE.hac)).join('')}</select>
         <select id="lab-orden" title="Orden">${opt('excel', 'Orden del Excel', labE.orden)}${opt('corte', 'Más antiguas', labE.orden)}${opt('nuevas', 'Más recientes', labE.orden)}${opt('hac', 'Por hacienda', labE.orden)}${opt('area', 'Por área', labE.orden)}</select>
-        <button type="button" class="lab-ind-btn" data-lab-ind title="Gráficos de lo que muestra la tabla (con estos filtros)">📊 Indicadores</button></div>
+        <button type="button" class="lab-ind-btn" data-lab-ind title="Gráficos de lo que muestra la tabla (con estos filtros)">📊 Indicadores</button>
+        <button type="button" class="lab-pg-btn" data-lab-pg title="Suertes enviadas a la programación de la semana: labor, contratista, área y día">📅 Programación semanal <b>${(labProg()[semPg] || []).length}</b></button></div>
       ${ed ? `<details class="lab-prog"><summary>⚡ En bloque <span class="meta">· programar o marcar las suertes de la tabla</span></summary>
         <div>Fecha <input type="date" id="lab-pf" value="${esc(labE.progFecha || hoy)}"> <span class="meta">Programar:</span>
           ${PROG.filter(Lb => !LbSel || Lb === LbSel).map(Lb => { const n = labBloque(L, Lb, 'p').length; return `<button type="button" class="plegar-todo" data-lab-bloque="${Lb.k}|p" ${n ? '' : 'disabled'}>${Lb.ico} ${Lb.n} (${n})</button>`; }).join('') || '<span class="meta">—</span>'}
@@ -495,6 +499,8 @@ q('labores').addEventListener('click', e => {
   const ir = t.closest('[data-ir]'); if (ir) { irA(ir.dataset.ir); return; }
   const fi = t.closest('[data-lab-ficha]'); if (fi) { e.preventDefault(); labFicha(fi.dataset.labFicha); return; }
   if (t.closest('[data-lab-ind]')) { labIndicadores(); return; }
+  if (t.closest('[data-lab-pg]')) { labProgramacion(); return; }
+  const env = t.closest('[data-lab-env]'); if (env) { labEnviar(env.dataset.labEnv, labE.labor || null); return; }
   const mk = t.closest('[data-lab-m]'); if (mk) { const [s, f, k, que] = mk.dataset.labM.split('|'); labMarcar(`${s}|${f}`, k, que); return; }
   if (t.closest('[data-lab-add]')) { labE.add = null; labAgregar(); return; }
   if (t.closest('[data-lab-excel]')) { labExcel(); return; }
@@ -627,6 +633,146 @@ function labAgregarDeExcel(file){
     modCambio(() => labAgregarExtra(nuevas)); labAgregarCerrar();
     toast(`➕ ${nuevas.length} suertes agregadas desde ${file.name} · recuerda 🚀 Publicar`, 6000);
   }).catch(err => toast('⚠ ' + (err.message || err), 6000));
+}
+
+// ── 📅 Programación semanal (17 nov 2026) ──
+// Desde la tabla, «📤 Enviar» pasa la suerte (con la labor elegida, o la primera pendiente) a la semana que se está viendo.
+// En la lista se asigna día, labor, contratista, implemento o producto, área y observación, y se marca «Ejecutada».
+// Datos: DB.labores.prog {'AAAA-MM-DD' (lunes): [{id, key, s, hac, z, lab, dia, contr, impl, prod, ha, obs, ok}]}
+// Se mantiene en sincronía con la ficha: el día queda como fecha programada (p), contratista / implemento / producto
+// se copian a la ficha y «Ejecutada» deja la labor realizada en esa fecha (con el área parcial si es menor).
+const labProg = () => labDatos().prog || {};
+const labPgSemana = () => labE.sem || labLunes(labHoy());
+const labMas = (iso, n) => labMenos(iso, -n);
+function labEnviar(key, labK){
+  const o = labSuertes().find(y => y.key === key); if (!o) return;
+  const Lb = LAB_LABORES.find(L => L.k === labK) || LAB_LABORES.find(L => labPorHacer(labEstado(o, L).e)) || LAB_LABORES[0];
+  const w = labPgSemana(), L = labProg()[w] || [];
+  if (L.some(r => r.key === key && r.lab === Lb.k)) {
+    // Ya enviada con esa labor: si hay otra labor pendiente, se envía esa; si no, se avisa
+    const otra = !labK && LAB_LABORES.find(X => X !== Lb && labPorHacer(labEstado(o, X).e) && !L.some(r => r.key === key && r.lab === X.k));
+    if (otra) return labEnviar(key, otra.k);
+    toast(`ℹ️ ${o.x.s} ya está en la programación de la semana del ${msF(w)} (${Lb.n})`, 4000); return; }
+  modCambio(() => { const D = DB.labores = DB.labores || {params:{}, reg:{}}; D.prog = D.prog || {};
+    (D.prog[w] = D.prog[w] || []).push({id:Date.now().toString(36) + Math.random().toString(36).slice(2, 5), key, s:o.x.s, hac:o.x.hac, z:o.x.zona, lab:Lb.k, ha:+(+labHa(o, Lb)).toFixed(2)}); });
+  toast(`📤 ${o.x.s} → programación de la semana del ${msF(w)} · ${Lb.n}`, 3500);
+}
+function labProgramacion(){
+  const el = (() => { let e = document.getElementById('lab-pg'); if (!e) { e = document.createElement('div'); e.id = 'lab-pg'; document.body.appendChild(e); labPgEventos(e); } return e; })();
+  const ed = MODO_EDICION, dis = ed ? '' : 'disabled', w = labPgSemana(), dom = labMas(w, 6), F = labProg()[w] || [];
+  const T = labSuertes(), porKey = new Map(T.map(o => [o.key, o]));
+  const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  const opt = (v, t, s) => `<option value="${esc(v)}" ${s === v ? 'selected' : ''}>${esc(t)}</option>`;
+  const contrSel = r => { const otro = r.contr && !LAB_CONTR.includes(r.contr);
+    return `<select ${dis} data-pg="${r.id}|contr">${opt('', '— Contratista —', r.contr || '')}${LAB_CONTR.map(c => opt(c, c, r.contr)).join('')}${opt('__otro', 'Otro…', otro || (labE.pgOtro || {})[r.id] ? '__otro' : '')}</select>${otro || (labE.pgOtro || {})[r.id] ? `<input type="text" ${dis} data-pg="${r.id}|contrTxt" value="${esc(otro ? r.contr : '')}" placeholder="Escribe el contratista" list="lf-dl-contr">` : ''}`; };
+  const filas = F.map((r, i) => { const o = porKey.get(r.key), Lb = LAB_LABORES.find(L => L.k === r.lab) || LAB_LABORES[0], area = o ? o.x.area : null;
+    const queCampo = r.lab === 'fert' ? `<input type="text" ${dis} data-pg="${r.id}|prod" value="${esc(r.prod || '')}" placeholder="Producto o mezcla" list="lf-dl-prod">`
+      : `<select ${dis} data-pg="${r.id}|impl">${opt('', '— Implemento —', r.impl || '')}${LAB_IMPL.map(x => opt(x, x, r.impl)).join('')}${r.impl && !LAB_IMPL.includes(r.impl) ? opt(r.impl, r.impl, r.impl) : ''}</select>`;
+    return `<tr class="${r.ok ? 'pg-ok' : ''}" style="--c:${Lb.col}">
+      <td class="pg-n">${i + 1}</td>
+      <td class="pg-s"><b>${esc(r.s)}</b><small>${esc(msHacN(o ? o.x.hac : r.hac) || '')}${(o ? o.x.zona : r.z) != null ? ` · Z${esc(o ? o.x.zona : r.z)}` : ''}${area ? ` · ${msN(area, 2)} ha` : ''}${o ? ` · ${o.dd} d` : ''}</small></td>
+      <td data-l="Labor"><select ${dis} data-pg="${r.id}|lab" class="pg-lab">${LAB_LABORES.map(L => opt(L.k, `${L.ico} ${L.n}`, r.lab)).join('')}</select></td>
+      <td data-l="Día"><select ${dis} data-pg="${r.id}|dia">${opt('', '— Día —', r.dia || '')}${DIAS.map((d, j) => { const f = labMas(w, j); return opt(f, `${d} ${+f.slice(8)}`, r.dia); }).join('')}</select></td>
+      <td class="pg-c" data-l="Contratista">${contrSel(r)}</td>
+      <td data-l="${r.lab === 'fert' ? 'Producto o mezcla' : 'Implemento'}">${queCampo}</td>
+      <td data-l="Área (ha)"><input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-pg="${r.id}|ha" value="${esc(r.ha ?? '')}" class="pg-ha"></td>
+      <td data-l="Observación"><input type="text" ${dis} data-pg="${r.id}|obs" value="${esc(r.obs || '')}" placeholder="Observación"></td>
+      <td class="pg-bot">${ed ? `<button type="button" class="pg-ej ${r.ok ? 'on' : ''}" data-pg-ok="${r.id}" title="${r.ok ? 'Ejecutada (tócalo para deshacer)' : 'Marcar como ejecutada (queda realizada en la ficha)'}">${r.ok ? '✓ Ejecutada' : 'Ejecutada'}</button><button type="button" class="pg-x" data-pg-x="${r.id}" title="Quitar de la programación">🗑</button>` : (r.ok ? '<span class="lab-chip" style="color:#15803d;background:#dcfce7">Ejecutada</span>' : '<span class="lab-chip" style="color:#1d4ed8;background:#dbeafe">Programada</span>')}</td></tr>`; }).join('');
+  // Totales de la semana: por labor y por contratista (hectáreas y suertes)
+  const tot = (clave, nombre) => { const m = {}; F.forEach(r => { const k = clave(r); const z = m[k] = m[k] || {ha:0, n:0, ok:0}; z.ha += +r.ha || 0; z.n++; if (r.ok) z.ok += +r.ha || 0; });
+    return Object.entries(m).sort((a, b) => b[1].ha - a[1].ha).map(([k, z]) => `<span class="pg-tot"><b>${esc(nombre(k))}</b> ${msN(z.ha, 1)} ha · ${z.n} st${z.ok ? ` · <em>${msN(z.ok, 1)} ha ejecutadas</em>` : ''}</span>`).join(''); };
+  const haTot = sum(F, r => +r.ha || 0), haOk = sum(F.filter(r => r.ok), r => +r.ha || 0);
+  el.innerHTML = `<div class="ms-fondo" data-pg-cerrar><div class="ms-ficha pg-modal" role="dialog" aria-label="Programación semanal">
+    <div class="ms-fh"><div><b>📅 Programación semanal</b><small>Semana del ${msF(w)} al ${msF(dom)} · ${F.length} suertes · ${msN(haTot, 1)} ha${haOk ? ` · ${msN(haOk, 1)} ha ejecutadas (${msN(haOk / (haTot || 1) * 100, 0)}%)` : ''}</small></div><button type="button" class="ms-x" data-pg-cerrar title="Cerrar (Esc)">✕</button></div>
+    <div class="ms-cuerpo">
+      <div class="pg-barra"><span class="pg-sem"><button type="button" data-pg-sem="-7" title="Semana anterior">◀</button><b>Semana del ${msF(w)}</b><button type="button" data-pg-sem="7" title="Semana siguiente">▶</button>${w !== labLunes(labHoy()) ? '<button type="button" data-pg-sem="hoy">Esta semana</button>' : ''}</span>
+        <span class="pg-acc"><button type="button" class="plegar-todo" data-pg-xl ${F.length ? '' : 'disabled'}>⬇️ Excel</button><button type="button" class="plegar-todo" data-pg-imp ${F.length ? '' : 'disabled'}>🖨 Imprimir</button></span></div>
+      ${F.length ? `<div class="pg-tw"><table class="pg-t"><thead><tr><th>#</th><th>Suerte</th><th>Labor</th><th>Día</th><th>Contratista</th><th>Implemento / producto</th><th>Área (ha)</th><th>Observación</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>
+        <div class="pg-tots"><div><span class="meta">Por labor:</span>${tot(r => r.lab, k => (LAB_LABORES.find(L => L.k === k) || {}).n || k)}</div><div><span class="meta">Por contratista:</span>${tot(r => r.contr || 'Sin asignar', k => k)}</div></div>`
+        : `<div class="li-vacio">No hay suertes en esta semana.${ed ? ' En la tabla, toca <b>📤 Enviar</b> en cada suerte que vaya a trabajarse (con una labor elegida arriba se envía esa labor).' : ''}</div>`}
+      ${ed ? '<p class="meta lf-ayuda">El día queda como fecha programada de la labor; contratista, implemento y producto se copian a la ficha 📝; «Ejecutada» la deja realizada. Recuerda 🚀 Publicar.</p>' : ''}
+    </div></div><datalist id="lf-dl-contr">${labSugerencias('contr').filter(c => !LAB_CONTR.includes(c)).map(v => `<option value="${esc(v)}">`).join('')}</datalist><datalist id="lf-dl-prod">${labSugerencias('prod').map(v => `<option value="${esc(v)}">`).join('')}</datalist></div>`;
+}
+function labPgCerrar(){ const e = document.getElementById('lab-pg'); if (e) e.innerHTML = ''; labE.pgOtro = {}; if (labE.sucio) { labE.sucio = false; renderVista(); } }
+// Cambia un dato de una fila y lo pasa a la ficha (sin redibujar toda la página; se redibuja al cerrar)
+function labPgPoner(id, campo, valor, redibujar){
+  if (!MODO_EDICION) return;
+  const w = labPgSemana(), L = (DB.labores.prog || {})[w] || [], r = L.find(x => x.id === id); if (!r) return;
+  const viejo = Object.assign({}, r);
+  if (campo === 'contrTxt') campo = 'contr';
+  if (campo === 'ha') valor = valor === '' ? '' : +String(valor).replace(',', '.');
+  if (valor === '' || valor == null) delete r[campo]; else r[campo] = valor;
+  const k = r.lab, key = r.key;
+  if (campo === 'lab') {   // cambió la labor: la fecha programada y lo copiado pasan a la nueva labor
+    const v = ((DB.labores.reg || {})[key] || {})[viejo.lab] || {}; if (viejo.dia && v.p === viejo.dia) labSet(key, viejo.lab, 'p', '');
+    delete r.impl; delete r.prod; const o = labSuertes().find(y => y.key === key), Lb = LAB_LABORES.find(L => L.k === k); if (o && Lb) r.ha = +(+labHa(o, Lb)).toFixed(2);
+    if (r.dia && !r.ok) labSet(key, k, 'p', r.dia); if (r.contr) labSet(key, k, 'contr', r.contr); redibujar = true; }
+  if (campo === 'dia' && !r.ok) { const v = ((DB.labores.reg || {})[key] || {})[k] || {}; if (r.dia) labSet(key, k, 'p', r.dia); else if (v.p === viejo.dia) labSet(key, k, 'p', ''); }
+  if (campo === 'contr' || campo === 'impl' || campo === 'prod') labSet(key, k, campo, r[campo] || '');
+  if (r.ok && campo === 'ha') labPgEjecutar(r, true);
+  save(); renderEstadoEdicion(); labE.sucio = true;
+  if (redibujar) labProgramacion();
+}
+// Ejecutada: realizada en la ficha con la fecha del día programado (o hoy) y el área (parcial si es menor que la de la suerte)
+function labPgEjecutar(r, si){
+  const key = r.key, k = r.lab, o = labSuertes().find(y => y.key === key);
+  if (si) { labSet(key, k, 'tiene', 'si'); labSet(key, k, 'r', r.dia || labHoy());
+    const area = o ? +o.x.area || 0 : 0;
+    if (+r.ha > 0 && area && +r.ha < area - 0.005) { labSet(key, k, 'at', 'parcial'); labSet(key, k, 'ha', String(r.ha)); } else { labSet(key, k, 'at', ''); labSet(key, k, 'ha', ''); }
+    if (r.contr) labSet(key, k, 'contr', r.contr); }
+  else { labSet(key, k, 'tiene', ''); labSet(key, k, 'r', ''); labSet(key, k, 'at', ''); labSet(key, k, 'ha', ''); if (r.dia) labSet(key, k, 'p', r.dia); }
+}
+function labPgEventos(e){
+  e.addEventListener('click', ev => { const t = ev.target;
+    if (t.matches('[data-pg-cerrar]') || t.closest('.ms-x')) { labPgCerrar(); return; }
+    const s = t.closest('[data-pg-sem]'); if (s) { const v = s.dataset.pgSem; labE.sem = v === 'hoy' ? labLunes(labHoy()) : labMas(labPgSemana(), +v); labE.pgOtro = {}; labE.sucio = true; labProgramacion(); return; }
+    if (t.closest('[data-pg-xl]')) { labPgExcel(); return; }
+    if (t.closest('[data-pg-imp]')) { labPgImprimir(); return; }
+    if (!MODO_EDICION) return;
+    const ok = t.closest('[data-pg-ok]');
+    if (ok) { const L = labProg()[labPgSemana()] || [], r = L.find(x => x.id === ok.dataset.pgOk); if (!r) return;
+      r.ok = !r.ok; if (!r.ok) delete r.ok; labPgEjecutar(r, !!r.ok); save(); renderEstadoEdicion(); labE.sucio = true; labProgramacion(); return; }
+    const x = t.closest('[data-pg-x]');
+    if (x) { const w = labPgSemana(), L = DB.labores.prog[w] || [], r = L.find(y => y.id === x.dataset.pgX); if (!r || !confirm(`¿Quitar ${r.s} de la programación de esta semana?`)) return;
+      if (r.ok) labPgEjecutar(r, false);
+      const v = ((DB.labores.reg || {})[r.key] || {})[r.lab] || {}; if (r.dia && v.p === r.dia) labSet(r.key, r.lab, 'p', '');
+      DB.labores.prog[w] = L.filter(y => y !== r); if (!DB.labores.prog[w].length) delete DB.labores.prog[w]; if (!Object.keys(DB.labores.prog).length) delete DB.labores.prog;
+      save(); renderEstadoEdicion(); labE.sucio = true; labProgramacion(); } });
+  e.addEventListener('change', ev => { const d = ev.target.dataset.pg; if (!d) return; const [id, campo] = d.split('|'), v = ev.target.value.trim();
+    if (campo === 'contr' && v === '__otro') { labE.pgOtro = labE.pgOtro || {}; labE.pgOtro[id] = true; labPgPoner(id, 'contr', '', true); return; }
+    if (campo === 'contr') { (labE.pgOtro || {})[id] = false; }
+    labPgPoner(id, campo, v, campo === 'contr' || campo === 'dia'); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && e.innerHTML) labPgCerrar(); });
+}
+function labPgFilas(){
+  const w = labPgSemana(), porKey = new Map(labSuertes().map(o => [o.key, o]));
+  return (labProg()[w] || []).map(r => { const o = porKey.get(r.key), Lb = LAB_LABORES.find(L => L.k === r.lab) || {};
+    return {r, o, Lb, hac:msHacN(o ? o.x.hac : r.hac) || '', zona:o ? o.x.zona : r.z, dia:r.dia ? `${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][new Date(r.dia + 'T00:00:00').getDay()]} ${msF(r.dia)}` : ''}; })
+    .sort((a, b) => (a.r.dia || '9').localeCompare(b.r.dia || '9') || (a.Lb.n || '').localeCompare(b.Lb.n || ''));
+}
+function labPgExcel(){
+  cargarXLSX().then(XLSX => { const w = labPgSemana(), F = labPgFilas();
+    const filas = [['Programación semanal · Control labores campo'], [`Semana del ${msF(w)} al ${msF(labMas(w, 6))}`], [],
+      ['Día', 'Suerte', 'Hacienda', 'Zona', 'Labor', 'Contratista', 'Implemento / producto', 'Área (ha)', 'Estado', 'Observación'],
+      ...F.map(f => [f.dia, f.r.s, f.hac, f.zona ?? '', f.Lb.n || f.r.lab, f.r.contr || '', f.r.lab === 'fert' ? (f.r.prod || '') : (f.r.impl || ''), +(+f.r.ha || 0).toFixed(2), f.r.ok ? 'Ejecutada' : 'Programada', f.r.obs || '']),
+      [], ['', '', '', '', 'Total', '', '', +sum(F, f => +f.r.ha || 0).toFixed(2)]];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, hoja(XLSX, filas), 'Semana');
+    XLSX.writeFile(wb, `programacion-labores-${w}.xlsx`); });
+}
+function labPgImprimir(){
+  const w = labPgSemana(), F = labPgFilas(), v = window.open('', '_blank'); if (!v) { toast('⚠ El navegador bloqueó la ventana de impresión'); return; }
+  const porLab = {}; F.forEach(f => { const z = porLab[f.Lb.n || f.r.lab] = porLab[f.Lb.n || f.r.lab] || {ha:0, n:0}; z.ha += +f.r.ha || 0; z.n++; });
+  v.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Programación semanal ${w}</title><style>
+    body{font-family:system-ui,Segoe UI,Arial,sans-serif;color:#0f172a;margin:24px}h1{font-size:20px;margin:0}p{margin:4px 0 14px;color:#475569;font-size:13px}
+    table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left}th{background:#f1f5f9}td.n{text-align:right}
+    .tot{margin-top:12px;font-size:12.5px}.firma{margin-top:28px;font-size:12px;color:#475569}@media print{body{margin:10mm}}</style></head><body>
+    <h1>📅 Programación semanal · Control labores campo</h1><p>Riopaila Agrícola S.A. · Semana del ${msF(w)} al ${msF(labMas(w, 6))} · ${F.length} suertes · ${msN(sum(F, f => +f.r.ha || 0), 1)} ha</p>
+    <table><thead><tr><th>Día</th><th>Suerte</th><th>Hacienda</th><th>Labor</th><th>Contratista</th><th>Implemento / producto</th><th>Área (ha)</th><th>Estado</th><th>Observación</th></tr></thead><tbody>
+    ${F.map(f => `<tr><td>${esc(f.dia)}</td><td><b>${esc(f.r.s)}</b></td><td>${esc(f.hac)}</td><td>${esc(f.Lb.n || f.r.lab)}</td><td>${esc(f.r.contr || '')}</td><td>${esc(f.r.lab === 'fert' ? f.r.prod || '' : f.r.impl || '')}</td><td class="n">${msN(f.r.ha, 2)}</td><td>${f.r.ok ? 'Ejecutada' : 'Programada'}</td><td>${esc(f.r.obs || '')}</td></tr>`).join('')}</tbody></table>
+    <div class="tot">${Object.entries(porLab).map(([n, z]) => `<b>${esc(n)}:</b> ${msN(z.ha, 1)} ha (${z.n} suertes)`).join(' &nbsp;·&nbsp; ')}</div>
+    <div class="firma">Elaborado por: Luis Acosta · Especialista de Ingeniería Agrícola y Operaciones Campo</div>
+    <script>setTimeout(() => print(), 300)<\/script></body></html>`);
+  v.document.close();
 }
 
 // ── 📊 Indicadores: gráficos de las suertes de la tabla (con los filtros de zona, hacienda y búsqueda) ──
