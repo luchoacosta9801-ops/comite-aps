@@ -27,12 +27,12 @@ function accPantalla(){
   d.className = 'acc-puerta'; d.id = 'acc-puerta';
   d.innerHTML = `<form class="acc-caja" id="acc-form" autocomplete="on">
     <img src="img/logo-riopaila.png" alt="Riopaila Agrícola" class="acc-logo">
-    <h1>Ingeniería Agrícola</h1><p>Riopaila Agrícola S.A.</p>
+    <h1>Ingeniería Agrícola y Operaciones Campo</h1><p>Riopaila Agrícola S.A.</p>
     <label>Usuario<input id="acc-u" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
     <label>Contraseña<span class="acc-clave"><input id="acc-c" name="password" type="password" autocomplete="current-password" required><button type="button" id="acc-ver" title="Mostrar u ocultar">👁</button></span></label>
     <div class="acc-err" id="acc-err" hidden></div>
     <button type="submit" class="acc-entrar">Entrar</button>
-    <small>¿No tienes usuario? Pídeselo al administrador del área de Ingeniería Agrícola.</small>
+    <small>¿No tienes usuario? Pídeselo al administrador del área de Ingeniería Agrícola y Operaciones Campo.</small>
   </form>`;
   document.body.appendChild(d);
   document.documentElement.classList.add('acc-bloqueado');

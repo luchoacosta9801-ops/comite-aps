@@ -85,7 +85,7 @@ function renderMeta(){
   renderSlbl();
   document.querySelectorAll('.sem-tag').forEach(t=>t.textContent=semana.replace(/semana/i,'SEM.'));
   q('footer').innerHTML=`Comité APS · Riopaila Agrícola · Datos al ${esc(fecha)} · ${esc(semana)} · Fuentes: PANEL CONTROL · COMITE APS · RESUMEN · PPTO 2026`+
-    `<div class="footer-firma">Elaborado por: <b>Luis Acosta</b> · Esp. de Ingeniería Agrícola</div>`;
+    `<div class="footer-firma">Elaborado por: <b>Luis Acosta</b> · Especialista de Ingeniería Agrícola y Operaciones Campo</div>`;
   updateSaveDot();
 }
 

@@ -1,7 +1,7 @@
 // Descarga en Excel de todo lo que muestra el dashboard (respeta los filtros activos).
 
 const r2 = n => Math.round((+n || 0) * 100) / 100;
-const FIRMA = 'Luis Acosta · Esp. de Ingeniería Agrícola';
+const FIRMA = 'Luis Acosta · Especialista de Ingeniería Agrícola y Operaciones Campo';
 
 function textoFiltros(){
   const nombres = {zona:'Zona',hac:'Hacienda',cult:'Cultivo',est:'Estado',ppto:'Presupuesto',dias:'Días lucro'};

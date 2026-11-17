@@ -20,7 +20,7 @@ const VISTAS = {
   nfcos:      {hash:'#cosecha-niveles', titulo:'Cosecha vs niveles freáticos', sub:'Ingeniería Agrícola · Riopaila Agrícola', doc:'Cosecha vs niveles freáticos · Ingeniería Agrícola'},
 };
 // Video institucional vigente de la portada (al regrabarlo con otro nombre, cambiar aquí)
-const PORTADA_VIDEO = 'img/portada-institucional-4.mp4';
+const PORTADA_VIDEO = 'img/portada-institucional-5.mp4';
 const vistaDeHash = h => (Object.entries(VISTAS).find(([, v]) => v.hash === h) || ['portal'])[0];
 let vistaActual = 'portal';
 
@@ -134,7 +134,7 @@ function renderPortal(){
         return card('usu', '🔐', 'Usuarios y accesos', 'Crea los usuarios que pueden entrar a la página, con perfil Ver o Editor. Solo lo ve el administrador.',
         n ? `<b>${n}</b> ${n === 1 ? 'usuario' : 'usuarios'}` : 'Sin usuarios: la página está abierta', '#475569'); })()}
     </div>
-    <div class="pt-pie">Comité APS · Riopaila Agrícola · Elaborado por: <b>Luis Acosta</b> · Esp. de Ingeniería Agrícola</div>`;
+    <div class="pt-pie">Comité APS · Riopaila Agrícola · Elaborado por: <b>Luis Acosta</b> · Especialista de Ingeniería Agrícola y Operaciones Campo</div>`;
 }
 q('portal').addEventListener('click', e => {
   const b = e.target.closest('[data-ir]'); if (b) { irA(b.dataset.ir); return; }
@@ -161,7 +161,7 @@ q('portal').addEventListener('change', e => {
 let estBase = null;
 function estructura(){
   return DB.estructura || (estBase = estBase || {personas:[
-    {id:'p1', nombre:'Luis Acosta', cargo:'Especialista de Ingeniería Agrícola', equipo:'Ingeniería Agrícola', reportaA:'', zona:'', funciones:''},
+    {id:'p1', nombre:'Luis Acosta', cargo:'Especialista de Ingeniería Agrícola y Operaciones Campo', equipo:'Ingeniería Agrícola', reportaA:'', zona:'', funciones:''},
   ]});
 }
 function estEditable(){ if (!DB.estructura) DB.estructura = clone(estructura()); return DB.estructura; }
@@ -942,7 +942,7 @@ function pyDiapositivas(p){
   // 7. Resultado
   if (p.resultado) S.push({cls:'pz-final', bg:port && port.src, html:`<div class="pz-port-c"><span class="pz-chip">Resultado</span><h2>${esc(p.resultado)}</h2>
     ${enlaceSeguro(p.enlace) ? `<a class="pz-link" href="${esc(enlaceSeguro(p.enlace))}" target="_blank" rel="noopener">📄 Ver informe completo</a>` : ''}
-    <p class="pz-firma">Elaborado por: Luis Acosta · Esp. de Ingeniería Agrícola</p></div>`});
+    <p class="pz-firma">Elaborado por: Luis Acosta · Especialista de Ingeniería Agrícola y Operaciones Campo</p></div>`});
   return S;
 }
 // Diapositivas de un protocolo de emergencia: portada, pasos, insumos, datos, directorio y un mapa por lámina
