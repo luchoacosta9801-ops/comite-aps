@@ -57,6 +57,8 @@ function labReporte(){
 }
 const labPar = () => Object.assign({}, LAB_DEF, labDatos().params || {});
 const labISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// Fecha corta para el control de labores: «16 nov», sin año; el año solo aparece si no es el actual («16 dic 25»)
+const labF = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); if (!m) return '—'; return `${+m[3]} ${frMes[+m[2] - 1]}${+m[1] === new Date().getFullYear() ? '' : ' ' + m[1].slice(2)}`; };
 const labHoy = () => labISO(new Date());
 const labDias = (a, b) => Math.round((Date.parse(b + 'T00:00:00') - Date.parse(a + 'T00:00:00')) / 864e5);
 const labMenos = (iso, n) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() - n); return labISO(d); };
@@ -108,7 +110,7 @@ const labUnica = o => (o.reg.rotur || {}).unica || (labPlantilla(o) ? 'nr' : '')
 function labEstado(o, L){
   const P = labPar(), [d0, d1] = P[L.k], r = o.reg[L.k] || {}, hoy = labHoy(), b = labBD(o, L);
   const v = o.bd && L.bd && !o.bd.sn ? o.bd[L.bd] : undefined, como = labComo(r), un = labUnica(o);
-  if (r.r) return {e:'hecha', t:`Hecha ${msF(r.r)}${como}`};
+  if (r.r) return {e:'hecha', t:`Hecha ${labF(r.r)}${como}`};
   if (r.tiene === 'si') return {e:'hecha', t:`Hecha${como}`};
   if ((L.k === 'rotur' || L.k === 'rotur2') && un === 'nr') return {e:'noaplica', n:'No se rotura', t:`No se rotura${labPlantilla(o) ? ' · plantilla (corte 1)' : ''}`};
   if (L.k === 'rotur2' && un === 'si') { const r1 = o.reg.rotur || {}; return {e:'noaplica', t:`Única roturación${r1.impl ? ' · ' + r1.impl : ''}`}; }
@@ -116,7 +118,7 @@ function labEstado(o, L){
   if (L.tipo === 'alerta' && o.dd > P.dias) return {e:'noaplica', t:`Corte de hace más de ${P.dias} días: sin seguimiento`};
   if (L.tipo === 'alerta' && labEstado(o, LAB_LABORES.find(x => x.k === 'rotur')).e === 'hecha') return {e:'hecha', t:'Se da por hecha: ya se roturó'};
   const pend = v > 0 ? ` · ${msN(v, 2)} ha pendientes` : '';
-  if (r.p) return r.p < hoy ? {e:'atrasada', t:`Programada ${msF(r.p)} · atrasada ${labDias(r.p, hoy)} d${pend}${como}`} : {e:'programada', t:`Programada ${msF(r.p)}${pend}${como}`};
+  if (r.p) return r.p < hoy ? {e:'atrasada', t:`Programada ${labF(r.p)} · atrasada ${labDias(r.p, hoy)} d${pend}${como}`} : {e:'programada', t:`Programada ${labF(r.p)}${pend}${como}`};
   if (r.tiene !== 'no' && b === 'sindato') return {e:'sindato', t:`El Excel no dice si tiene ${L.n.toLowerCase()} · ${o.dd} d desde ${o.x.desdeSiembra ? 'la siembra' : 'el corte'}`};
   if (o.dd < d0) return {e:'proxima', t:`Empieza en ${d0 - o.dd} d${pend}`};
   if (o.dd <= d1) return {e:'pendiente', t:`Quedan ${d1 - o.dd} d${pend}`};
@@ -182,17 +184,17 @@ function renderLabores(){
   const dosBot = (o, Lb, conFechas) => { const s = labEstado(o, Lb), e = s.e, k = esc(o.key), r = o.reg[Lb.k] || {};
     if (!ed || e === 'noaplica') return chip(s);
     const prog = e === 'programada' || e === 'atrasada', hecha = e === 'hecha', tono = hecha ? 'r' : prog ? 'p' : 'x';
-    return `<span class="lab-2b lab-2b-${tono}" title="${esc(s.t)}"><button type="button" class="${prog ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|p">Programada</button><button type="button" class="${hecha ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|r">Ejecutada</button></span>${conFechas && (r.p || r.r) ? `<small class="lab-t">${r.r ? `Hecha ${msF(r.r)}` : `Prog. ${msF(r.p)}`}</small>` : ''}`; };
+    return `<span class="lab-2b lab-2b-${tono}" title="${esc(s.t)}"><button type="button" class="${prog ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|p">Programada</button><button type="button" class="${hecha ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|r">Ejecutada</button></span>${conFechas && (r.p || r.r) ? `<small class="lab-t">${r.r ? `Hecha ${labF(r.r)}` : `Prog. ${labF(r.p)}`}</small>` : ''}`; };
   // Columnas: lo que trae el Excel (1ra, 2da roturación y fertilización)
   const LAB_COLS = LAB_LABORES;
   const LbSel = LAB_LABORES.find(x => x.k === labE.labor);
   // Última columna: ficha 📝 y, en modo editor, «Enviar» a la programación semanal (✓ si ya está en la semana elegida)
   const semPg = labPgSemana(), enSem = new Set((labProg()[semPg] || []).map(r => r.key + '|' + r.lab));
   const fichaBtn = o => { const yaEn = LAB_LABORES.some(Lb => enSem.has(o.key + '|' + Lb.k) && (!LbSel || Lb === LbSel));
-    return `<td class="lab-acc-fila"><button type="button" class="plegar-todo lab-fbtn" data-lab-ficha="${esc(o.key)}" title="Ficha de labores: roturación y fertilización (con quién, implemento, producto)">📝</button>${ed ? `<button type="button" class="lab-env${yaEn ? ' ya' : ''}" data-lab-env="${esc(o.key)}" title="${yaEn ? `Ya está en la programación de la semana del ${msF(semPg)} (tócalo para enviar otra labor)` : `Enviar a la programación de la semana del ${msF(semPg)}`}">${yaEn ? '✓ Enviada' : '📤 Enviar'}</button>` : ''}</td>`; };
+    return `<td class="lab-acc-fila"><button type="button" class="plegar-todo lab-fbtn" data-lab-ficha="${esc(o.key)}" title="Ficha de labores: roturación y fertilización (con quién, implemento, producto)">📝</button>${ed ? `<button type="button" class="lab-env${yaEn ? ' ya' : ''}" data-lab-env="${esc(o.key)}" title="${yaEn ? `Ya está en la programación de la semana del ${labF(semPg)} (tócalo para enviar otra labor)` : `Enviar a la programación de la semana del ${labF(semPg)}`}">${yaEn ? '✓ Enviada' : '📤 Enviar'}</button>` : ''}</td>`; };
   const datos = o => `<td class="b lab-cod"><a href="#" data-lab-ficha="${esc(o.key)}" title="Abrir la ficha de labores">${esc(o.x.s)}</a>${o.fuente === 'maestro' ? ' <small class="lab-fu" title="Cosechada según el maestro; aún no está en el Excel de labores pendientes">maestro</small>' : o.fuente === 'manual' ? ' <small class="lab-fu lab-fu-man" title="Agregada a mano o desde otro Excel; aún no está en el Excel de labores pendientes">agregada</small>' : ''}</td>
     <td>${esc(msHacN(o.x.hac)) || '<span class="meta">—</span>'}</td><td>${esc(o.x.zona ?? '')}</td><td>${esc(o.x.zonaAgro || '')}</td><td class="n">${msN(o.x.area, 2)}${o.x.par ? `<small class="lab-t" title="Parcial (ha) según el Excel">parcial ${msN(o.x.par, 2)}</small>` : ''}</td>
-    <td>${esc(o.x.variedad || '—')}</td><td class="n">${o.x.nCorte != null ? msN(o.x.nCorte) : esc(o.x.tipo || '')}</td><td>${msF(o.x.ultCorte)}${o.x.desdeSiembra ? '<small class="lab-t">siembra</small>' : ''}</td><td class="n">${o.dd}</td>`;
+    <td>${esc(o.x.variedad || '—')}</td><td class="n">${o.x.nCorte != null ? msN(o.x.nCorte) : esc(o.x.tipo || '')}</td><td>${labF(o.x.ultCorte)}${o.x.desdeSiembra ? '<small class="lab-t">siembra</small>' : ''}</td><td class="n">${o.dd}</td>`;
   const cabDatos = '<th>Suerte</th><th>Hacienda</th><th title="Zona">Z</th><th title="Zona agroecológica">Z. agro</th><th class="n">Área</th><th>Variedad</th><th class="n">Corte</th><th>Cosechada</th><th class="n lab-th2" title="Días de lucro: desde el corte (o la siembra) hasta hoy">Días de<br>lucro</th>';
   // Una labor elegida: una fila por suerte con su estado y, en modo editor, las fechas para programar o marcar hecha
   const filaLabor = (o, Lb) => { const s = labEstado(o, Lb), r = o.reg[Lb.k] || {}, k = esc(o.key), cerrada = s.e === 'noaplica' || (s.e === 'hecha' && !r.r);
@@ -215,7 +217,7 @@ function renderLabores(){
     `<button type="button" class="${labE.estado === v ? 'on' : ''} est-${v || 'todas'}" data-lab-est="${v}">${t} <b>${nEst(v)}</b></button>`).join('')}</div>`;
   // De dónde salen los datos: solo en el globo del título (para no llenar la página de texto)
   const origen = !B ? 'Sin Excel de labores pendientes cargado'
-    : `${B.sn ? 'Excel' : 'Reporte'} ${B.archivo}${B.hoja ? ` · hoja ${B.hoja}` : ''} (${msF(B.fecha)}): ${nRep} suertes${nMs ? ` + ${nMs} cosechadas según el maestro que el Excel aún no trae` : ''} · ${msN(ha(T), 1)} ha`;
+    : `${B.sn ? 'Excel' : 'Reporte'} ${B.archivo}${B.hoja ? ` · hoja ${B.hoja}` : ''} (${labF(B.fecha)}): ${nRep} suertes${nMs ? ` + ${nMs} cosechadas según el maestro que el Excel aún no trae` : ''} · ${msN(ha(T), 1)} ha`;
   cont.innerHTML = `
     <div class="lab-top"><div class="sim-tit" title="${esc(origen)}">🚜 Control labores campo${B ? '' : ' <small class="lab-aviso">sin Excel cargado</small>'}${B && B.mod ? `<small class="lab-ver" title="Hora en que se guardó el Excel que muestra el panel">Excel guardado ${labHoraTxt(B.mod)}</small>` : ''}</div>
       <div class="lab-acc">${ed ? `<label class="lab-ico" title="Cargar Excel de labores pendientes">📂<input type="file" id="lab-archivo" accept=".xlsx,.xls,.xlsm" hidden></label>
@@ -227,7 +229,7 @@ function renderLabores(){
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>📅 Programa de roturación y fertilización</b> <span class="meta">· por semana</span></div>
         <div class="sim-tw"><table class="sim-t"><thead><tr><th>Semana</th>${PROG.map(Lb => `<th class="n">${Lb.ico} ${Lb.n}</th>`).join('')}</tr></thead><tbody>
         ${semanas.map(w => { const s = sem[w], c = k => s[k] ? `${s[k].n} st · <b>${msN(s[k].a, 1)} ha</b>` : '<span class="meta">—</span>';
-          return `<tr${w === 'atrasadas' ? ' style="background:#fff7ed"' : ''}><td>${w === 'atrasadas' ? '<b style="color:#c2410c">Atrasadas</b>' : `Semana del ${msF(w)}`}</td>${PROG.map(Lb => `<td class="n">${c(Lb.k)}</td>`).join('')}</tr>`; }).join('') || `<tr><td colspan="${PROG.length + 1}" class="nores">Aún no hay labores programadas.</td></tr>`}</tbody></table></div></div>
+          return `<tr${w === 'atrasadas' ? ' style="background:#fff7ed"' : ''}><td>${w === 'atrasadas' ? '<b style="color:#c2410c">Atrasadas</b>' : `Semana del ${labF(w)}`}</td>${PROG.map(Lb => `<td class="n">${c(Lb.k)}</td>`).join('')}</tr>`; }).join('') || `<tr><td colspan="${PROG.length + 1}" class="nores">Aún no hay labores programadas.</td></tr>`}</tbody></table></div></div>
     </div>
     <div class="sim-card abierta" id="lab-tabla">
       <div class="lab-barra">${selector}${estBtns}<span class="lab-cuenta">${ed && LbSel ? '<span class="lab-ley2"><i style="background:#d03b3b"></i>Pendiente <i style="background:#2a78d6"></i>Programada <i style="background:#0ca30c"></i>Ejecutada</span>' : ''}${L.length} suertes · ${msN(ha(L), 1)} ha</span></div>
@@ -341,7 +343,7 @@ function labAplicar(R){
 }
 // Hora local del archivo (AAAA-MM-DDTHH:MM:SS): se guarda en DB.levante.mod para saber si el Excel de la carpeta cambió
 // «16 nov 2026, 9:09 p. m.» a partir de AAAA-MM-DDTHH:MM
-const labHoraTxt = iso => { const h = +String(iso).slice(11, 13), m = String(iso).slice(14, 16); return `${msF(iso)}${m ? `, ${h % 12 || 12}:${m} ${h < 12 ? 'a. m.' : 'p. m.'}` : ''}`; };
+const labHoraTxt = iso => { const h = +String(iso).slice(11, 13), m = String(iso).slice(14, 16); return `${labF(iso)}${m ? `, ${h % 12 || 12}:${m} ${h < 12 ? 'a. m.' : 'p. m.'}` : ''}`; };
 const labHoraISO = d => `${labISO(d)}T${[d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':')}`;
 function labCargarArchivo(file){
   if (!file) return; toast(`⏳ Leyendo ${file.name}…`);
@@ -366,7 +368,7 @@ function labDesdeServidor(auto){
   fetch(API_BASE + 'api/levante?info=1', H).then(r => r.ok ? r.json() : null).then(info => {
     if (!info || !info.ok) return; const B = labReporte();
     if (B && B.archivo === info.archivo && B.mod && B.mod >= String(info.fecha).slice(0, 19)) return;
-    toast(`🔄 El Excel ${info.archivo} cambió (guardado ${msF(info.fecha)} ${String(info.fecha).slice(11, 16)}): actualizando…`);
+    toast(`🔄 El Excel ${info.archivo} cambió (guardado ${labF(info.fecha)} ${String(info.fecha).slice(11, 16)}): actualizando…`);
     return traer();
   }).catch(() => {});
 }
@@ -434,7 +436,10 @@ function labFicha(key){
     return `<label>${etiqueta || 'Contratista'}<select ${dis} data-lfc="${k}"><option value="">— Elegir —</option>${LAB_CONTR.map(c => `<option ${x.contr === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}<option value="__otro" ${otro ? 'selected' : ''}>Otro…</option></select>
       ${otro ? txt(k, 'contr', LAB_CONTR.includes(x.contr) ? '' : x.contr, 'Escribe el contratista', 'contr') : ''}</label>`; };
   // Área realizada (cuando ya la tiene): total = área del maestro; parcial = escribirla (trae la «parcial (ha)» del Excel)
-  const area = (k, x) => !(x.tiene === 'si' || x.r) ? '' : `<div class="lf-q lf-area">Área realizada ${seg(k, 'at', x.at || 'total', [['total', `Total · ${msN(o.x.area, 2)} ha`], ['parcial', 'Parcial']])}
+  // Sin hacer todavía: área a programar (pat/pha) · total = toda la suerte; parcial = las hectáreas que se van a hacer
+  const area = (k, x) => !(x.tiene === 'si' || x.r) ? (x.tiene === 'no' || x.p || x.pat ? `<div class="lf-q lf-area">Área a programar ${seg(k, 'pat', x.pat || 'total', [['total', `Total · ${msN(o.x.area, 2)} ha`], ['parcial', 'Parcial']])}
+    ${x.pat === 'parcial' ? `<span class="lf-ha"><input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-lft="${k}|pha" value="${esc(x.pha ?? '')}" placeholder="0,00"> ha</span>` : ''}</div>` : '')
+    : `<div class="lf-q lf-area">Área realizada ${seg(k, 'at', x.at || 'total', [['total', `Total · ${msN(o.x.area, 2)} ha`], ['parcial', 'Parcial']])}
     ${x.at === 'parcial' ? `<span class="lf-ha"><input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-lft="${k}|ha" value="${esc(x.ha ?? o.x.par ?? '')}" placeholder="0,00"> ha</span>${o.x.par ? `<small class="meta">parcial del Excel: ${msN(o.x.par, 2)} ha</small>` : ''}` : ''}</div>`;
   // Implemento: lista (Convencional, Subesca, Triple) + «Otro…» que abre un campo para escribirlo
   const implSel = (k, x) => { const otro = (labE.otro || {})[k + ':impl'] || !!(x.impl && !LAB_IMPL.includes(x.impl));
@@ -454,7 +459,7 @@ function labFicha(key){
   else cuerpoRot = `<div class="meta lf-ayuda">Responde si es <b>única roturación</b> (subesca o triple) o si lleva <b>1ra y 2da</b> roturación, para anotar contratista, implemento, área y fecha.</div>`;
   const dl = c => `<datalist id="lf-dl-${c}">${labSugerencias(c).map(v => `<option value="${esc(v)}">`).join('')}</datalist>`;
   el.innerHTML = `<div class="ms-fondo lf-fondo" data-lf-cerrar><div class="ms-ficha lf-ficha" role="dialog" aria-label="Ficha de labores de la suerte ${esc(o.x.s)}">
-    <div class="ms-fh"><span class="ms-cod">${esc(o.x.s)}</span><div><b>${esc(msHacN(o.x.hac) || 'Suerte ' + o.x.s)}</b><small>Zona ${esc(o.x.zona ?? '—')} · ${msN(o.x.area, 2)} ha · ${esc(o.x.variedad || '—')}${o.x.nCorte != null ? ` · corte ${msN(o.x.nCorte)}` : ''} · ${o.x.desdeSiembra ? 'sembrada' : 'cosechada'} ${msF(o.x.ultCorte)} (hace ${o.dd} d)${o.x.par ? ` · parcial ${msN(o.x.par, 2)} ha` : ''}</small></div>
+    <div class="ms-fh"><span class="ms-cod">${esc(o.x.s)}</span><div><b>${esc(msHacN(o.x.hac) || 'Suerte ' + o.x.s)}</b><small>Zona ${esc(o.x.zona ?? '—')} · ${msN(o.x.area, 2)} ha · ${esc(o.x.variedad || '—')}${o.x.nCorte != null ? ` · corte ${msN(o.x.nCorte)}` : ''} · ${o.x.desdeSiembra ? 'sembrada' : 'cosechada'} ${labF(o.x.ultCorte)} (hace ${o.dd} d)${o.x.par ? ` · parcial ${msN(o.x.par, 2)} ha` : ''}</small></div>
       <button type="button" class="ms-x" data-lf-cerrar title="Cerrar (Esc)">✕</button></div>
     <div class="ms-cuerpo">
       ${ed ? '' : '<div class="meta lf-ayuda">Solo lectura: para anotar, entra en modo editor.</div>'}
@@ -485,7 +490,7 @@ labFichaEl().addEventListener('click', e => {
   const t = e.target;
   if (t.matches('[data-lf-cerrar]') || t.closest('.ms-x')) { labFichaCerrar(); return; }
   const qx = t.closest('[data-lf-quitar]');
-  if (qx) { const [s, f] = qx.dataset.lfQuitar.split('|'); if (!confirm(`¿Quitar la suerte ${s} (corte ${msF(f)}) que se agregó? Lo anotado en su ficha también se borra.`)) return;
+  if (qx) { const [s, f] = qx.dataset.lfQuitar.split('|'); if (!confirm(`¿Quitar la suerte ${s} (corte ${labF(f)}) que se agregó? Lo anotado en su ficha también se borra.`)) return;
     labFichaEl().innerHTML = ''; labE.ficha = null; labE.sucio = false;
     modCambio(() => { const D = DB.labores; D.extra = (D.extra || []).filter(x => !(x.s === s && x.f === f)); if (!D.extra.length) delete D.extra; if (D.reg) delete D.reg[`${s}|${f}`]; });
     toast(`🗑 Se quitó la suerte ${s} · recuerda 🚀 Publicar`); return; }
@@ -529,7 +534,7 @@ q('labores').addEventListener('click', e => {
   const h = t.closest('[data-lab-hoy]'); if (h) { labPoner(h.dataset.labHoy, h.dataset.labk, 'r', labHoy()); return; }
   const b = t.closest('[data-lab-bloque]');
   if (b) { const [k, campo] = b.dataset.labBloque.split('|'), Lb = LAB_LABORES.find(x => x.k === k), fe = (q('lab-pf') || {}).value; if (!fe) { toast('⚠ Elige la fecha'); return; }
-    const A = labBloque(labFiltradas(labSuertes()), Lb, campo), que = campo === 'p' ? `¿Programar ${Lb.n.toLowerCase()} para el ${msF(fe)}` : `¿Marcar ${Lb.n.toLowerCase()} como hecha el ${msF(fe)}`;
+    const A = labBloque(labFiltradas(labSuertes()), Lb, campo), que = campo === 'p' ? `¿Programar ${Lb.n.toLowerCase()} para el ${labF(fe)}` : `¿Marcar ${Lb.n.toLowerCase()} como hecha el ${labF(fe)}`;
     if (!A.length || !confirm(`${que} en ${A.length} suertes (${msN(sum(A, o => labHa(o, Lb)), 1)} ha)?`)) return;
     labE.progFecha = fe;
     modCambio(() => { const D = DB.labores = DB.labores || {params:{}, reg:{}}; D.reg = D.reg || {}; A.forEach(o => { const r = D.reg[o.key] = D.reg[o.key] || {}; (r[k] = r[k] || {})[campo] = fe; }); });
@@ -597,9 +602,9 @@ function labAgregar(){
           <label>Fecha de corte<input type="date" data-la="f" value="${esc(A.f || '')}" max="${labHoy()}"></label>
           <label>Área (ha)<input type="number" inputmode="decimal" step="0.01" min="0" data-la="a" value="${esc(A.a ?? '')}"></label>
           <label>Parcial (ha) · opcional<input type="number" inputmode="decimal" step="0.01" min="0" data-la="par" value="${esc(A.par ?? '')}"></label></div>
-        ${s ? `<div class="la-info">${m ? `📚 <b>${esc(msHacN(m.hac))}</b> · Zona ${esc(m.zona ?? '—')} · ${msN(m.area, 2)} ha · ${esc(m.variedad || '—')}${m.nCorte != null ? ` · corte ${msN(m.nCorte)}` : ''}${m.ultCorte ? ` · último corte en el maestro: ${msF(m.ultCorte)}` : ''}` : '⚠ Esa suerte no está en el maestro: escribe el área a mano.'}</div>` : A.s ? '<div class="la-info la-mal">Escribe el código completo: sector y suerte, por ejemplo 3501-120.</div>' : ''}
-        ${ya ? `<div class="la-info la-mal">Esa suerte ya está en el control (corte ${msF(ya.x.ultCorte)}). Ábrela en la tabla para anotar sus labores.</div>` : ''}
-        ${A.auto ? `<div class="la-info la-auto">✓ Del maestro: fecha de corte <b>${msF(A.f)}</b> y área <b>${msN(A.a, 2)} ha</b> (puedes cambiarlas)${A.plantilla ? ' · <b>corte 1 (plantilla): no se rotura</b>' : ''}</div>` : ''}
+        ${s ? `<div class="la-info">${m ? `📚 <b>${esc(msHacN(m.hac))}</b> · Zona ${esc(m.zona ?? '—')} · ${msN(m.area, 2)} ha · ${esc(m.variedad || '—')}${m.nCorte != null ? ` · corte ${msN(m.nCorte)}` : ''}${m.ultCorte ? ` · último corte en el maestro: ${labF(m.ultCorte)}` : ''}` : '⚠ Esa suerte no está en el maestro: escribe el área a mano.'}</div>` : A.s ? '<div class="la-info la-mal">Escribe el código completo: sector y suerte, por ejemplo 3501-120.</div>' : ''}
+        ${ya ? `<div class="la-info la-mal">Esa suerte ya está en el control (corte ${labF(ya.x.ultCorte)}). Ábrela en la tabla para anotar sus labores.</div>` : ''}
+        ${A.auto ? `<div class="la-info la-auto">✓ Del maestro: fecha de corte <b>${labF(A.f)}</b> y área <b>${msN(A.a, 2)} ha</b> (puedes cambiarlas)${A.plantilla ? ' · <b>corte 1 (plantilla): no se rotura</b>' : ''}</div>` : ''}
         <div class="lf-q">¿Roturación única? <span class="lf-seg">${[['si', 'Sí (subesca o triple)'], ['no', 'No (1ra y 2da)'], ['nr', 'No se rotura']].map(([v, t]) => `<button type="button" class="${A.unica === v ? 'on' : ''}" data-la-sn="unica|${v}">${t}</button>`).join('')}</span></div>
         ${A.unica === 'si' ? sn('r1', 'la roturación') : A.unica === 'no' ? sn('r1', '1ra roturación') + sn('r2', '2da roturación') : ''}${sn('fe', 'fertilización')}
         <button type="button" class="lab-ind-btn la-ok" data-la-ok ${s && A.f && !ya ? '' : 'disabled'}>➕ Agregar suerte</button></div>
@@ -686,14 +691,15 @@ function labEnviar(key, labK){
     // Ya enviada con esa labor: si hay otra labor pendiente, se envía esa; si no, se avisa
     const otra = !labK && LAB_LABORES.find(X => X !== Lb && labPorHacer(labEstado(o, X).e) && !L.some(r => r.key === key && r.lab === X.k));
     if (otra) return labEnviar(key, otra.k);
-    toast(`ℹ️ ${o.x.s} ya está en la programación de la semana del ${msF(w)} (${Lb.n})`, 4000); return; }
+    toast(`ℹ️ ${o.x.s} ya está en la programación de la semana del ${labF(w)} (${Lb.n})`, 4000); return; }
   modCambio(() => { const D = DB.labores = DB.labores || {params:{}, reg:{}}; D.prog = D.prog || {};
     // Lo tentativo anotado en la ficha (contratista, implemento, producto y fecha programada de esa semana) viene por defecto
     const x = o.reg[Lb.k] || {}, fila = {id:Date.now().toString(36) + Math.random().toString(36).slice(2, 5), key, s:o.x.s, hac:o.x.hac, z:o.x.zona, lab:Lb.k, ha:+(+labHa(o, Lb)).toFixed(2)};
     if (x.contr) fila.contr = x.contr; if (x.impl && Lb.k !== 'fert') fila.impl = x.impl; if (x.prod && Lb.k === 'fert') fila.prod = x.prod;
     if (x.p && x.p >= w && x.p <= labMas(w, 6)) fila.dia = x.p;
+    if (x.pat === 'parcial') { fila.pa = 1; if (+x.pha > 0) fila.ha = +(+x.pha).toFixed(2); }   // parcial anotado en la ficha
     (D.prog[w] = D.prog[w] || []).push(fila); });
-  toast(`📤 ${o.x.s} → programación de la semana del ${msF(w)} · ${Lb.n}`, 3500);
+  toast(`📤 ${o.x.s} → programación de la semana del ${labF(w)} · ${Lb.n}`, 3500);
 }
 const LAB_PG_SEC = [{k:'rot', n:'Roturación', ico:'🚜', labs:['rotur', 'rotur2'], col:'#2a78d6'}, {k:'fert', n:'Fertilización', ico:'🌱', labs:['fert'], col:'#1baf7a'}];
 const labPgOrdenContr = c => c === 'Sin asignar' ? 99 : LAB_CONTR.includes(c) ? LAB_CONTR.indexOf(c) : 50;
@@ -714,7 +720,8 @@ function labProgramacion(){
   F.forEach(r => { const o = porKey.get(r.key), x = o ? o.reg[r.lab] || {} : {};
     if (!r.contr && x.contr) { r.contr = x.contr; lleno = true; }
     if (r.lab !== 'fert' && !r.impl && x.impl) { r.impl = x.impl; lleno = true; }
-    if (r.lab === 'fert' && !r.prod && x.prod) { r.prod = x.prod; lleno = true; } });
+    if (r.lab === 'fert' && !r.prod && x.prod) { r.prod = x.prod; lleno = true; }
+    if (!r.pa && !r.ok && x.pat === 'parcial') { r.pa = 1; if (+x.pha > 0) r.ha = +(+x.pha).toFixed(2); lleno = true; } });
   if (lleno && ed) { save(); renderEstadoEdicion(); }
   const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   const opt = (v, t, s) => `<option value="${esc(v)}" ${s === v ? 'selected' : ''}>${esc(t)}</option>`;
@@ -730,7 +737,8 @@ function labProgramacion(){
       <td data-l="Día"><select ${dis} data-pg="${r.id}|dia">${opt('', '— Día —', r.dia || '')}${DIAS.map((d, j) => { const f = labMas(w, j); return opt(f, `${d} ${+f.slice(8)}`, r.dia); }).join('')}</select></td>
       <td class="pg-c" data-l="Contratista">${contrSel(r)}</td>
       <td data-l="${r.lab === 'fert' ? 'Producto o mezcla' : 'Implemento'}">${queCampo}</td>
-      <td data-l="Área (ha)"><input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-pg="${r.id}|ha" value="${esc(r.ha ?? '')}" class="pg-ha"></td>
+      <td data-l="Área (ha)" class="pg-area"><span class="lf-seg pg-tp" style="--c:${Lb.col}"><button type="button" ${dis} class="${r.pa ? '' : 'on'}" data-pg-pa="${r.id}|0" title="Toda la suerte${area ? ` · ${msN(area, 2)} ha` : ''}">Total</button><button type="button" ${dis} class="${r.pa ? 'on' : ''}" data-pg-pa="${r.id}|1" title="Solo una parte: escribe las hectáreas">Parcial</button></span>
+        ${r.pa ? `<input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-pg="${r.id}|ha" value="${esc(r.ha ?? '')}" class="pg-ha" placeholder="ha">` : `<small class="pg-hat">${msN(+r.ha || area || 0, 2)} ha</small>`}</td>
       <td data-l="Observación"><input type="text" ${dis} data-pg="${r.id}|obs" value="${esc(r.obs || '')}" placeholder="Observación"></td>
       <td class="pg-bot">${ed ? `<button type="button" class="pg-ej ${r.ok ? 'on' : ''}" data-pg-ok="${r.id}" title="${r.ok ? 'Realizada · tócalo para volver a pendiente' : 'Pendiente · tócalo cuando se haga (queda realizada en la ficha)'}">${r.ok ? '✓ Realizada' : 'Pendiente'}</button><button type="button" class="pg-x" data-pg-x="${r.id}" title="Quitar de la programación">🗑</button>` : (r.ok ? '<span class="lab-chip" style="color:#15803d;background:#dcfce7">Realizada</span>' : '<span class="lab-chip" style="color:#b91c1c;background:#fee2e2">Pendiente</span>')}</td></tr>`; };
   // Separada en Roturación (1ra y 2da) y Fertilización y, dentro de cada una, por contratista, con sus totales.
@@ -746,9 +754,9 @@ function labProgramacion(){
       <select data-pg-fc title="Ver un contratista">${opt('', 'Todos los contratistas', labE.pgContr || '')}${contrsSemana.map(c => opt(c, c, labE.pgContr || '')).join('')}</select></div>` : '';
   const haTot = sum(F, r => +r.ha || 0), haOk = sum(F.filter(r => r.ok), r => +r.ha || 0);
   el.innerHTML = `<div class="ms-fondo" data-pg-cerrar><div class="ms-ficha pg-modal" role="dialog" aria-label="Programación semanal">
-    <div class="ms-fh"><div><b>📅 Programación semanal</b><small>Semana del ${msF(w)} al ${msF(dom)} · ${F.length} suertes · ${msN(haTot, 1)} ha${haOk ? ` · ${msN(haOk, 1)} ha realizadas (${msN(haOk / (haTot || 1) * 100, 0)}%)` : ''}</small></div><button type="button" class="ms-x" data-pg-cerrar title="Cerrar (Esc)">✕</button></div>
+    <div class="ms-fh"><div><b>📅 Programación semanal</b><small>Semana del ${labF(w)} al ${labF(dom)} · ${F.length} suertes · ${msN(haTot, 1)} ha${haOk ? ` · ${msN(haOk, 1)} ha realizadas (${msN(haOk / (haTot || 1) * 100, 0)}%)` : ''}</small></div><button type="button" class="ms-x" data-pg-cerrar title="Cerrar (Esc)">✕</button></div>
     <div class="ms-cuerpo">
-      <div class="pg-barra"><span class="pg-sem"><button type="button" data-pg-sem="-7" title="Semana anterior">◀</button><b>Semana del ${msF(w)}</b><button type="button" data-pg-sem="7" title="Semana siguiente">▶</button>${w !== labLunes(labHoy()) ? '<button type="button" data-pg-sem="hoy">Esta semana</button>' : ''}</span>
+      <div class="pg-barra"><span class="pg-sem"><button type="button" data-pg-sem="-7" title="Semana anterior">◀</button><b>Semana del ${labF(w)}</b><button type="button" data-pg-sem="7" title="Semana siguiente">▶</button>${w !== labLunes(labHoy()) ? '<button type="button" data-pg-sem="hoy">Esta semana</button>' : ''}</span>
         <span class="pg-acc"><button type="button" class="plegar-todo" data-pg-xl ${F.length ? '' : 'disabled'}>⬇️ Excel</button><button type="button" class="plegar-todo" data-pg-imp ${F.length ? '' : 'disabled'}>🖨 Imprimir</button></span></div>
       ${filtros}
       ${F.length ? (Fv.length ? `<div class="pg-tw"><table class="pg-t"><thead><tr><th>#</th><th>Suerte</th><th>Labor</th><th>Día</th><th>Contratista</th><th>Implemento / producto</th><th>Área (ha)</th><th>Observación</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>` : '<div class="li-vacio">Nada con ese filtro.</div>')
@@ -772,6 +780,7 @@ function labPgPoner(id, campo, valor, redibujar){
     if (r.dia && !r.ok) labSet(key, k, 'p', r.dia); if (r.contr) labSet(key, k, 'contr', r.contr); redibujar = true; }
   if (campo === 'dia' && !r.ok) { const v = ((DB.labores.reg || {})[key] || {})[k] || {}; if (r.dia) labSet(key, k, 'p', r.dia); else if (v.p === viejo.dia) labSet(key, k, 'p', ''); }
   if (campo === 'contr' || campo === 'impl' || campo === 'prod') labSet(key, k, campo, r[campo] || '');
+  if (campo === 'ha' && r.pa) labSet(key, k, 'pha', r.ha === undefined ? '' : String(r.ha));
   if (r.ok && campo === 'ha') labPgEjecutar(r, true);
   save(); renderEstadoEdicion(); labE.sucio = true;
   if (redibujar) labProgramacion();
@@ -793,6 +802,16 @@ function labPgEventos(e){
     if (t.closest('[data-pg-xl]')) { labPgExcel(); return; }
     if (t.closest('[data-pg-imp]')) { labPgImprimir(); return; }
     if (!MODO_EDICION) return;
+    // Área Total / Parcial: total = toda la suerte; parcial = escribir las hectáreas (pasa a la ficha como área a programar)
+    const pa = t.closest('[data-pg-pa]');
+    if (pa) { const [id, v] = pa.dataset.pgPa.split('|'), L = labProg()[labPgSemana()] || [], r = L.find(x => x.id === id); if (!r || !!r.pa === (v === '1')) return;
+      const o = labSuertes().find(y => y.key === r.key), Lb = LAB_LABORES.find(X => X.k === r.lab) || LAB_LABORES[0];
+      if (v === '1') { r.pa = 1; labSet(r.key, r.lab, 'pat', 'parcial'); }
+      else { delete r.pa; if (o) r.ha = +(+labHa(o, Lb)).toFixed(2); labSet(r.key, r.lab, 'pat', ''); labSet(r.key, r.lab, 'pha', ''); }
+      if (r.ok) labPgEjecutar(r, true);
+      save(); renderEstadoEdicion(); labE.sucio = true; labProgramacion();
+      if (v === '1') { const i = document.querySelector(`#lab-pg [data-pg="${id}|ha"]`); if (i) { i.focus(); i.select(); } }
+      return; }
     const ok = t.closest('[data-pg-ok]');
     if (ok) { const L = labProg()[labPgSemana()] || [], r = L.find(x => x.id === ok.dataset.pgOk); if (!r) return;
       r.ok = !r.ok; if (!r.ok) delete r.ok; labPgEjecutar(r, !!r.ok); save(); renderEstadoEdicion(); labE.sucio = true; labProgramacion(); return; }
@@ -813,17 +832,17 @@ function labPgEventos(e){
 function labPgFilas(){
   const w = labPgSemana(), porKey = new Map(labSuertes().map(o => [o.key, o]));
   const info = r => { const o = porKey.get(r.key), Lb = LAB_LABORES.find(L => L.k === r.lab) || {};
-    return {r, o, Lb, hac:msHacN(o ? o.x.hac : r.hac) || '', zona:o ? o.x.zona : r.z, dia:r.dia ? `${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][new Date(r.dia + 'T00:00:00').getDay()]} ${msF(r.dia)}` : ''}; };
+    return {r, o, Lb, hac:msHacN(o ? o.x.hac : r.hac) || '', zona:o ? o.x.zona : r.z, dia:r.dia ? `${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][new Date(r.dia + 'T00:00:00').getDay()]} ${labF(r.dia)}` : ''}; };
   return labPgGrupos(labPgFiltrar(labProg()[w] || [])).map(g => ({S:g.S, R:g.R, contrs:g.contrs.map(c => ({c:c.c, filas:c.filas.map(info)}))}));
 }
 const labPgFiltroTxt = () => [labE.pgSec ? LAB_PG_SEC.find(S => S.k === labE.pgSec).n : '', labE.pgContr || ''].filter(Boolean).join(' · ');
 function labPgExcel(){
   cargarXLSX().then(XLSX => { const w = labPgSemana(), G = labPgFilas(), ha = R => +sum(R, x => +(x.r || x).ha || 0).toFixed(2);
-    const filas = [['Programación semanal · Control labores campo'], [`Semana del ${msF(w)} al ${msF(labMas(w, 6))}${labPgFiltroTxt() ? ' · ' + labPgFiltroTxt() : ''}`], []];
-    const cab = ['Día', 'Suerte', 'Hacienda', 'Zona', 'Labor', 'Contratista', 'Implemento / producto', 'Área (ha)', 'Estado', 'Observación'];
+    const filas = [['Programación semanal · Control labores campo'], [`Semana del ${labF(w)} al ${labF(labMas(w, 6))}${labPgFiltroTxt() ? ' · ' + labPgFiltroTxt() : ''}`], []];
+    const cab = ['Día', 'Suerte', 'Hacienda', 'Zona', 'Labor', 'Contratista', 'Implemento / producto', 'Área (ha)', 'Total / parcial', 'Estado', 'Observación'];
     G.forEach(g => { filas.push([`${g.S.n.toUpperCase()} · ${g.R.length} suertes · ${ha(g.R)} ha`], cab);
       g.contrs.forEach(c => { filas.push([`Contratista: ${c.c}`]);
-        c.filas.forEach(f => filas.push([f.dia, f.r.s, f.hac, f.zona ?? '', f.Lb.n || f.r.lab, f.r.contr || '', f.r.lab === 'fert' ? (f.r.prod || '') : (f.r.impl || ''), +(+f.r.ha || 0).toFixed(2), f.r.ok ? 'Realizada' : 'Pendiente', f.r.obs || '']));
+        c.filas.forEach(f => filas.push([f.dia, f.r.s, f.hac, f.zona ?? '', f.Lb.n || f.r.lab, f.r.contr || '', f.r.lab === 'fert' ? (f.r.prod || '') : (f.r.impl || ''), +(+f.r.ha || 0).toFixed(2), f.r.pa ? 'Parcial' : 'Total', f.r.ok ? 'Realizada' : 'Pendiente', f.r.obs || '']));
         filas.push(['', '', '', '', `Subtotal ${c.c}`, '', '', ha(c.filas)]); });
       filas.push(['', '', '', '', `Total ${g.S.n}`, '', '', ha(g.R)], []); });
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, hoja(XLSX, filas), 'Semana');
@@ -837,11 +856,11 @@ function labPgImprimir(){
     h2{font-size:16px;margin:18px 0 6px;padding:6px 10px;border-left:5px solid var(--c);background:#f8fafc}h2 span,h3 span{font-weight:500;color:#475569;font-size:12.5px}
     h3{font-size:13px;margin:10px 0 4px}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px}th,td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left}th{background:#f1f5f9}td.n{text-align:right}
     .firma{margin-top:28px;font-size:12px;color:#475569}@media print{body{margin:10mm}h2{break-after:avoid}table{break-inside:auto}}</style></head><body>
-    <h1>📅 Programación semanal · Control labores campo</h1><p>Riopaila Agrícola S.A. · Semana del ${msF(w)} al ${msF(labMas(w, 6))}${labPgFiltroTxt() ? ' · ' + esc(labPgFiltroTxt()) : ''} · ${nT} suertes · ${ha(G.flatMap(g => g.R))} ha</p>
+    <h1>📅 Programación semanal · Control labores campo</h1><p>Riopaila Agrícola S.A. · Semana del ${labF(w)} al ${labF(labMas(w, 6))}${labPgFiltroTxt() ? ' · ' + esc(labPgFiltroTxt()) : ''} · ${nT} suertes · ${ha(G.flatMap(g => g.R))} ha</p>
     ${G.map(g => `<h2 style="--c:${g.S.col}">${g.S.ico} ${g.S.n} <span>· ${g.R.length} suertes · ${ha(g.R)} ha</span></h2>
       ${g.contrs.map(c => `<h3>👷 ${esc(c.c)} <span>· ${c.filas.length} suertes · ${ha(c.filas)} ha</span></h3>
         <table><thead><tr><th>Día</th><th>Suerte</th><th>Hacienda</th><th>Labor</th><th>${g.S.k === 'fert' ? 'Producto o mezcla' : 'Implemento'}</th><th>Área (ha)</th><th>Estado</th><th>Observación</th></tr></thead><tbody>
-        ${c.filas.map(f => `<tr><td>${esc(f.dia)}</td><td><b>${esc(f.r.s)}</b></td><td>${esc(f.hac)}</td><td>${esc(f.Lb.n || f.r.lab)}</td><td>${esc(f.r.lab === 'fert' ? f.r.prod || '' : f.r.impl || '')}</td><td class="n">${msN(f.r.ha, 2)}</td><td>${f.r.ok ? 'Realizada' : 'Pendiente'}</td><td>${esc(f.r.obs || '')}</td></tr>`).join('')}</tbody></table>`).join('')}`).join('')}
+        ${c.filas.map(f => `<tr><td>${esc(f.dia)}</td><td><b>${esc(f.r.s)}</b></td><td>${esc(f.hac)}</td><td>${esc(f.Lb.n || f.r.lab)}</td><td>${esc(f.r.lab === 'fert' ? f.r.prod || '' : f.r.impl || '')}</td><td class="n">${msN(f.r.ha, 2)}${f.r.pa ? ' <small>parcial</small>' : ''}</td><td>${f.r.ok ? 'Realizada' : 'Pendiente'}</td><td>${esc(f.r.obs || '')}</td></tr>`).join('')}</tbody></table>`).join('')}`).join('')}
     <div class="firma">Elaborado por: Luis Acosta · Especialista de Ingeniería Agrícola y Operaciones Campo</div>
     <script>setTimeout(() => print(), 300)<\/script></body></html>`);
   v.document.close();

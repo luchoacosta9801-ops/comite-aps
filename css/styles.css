@@ -1529,3 +1529,8 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .pg-ej{border-color:#fecaca;background:#fef2f2;color:#b91c1c}
 .pg-ej.on{background:#0ca30c;border-color:#0ca30c;color:#fff}
 @media (max-width:760px){.pg-t tr.pg-g1,.pg-t tr.pg-g2{border:0;padding:0;margin:10px 0 6px}.pg-t tr.pg-g1 td,.pg-t tr.pg-g2 td{border-radius:8px}.pg-filtros select{width:100%}}
+/* Programación semanal: área Total / Parcial por fila */
+.pg-t td.pg-area{white-space:nowrap}
+.pg-t .pg-tp button{font-size:11.5px;padding:4px 9px}
+.pg-t td.pg-area .pg-ha{margin-left:4px;vertical-align:middle}
+.pg-t .pg-hat{margin-left:6px;color:var(--dim);font-weight:600}
