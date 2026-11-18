@@ -179,6 +179,9 @@ function renderLabores(){
   // Tabla
   const ord = [...L].sort((a, b) => labE.orden === 'excel' ? (a.i ?? 1e6) - (b.i ?? 1e6) || b.dd - a.dd : labE.orden === 'hac' ? (a.x.hac + a.x.s).localeCompare(b.x.hac + b.x.s) : labE.orden === 'area' ? (b.x.area || 0) - (a.x.area || 0) : labE.orden === 'nuevas' ? a.dd - b.dd : b.dd - a.dd);
   const chip = s => { const E = LAB_EST[s.e]; return `<span class="lab-chip" style="color:${E.col};background:${E.bg}" title="${esc(s.t)}">${s.n || E.n}</span>`; };
+  // Realizada parcial: debajo del estado van las hectáreas hechas (la columna Área sigue con el área de la suerte)
+  const chipHa = (o, Lb) => { const s = labEstado(o, Lb), x = o.reg[Lb.k] || {};
+    return chip(s) + (s.e === 'hecha' && x.at === 'parcial' ? `<small class="lab-parc" title="Realizada parcial: ${msN(labHaReal(o, x), 2)} de ${msN(o.x.area, 2)} ha">${msN(labHaReal(o, x), 2)} ha</small>` : ''); };
   // En modo editor, cada labor lleva dos botones: Programada y Realizada (el activo va pintado; ninguno = pendiente,
   // con borde rojo). Tocar el activo lo quita. Fuera del modo editor se ve solo el estado.
   const dosBot = (o, Lb, conFechas) => { const s = labEstado(o, Lb), e = s.e, k = esc(o.key), r = o.reg[Lb.k] || {};
@@ -198,14 +201,14 @@ function renderLabores(){
   const cabDatos = '<th>Suerte</th><th>Hacienda</th><th title="Zona">Z</th><th title="Zona agroecológica">Z. agro</th><th class="n">Área</th><th>Variedad</th><th class="n">Corte</th><th>Cosechada</th><th class="n lab-th2" title="Días de lucro: desde el corte (o la siembra) hasta hoy">Días de<br>lucro</th>';
   // Una labor elegida: una fila por suerte con su estado y, en modo editor, las fechas para programar o marcar hecha
   const filaLabor = (o, Lb) => { const s = labEstado(o, Lb), r = o.reg[Lb.k] || {}, k = esc(o.key), cerrada = s.e === 'noaplica' || (s.e === 'hecha' && !r.r);
-    return `<tr>${datos(o)}${Lb.bd ? `<td class="n b">${labPorHacer(s.e) ? msN(labHa(o, Lb), 2) : '<span class="meta">—</span>'}</td>` : ''}<td>${chip(s)}</td>
+    return `<tr>${datos(o)}${Lb.bd ? `<td class="n b">${labPorHacer(s.e) ? msN(labHa(o, Lb), 2) : '<span class="meta">—</span>'}</td>` : ''}<td>${chipHa(o, Lb)}</td>
       ${ed ? `<td class="lab-hecha">${dosBot(o, Lb, true)}</td>` : ''}${fichaBtn(o)}</tr>`; };
   const tabla = LbSel
     ? `<table class="sim-t lab-tab"><thead><tr>${cabDatos}${LbSel.bd ? '<th class="n" title="Hectáreas pendientes">Pend. ha</th>' : ''}<th title="Pasa el mouse sobre el estado para ver el detalle">Estado</th>${ed ? '<th title="Marca la labor como programada o realizada (con la fecha de hoy; otras fechas en la ficha 📝)">Marcar</th>' : ''}<th></th></tr></thead>
       <tbody>${ord.map(o => filaLabor(o, LbSel)).join('') || `<tr><td colspan="16" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
       ${ord.length ? `<tfoot><tr><td colspan="4">Total · ${ord.length} suertes</td><td class="n b">${msN(ha(ord), 2)}</td><td colspan="4"></td>${LbSel.bd ? `<td class="n b">${msN(sum(ord.filter(o => labPorHacer(labEstado(o, LbSel).e)), o => labHa(o, LbSel)), 2)}</td>` : ''}<td colspan="${ed ? 3 : 2}"></td></tr></tfoot>` : ''}</table>`
     : `<table class="sim-t lab-tab"><thead><tr>${cabDatos}${LAB_COLS.map(Lb => `<th title="${Lb.n}: ${P[Lb.k][0]}–${P[Lb.k][1]} días después del corte">${Lb.ico} ${Lb.c || Lb.n}</th>`).join('')}<th></th></tr></thead>
-      <tbody>${ord.map(o => `<tr>${datos(o)}${LAB_COLS.map(Lb => `<td>${chip(labEstado(o, Lb))}</td>`).join('')}${fichaBtn(o)}</tr>`).join('') || `<tr><td colspan="${10 + LAB_LABORES.length}" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
+      <tbody>${ord.map(o => `<tr>${datos(o)}${LAB_COLS.map(Lb => `<td>${chipHa(o, Lb)}</td>`).join('')}${fichaBtn(o)}</tr>`).join('') || `<tr><td colspan="${10 + LAB_LABORES.length}" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
       ${ord.length ? `<tfoot><tr><td colspan="4">Total · ${ord.length} suertes</td><td class="n b">${msN(ha(ord), 2)}</td><td colspan="${5 + LAB_LABORES.length}"></td></tr></tfoot>` : ''}</table>`;
   // Selector de labor (cuántas suertes pendientes tiene cada una con los demás filtros)
   const pendDe = Lb => T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && labPorHacer(labEstado(o, Lb).e)).length;
