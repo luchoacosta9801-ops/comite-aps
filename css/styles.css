@@ -1539,3 +1539,7 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 /* Control labores: filtro «Tardías +60 d» (pendientes con más de 60 días de lucro) */
 .lab-pills .est-tarde{border-color:#f0b37e}
 .lab-pills .est-tarde.on{background:#c2410c;border-color:#c2410c;color:#fff}
+/* Indicadores: tortas de pendientes tardías (+60 d) */
+.li-td{text-align:center;font-size:12.5px;margin-top:6px;line-height:1.45}
+.li-td b{color:#b91c1c}
+.li-td span{color:var(--dim)}
