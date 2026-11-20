@@ -137,16 +137,18 @@ const labBloque = (A, Lb, campo) => A.filter(o => { const r = o.reg[Lb.k] || {},
 // Filtros de la tabla: labE.labor (una labor o todas) y labE.estado: pend (pendientes) / venc (vencidas o atrasadas) /
 // prog (programadas) / hecha / '' (todas). Con una labor elegida se mira solo esa; con todas, basta que alguna cumpla
 // (y para «hecha», que todas lo estén)
-const LAB_ESTADOS = [['pend', 'Pendientes'], ['venc', 'Vencidas o atrasadas'], ['prog', 'Programadas'], ['sindato', 'Sin dato en el Excel'], ['hecha', 'Realizadas'], ['', 'Todas']];
-const labCumple = (e, est) => est === 'pend' ? labPorHacer(e) : est === 'sindato' ? e === 'sindato' : est === 'venc' ? (e === 'vencida' || e === 'atrasada')
+// «Tardías»: pendientes con más de LAB_TARDE días de lucro (el dato llega tarde para roturar o fertilizar)
+const LAB_TARDE = 60;
+const LAB_ESTADOS = [['pend', 'Pendientes'], ['tarde', `Tardías (pendientes con más de ${LAB_TARDE} días)`], ['venc', 'Vencidas o atrasadas'], ['prog', 'Programadas'], ['sindato', 'Sin dato en el Excel'], ['hecha', 'Realizadas'], ['', 'Todas']];
+const labCumple = (e, est, o) => est === 'tarde' ? labPorHacer(e) && !!o && o.dd > LAB_TARDE : est === 'pend' ? labPorHacer(e) : est === 'sindato' ? e === 'sindato' : est === 'venc' ? (e === 'vencida' || e === 'atrasada')
   : est === 'prog' ? (e === 'programada' || e === 'atrasada') : est === 'hecha' ? (e === 'hecha' || e === 'noaplica') : true;
 function labFiltradas(T){
   const t = norm(labE.txt), Lb = LAB_LABORES.find(L => L.k === labE.labor), est = labE.estado;
   return T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!labE.fuente || o.fuente === labE.fuente)
     && (!t || norm(`${o.x.s} ${o.x.hac} ${o.x.variedad || ''} ${o.x.zonaAgro || ''}`).includes(t))
     && (() => { if (!est) return true;
-      if (Lb) return labCumple(labEstado(o, Lb).e, est);
-      const E = LAB_LABORES.map(L => labEstado(o, L).e); return est === 'hecha' ? E.every(e => labCumple(e, est)) : E.some(e => labCumple(e, est)); })());
+      if (Lb) return labCumple(labEstado(o, Lb).e, est, o);
+      const E = LAB_LABORES.map(L => labEstado(o, L).e); return est === 'hecha' ? E.every(e => labCumple(e, est, o)) : E.some(e => labCumple(e, est, o)); })());
 }
 
 function renderLabores(){
@@ -215,8 +217,8 @@ function renderLabores(){
   const selector = `<div class="lab-seg"><button type="button" class="${!LbSel ? 'on' : ''}" data-lab-labor="">Todas</button>${LAB_LABORES.map(Lb => `<button type="button" class="${LbSel === Lb ? 'on' : ''}" style="--c:${Lb.col}" data-lab-labor="${Lb.k}" title="${pendDe(Lb)} pendientes">${Lb.ico} ${Lb.n}</button>`).join('')}</div>`;
   // Botones de estado con su cuenta (con los demás filtros): todas / realizadas / pendientes / vencidas / sin dato
   const base = T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!labE.fuente || o.fuente === labE.fuente));
-  const nEst = v => !v ? base.length : base.filter(o => LbSel ? labCumple(labEstado(o, LbSel).e, v) : (() => { const E = LAB_LABORES.map(Lb => labEstado(o, Lb).e); return v === 'hecha' ? E.every(e => labCumple(e, v)) : E.some(e => labCumple(e, v)); })()).length;
-  const estBtns = `<div class="lab-pills">${[['', 'Todas'], ['hecha', 'Realizadas'], ['pend', 'Pendientes'], ['sindato', 'Sin dato']].filter(([v]) => v !== 'sindato' || nEst(v) || labE.estado === v).map(([v, t]) =>
+  const nEst = v => !v ? base.length : base.filter(o => LbSel ? labCumple(labEstado(o, LbSel).e, v, o) : (() => { const E = LAB_LABORES.map(Lb => labEstado(o, Lb).e); return v === 'hecha' ? E.every(e => labCumple(e, v, o)) : E.some(e => labCumple(e, v, o)); })()).length;
+  const estBtns = `<div class="lab-pills">${[['', 'Todas'], ['hecha', 'Realizadas'], ['pend', 'Pendientes'], ['tarde', `Tardías +${LAB_TARDE} d`], ['sindato', 'Sin dato']].filter(([v]) => v !== 'sindato' || nEst(v) || labE.estado === v).map(([v, t]) =>
     `<button type="button" class="${labE.estado === v ? 'on' : ''} est-${v || 'todas'}" data-lab-est="${v}">${t} <b>${nEst(v)}</b></button>`).join('')}</div>`;
   // De dónde salen los datos: solo en el globo del título (para no llenar la página de texto)
   const origen = !B ? 'Sin Excel de labores pendientes cargado'

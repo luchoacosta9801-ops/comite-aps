@@ -1536,3 +1536,6 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .pg-t .pg-hat{margin-left:6px;color:var(--dim);font-weight:600}
 /* Control labores: hectáreas realizadas debajo del estado cuando la labor fue parcial */
 .lab-tab .lab-parc{display:block;margin-top:2px;font-size:11px;font-weight:700;color:#15803d;white-space:nowrap}
+/* Control labores: filtro «Tardías +60 d» (pendientes con más de 60 días de lucro) */
+.lab-pills .est-tarde{border-color:#f0b37e}
+.lab-pills .est-tarde.on{background:#c2410c;border-color:#c2410c;color:#fff}
