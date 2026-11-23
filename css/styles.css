@@ -1564,3 +1564,4 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .li-crit td,.li-crit th{text-align:left}
 .li-crit td.n,.li-crit th.n{text-align:right}
 .li-crit .li-tag-no{visibility:hidden}
+.pub-otro{margin-top:0 !important;margin-bottom:12px}

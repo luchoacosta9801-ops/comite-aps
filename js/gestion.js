@@ -507,12 +507,20 @@ function renderPublicar(){
     modalBody.innerHTML=`<div class="note" style="margin-top:0">✓ No hay cambios pendientes: la página publicada ya muestra estos datos.</div>`;
     modalFooter.innerHTML=volver;return;
   }
-  modalBody.innerHTML=`${resumenCambios()}
+  modalBody.innerHTML=`${pubOtroEquipo()}${resumenCambios()}
     <div class="mrow" style="margin-top:14px"><div><label class="mlabel">Descripción del cambio</label>
       <input class="minput" id="pub-msg" value="Datos ${esc(DB.meta.fecha)} (${esc(DB.meta.semana)})"></div></div>
     <div class="note">Se guarda en <b>js/datos.js</b>, se sube a GitHub y en 1–2 minutos todos ven la versión nueva (las pestañas abiertas se actualizan solas).${ES_LOCAL?'':'<br>Requiere <b>servidor.ps1</b> abierto en tu PC: es quien sube los cambios a GitHub.'}</div>
     <div id="pub-res"></div>`;
   modalFooter.innerHTML=`${volver}<button class="mbtn mbtn-primary" id="pub-btn" onclick="confirmarPublicar()">🚀 Publicar ahora</button>`;
+}
+// Usuario con sesión que edita desde OTRO equipo (no el PC del administrador, donde corre servidor.ps1): no puede
+// publicar directo; manda sus cambios en un archivo con 📤 Enviar cambios (acceso.js) y el administrador los publica
+function pubOtroEquipo(error){
+  const s=!ES_LOCAL&&typeof accSesion==='function'?accSesion():null;
+  if(!s||!(s.rol==='editor'||s.rol==='panel')||typeof accEnviar!=='function')return '';
+  return `<div class="note pub-otro"${error?' style="border-color:rgba(37,99,235,.35);background:rgba(37,99,235,.07)"':''}>💡 <b>¿Estás en otro equipo?</b> Solo el PC del administrador publica. Toca <b>📤 Enviar mis cambios</b>: se descarga (o se comparte) un archivo con lo que editaste; mándaselo por correo o Teams y él lo carga en 🔐 Usuarios y accesos y lo publica. Tus cambios no se borran de este navegador.
+    <div style="margin-top:8px"><button type="button" class="mbtn mbtn-primary" onclick="accEnviar(accSesion())">📤 Enviar mis cambios al administrador</button></div></div>`;
 }
 function confirmarPublicar(){
   const btn=q('pub-btn'),res=q('pub-res');
@@ -527,9 +535,11 @@ function confirmarPublicar(){
     if(ES_LOCAL)setTimeout(()=>location.reload(),1800);else renderEstadoEdicion();
   }).catch(e=>{
     const sinServidor=e instanceof TypeError;   // fetch falló: servidor.ps1 no está abierto
+    document.querySelectorAll('.pub-otro').forEach(x=>x.remove());   // el aviso de «otro equipo» se repite, resaltado, junto al error
     res.innerHTML=sinServidor
-      ?`<div class="err">No encontré <b>servidor.ps1</b> abierto en este PC. Ábrelo (clic derecho en <b>servidor.ps1</b> → <i>Ejecutar con PowerShell</i>), acepta si el navegador pide permiso para acceder a dispositivos de la red local, y vuelve a intentar. Tus cambios no se pierden.</div>`
+      ?`<div class="err">No encontré <b>servidor.ps1</b> abierto en este PC. Si es el PC del administrador, ábrelo (clic derecho en <b>servidor.ps1</b> → <i>Ejecutar con PowerShell</i>), acepta si el navegador pide permiso para acceder a dispositivos de la red local, y vuelve a intentar. Tus cambios no se pierden.</div>${pubOtroEquipo(true)}`
       :`<div class="err" style="white-space:pre-wrap">No se pudo publicar: ${esc(e.message)}</div>`;
+    const otro=res.querySelector('.pub-otro'); if(otro)otro.scrollIntoView({block:'nearest',behavior:'smooth'});
     btn.disabled=false;btn.textContent='🚀 Reintentar';
   });
 }
