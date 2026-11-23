@@ -1543,3 +1543,12 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .li-td{text-align:center;font-size:12.5px;margin-top:6px;line-height:1.45}
 .li-td b{color:#b91c1c}
 .li-td span{color:var(--dim)}
+/* Ficha: reparto del área realizada entre contratistas */
+.lf-rep-add{margin-top:8px}
+.lf-rep{margin-top:10px;padding:10px 12px;border:1px dashed var(--bdr);border-radius:12px;background:#f8fafc;display:flex;flex-direction:column;gap:7px;align-items:flex-start}
+.lf-rep-t{font-weight:700;font-size:13px}
+.lf-rep-t small{font-weight:600;color:var(--dim);margin-left:4px}
+.lf-rep-f{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.lf-rep-f select{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--bdr);border-radius:8px;min-width:190px;background:#fff}
+.lf-rep-x{border:0;background:none;cursor:pointer;font-size:15px;opacity:.7}
+.lf-rep-x:hover{opacity:1}
