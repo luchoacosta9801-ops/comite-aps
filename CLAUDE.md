@@ -107,3 +107,4 @@
 - Filtro «Tardías +60 d» (labE.estado='tarde', LAB_TARDE=60): pendientes (labPorHacer, incluye programadas) con o.dd > 60; labCumple(e, est, o) recibe la suerte. El Excel ⬇️ respeta el filtro.
 - Indicadores: tarjeta «Pendientes tardías» con tortas (labIndDatos().tarde) para roturación (1ra o 2da, suerte una vez) y fertilización: tardías +60 d (#d03b3b) vs a tiempo (#eda100).
 - Ficha: reparto del área realizada entre contratistas (x.rep=[{c,ha}], labRep/labContrTxt/labRepGuardar). contr = primero, at/ha = suma; con 1 fila vuelve a normal. Indicadores por contratista, Excel y labComo usan el reparto; labPgEjecutar no lo pisa.
+- Indicadores tardías: tortas por labor (1ra, 2da, fert), tarjeta «Tardías por hacienda» (D.hacT, barras por labor) y «Suertes más críticas» (D.crit, top 15 por días, chips en posición fija).

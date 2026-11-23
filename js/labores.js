@@ -929,13 +929,16 @@ function labIndDatos(){
       else if (e === 'sindato') { d.sin += o.x.area || 0; d.nS++; }
       else if (labPorHacer(e)) { const h = labHa(o, Lb); d.pend += h; d.nP++; const z = hac[o.x.hac || '—'] = hac[o.x.hac || '—'] || {}; suma(z, Lb.k, h); } });
     return d; });
-  // Pendientes tardías (más de LAB_TARDE días de lucro) vs a tiempo: roturación (1ra o 2da, cada suerte una vez) y fertilización
-  const R1 = LAB_LABORES.find(L => L.k === 'rotur'), R2 = LAB_LABORES.find(L => L.k === 'rotur2'), F = LAB_LABORES.find(L => L.k === 'fert');
-  const tarde = [{k:'rot', n:'Roturación', ico:'🚜', labs:[R1, R2]}, {k:'fert', n:'Fertilización', ico:'🌱', labs:[F]}].map(G => { const d = {G, t:0, nt:0, a:0, na:0};
-    A.forEach(o => { const P = G.labs.filter(Lb => labPorHacer(labEstado(o, Lb).e)); if (!P.length) return;
-      const h = Math.max(...P.map(Lb => +labHa(o, Lb) || 0)); if (o.dd > LAB_TARDE) { d.t += h; d.nt++; } else { d.a += h; d.na++; } });
+  // Pendientes tardías (más de LAB_TARDE días de lucro) vs a tiempo, por labor (1ra, 2da roturación y fertilización);
+  // por hacienda (ha tardías de cada labor) y suertes más críticas (más días de lucro, con lo que les falta)
+  const hacT = {}, crit = [];
+  const tarde = LAB_LABORES.map(Lb => { const d = {G:{n:Lb.n, ico:Lb.ico}, Lb, t:0, nt:0, a:0, na:0};
+    A.forEach(o => { if (!labPorHacer(labEstado(o, Lb).e)) return; const h = +labHa(o, Lb) || 0;
+      if (o.dd > LAB_TARDE) { d.t += h; d.nt++; const z = hacT[o.x.hac || '—'] = hacT[o.x.hac || '—'] || {}; suma(z, Lb.k, h); } else { d.a += h; d.na++; } });
     return d; });
-  return {A, por, impl, prod, hac, tarde};
+  A.forEach(o => { if (o.dd <= LAB_TARDE) return; const P = LAB_LABORES.filter(Lb => labPorHacer(labEstado(o, Lb).e)); if (P.length) crit.push({o, P}); });
+  crit.sort((a, b) => b.o.dd - a.o.dd || b.P.length - a.P.length);
+  return {A, por, impl, prod, hac, tarde, hacT, crit};
 }
 // Dona en SVG: items [{n, v, c}]; cada pedazo con su globo
 function labDona(items, centro, sub){
@@ -978,6 +981,10 @@ function labIndicadores(){
   const LAB_TD = [['t', `Tardías +${LAB_TARDE} d`, '#d03b3b'], ['a', `A tiempo (≤ ${LAB_TARDE} d)`, '#eda100']];
   const g6 = D.tarde.map(d => { const tot = d.t + d.a, I = LAB_TD.map(([k, n, c]) => ({n, v:d[k], c}));
     return `<div class="li-dona-c"><div class="li-sub">${d.G.ico} ${d.G.n}</div>${tot ? labDona(I, `${msN(d.t / tot * 100, 0)}%`, 'tardías') + `<div class="li-td"><b>${d.nt} suertes · ${msN(d.t, 1)} ha</b> tardías<br><span>${d.na} suertes · ${msN(d.a, 1)} ha a tiempo</span></div>` : '<div class="li-vacio">Nada pendiente ✓</div>'}</div>`; }).join('');
+  // 7. Tardías por hacienda (barras apiladas por labor) y 8. suertes más críticas
+  const HT = Object.entries(D.hacT).map(([h, z]) => ({h, z, t:sum(Object.values(z), v => v)})).sort((a, b) => b.t - a.t), maxHT = HT.length ? HT[0].t : 0;
+  const g7 = HT.map(r => labBarra(LAB_LABORES.map(Lb => ({n:Lb.n, v:r.z[Lb.k] || 0, c:Lb.col})), maxHT, msHacN(r.h) || r.h)).join('');
+  const g8 = D.crit.length ? `<div class="li-crit-w"><table class="li-crit"><thead><tr><th>#</th><th>Suerte</th><th>Hacienda</th><th class="n">Área (ha)</th><th class="n">Días de lucro</th><th>Le falta</th></tr></thead><tbody>${D.crit.slice(0, 15).map(({o, P}, i) => `<tr><td class="li-n">${i + 1}</td><td><b>${esc(o.x.s)}</b></td><td>${esc(msHacN(o.x.hac) || '')}</td><td class="n">${msN(o.x.area, 2)}</td><td class="n li-dias">${o.dd}</td><td>${LAB_LABORES.map(Lb => `<span class="li-tag${P.includes(Lb) ? '' : ' li-tag-no'}" style="--c:${Lb.col}">${Lb.ico} ${esc(Lb.c || Lb.n)}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>${D.crit.length > 15 ? `<div class="li-nota">… y ${D.crit.length - 15} suertes tardías más: en la tabla usa el botón «Tardías +${LAB_TARDE} d»</div>` : ''}` : '<div class="li-vacio">Ninguna suerte tardía ✓</div>';
   const tarjeta = (tit, sub, cuerpo, ancho) => `<section class="li-card${ancho ? ' li-ancha' : ''}"><h3>${tit}</h3>${sub ? `<p class="li-p">${sub}</p>` : ''}${cuerpo}</section>`;
   el.innerHTML = `<div class="ms-fondo li-fondo" data-li-cerrar><div class="ms-ficha li-modal" role="dialog" aria-label="Indicadores del control de labores">
     <div class="ms-fh"><div><b>📊 Indicadores · Control labores campo</b><small>${esc(filtros)} · ${D.A.length} suertes · ${msN(haT, 1)} ha</small></div><button type="button" class="ms-x" data-li-cerrar title="Cerrar (Esc)">✕</button></div>
@@ -985,7 +992,9 @@ function labIndicadores(){
       <div class="li-tiles">${tiles}</div>
       <div class="li-grid">
         ${tarjeta('Área realizada vs pendiente por labor', 'Hectáreas · pasa el mouse (o toca) cada color para ver el detalle', `${labLeyenda(LAB_IND_EST.map(([, n, c]) => ({n, c})))}${g1}`, true)}
-        ${tarjeta(`Pendientes tardías (más de ${LAB_TARDE} días de lucro)`, 'Del área pendiente, cuánta ya pasó de 60 días desde el corte: el dato llega tarde para roturar o fertilizar · roturación cuenta cada suerte una vez (1ra o 2da)', `${labLeyenda(LAB_TD.map(([, n, c]) => ({n, c})))}<div class="li-donas">${g6}</div>`, true)}
+        ${tarjeta(`Pendientes tardías (más de ${LAB_TARDE} días de lucro)`, `Del área pendiente de cada labor, cuánta ya pasó de ${LAB_TARDE} días desde el corte: el dato llega tarde para roturar o fertilizar`, `${labLeyenda(LAB_TD.map(([, n, c]) => ({n, c})))}<div class="li-donas">${g6}</div>`, true)}
+        ${tarjeta('Tardías por hacienda', `Hectáreas pendientes con más de ${LAB_TARDE} días de lucro, por labor · pasa el mouse por cada color`, HT.length ? `${labLeyenda(LAB_LABORES.map(Lb => ({n:Lb.n, c:Lb.col})))}${g7}` : '<div class="li-vacio">Ninguna hacienda con labores tardías ✓</div>', true)}
+        ${tarjeta('Suertes más críticas', `Las suertes tardías con más días de lucro y lo que les falta (1ra, 2da roturación o fertilización)${D.crit.length ? ` · ${D.crit.length} en total` : ''}`, g8, true)}
         ${tarjeta('Participación por contratista', 'Hectáreas realizadas por contratista en cada labor (lo anotado en la ficha 📝)', `${usadosC.length ? labLeyenda(usadosC.map(n => ({n, c:labColorContr(n)}))) : ''}<div class="li-donas">${g2}</div>`, true)}
         ${tarjeta('Implemento en roturación', 'Hectáreas de roturación realizadas (1ra y 2da) por implemento', donaL(Im, D.impl, 'Aún no hay implementos anotados'))}
         ${tarjeta('Productos de fertilización', 'Hectáreas fertilizadas por producto o mezcla', donaL(Pr, D.prod, 'Aún no hay productos anotados'))}
