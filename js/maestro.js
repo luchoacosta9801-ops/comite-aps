@@ -163,7 +163,7 @@ function renderMaestro(){
     <div class="fr-grid">
       <div class="sim-card abierta ms-mapa-card ${msE.full ? 'ms-full' : ''}" id="ms-mapa-card"><div class="sim-card-h" style="cursor:default"><b>Mapa de suertes</b>
         <span class="ms-vistas">${Object.entries(MS_VISTAS).map(([k, v]) => `<button type="button" class="fr-ch ${msE.color === k ? 'on' : ''}" data-ms-color="${k}">${v.n}</button>`).join('')}</span></div>
-        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo ms-full-btn" data-ms-full title="${msE.full ? 'Salir de pantalla completa (Esc)' : 'Ver el mapa en pantalla completa'}">${msE.full ? '✕ Salir' : '⛶ Pantalla completa'}</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa (encuadrar)">⤢</button><button type="button" class="plegar-todo ms-gps-btn ${msE.gps.on ? 'on' : ''}" data-ms-gps title="Muestra en el mapa dónde estás (GPS del celular o del equipo)">📍 Mi ubicación</button>
+        <div class="ms-zoom"><button type="button" class="plegar-todo" data-ms-zoom="1.6" title="Acercar">＋</button><button type="button" class="plegar-todo" data-ms-zoom="0.625" title="Alejar">－</button><button type="button" class="plegar-todo ms-full-btn" data-ms-full title="${msE.full ? 'Salir de pantalla completa (Esc)' : 'Ver el mapa en pantalla completa'}">${msE.full ? '✕ Salir' : '⛶ Pantalla completa'}</button><button type="button" class="plegar-todo" data-ms-girar="-15" title="Girar el mapa a la izquierda (también: Shift + arrastrar, clic derecho y arrastrar, o girar dos dedos en el celular)">⟲</button><button type="button" class="plegar-todo" data-ms-girar="15" title="Girar el mapa a la derecha">⟳</button><button type="button" class="plegar-todo" data-ms-girar="0" title="Norte arriba (o toca la brújula del mapa)">🧭 N</button><button type="button" class="plegar-todo" data-ms-ajustar title="Ver todo el mapa (encuadrar)">⤢</button><button type="button" class="plegar-todo ms-gps-btn ${msE.gps.on ? 'on' : ''}" data-ms-gps title="Muestra en el mapa dónde estás (GPS del celular o del equipo)">📍 Mi ubicación</button>
           <span class="ms-medir"><button type="button" class="plegar-todo ${msE.med.modo === 'lin' ? 'on' : ''}" data-ms-med="lin" title="Toca puntos en el mapa para medir una distancia o trazar una línea">📏 Distancia</button><button type="button" class="plegar-todo ${msE.med.modo === 'area' ? 'on' : ''}" data-ms-med="area" title="Toca los vértices para trazar una figura y medir su área">⬛ Área / figura</button>
           ${msE.med.modo || msE.med.figs.length ? `<button type="button" class="plegar-todo" data-ms-med="deshacer" title="Quitar el último punto">↶</button><button type="button" class="plegar-todo" data-ms-med="fin" title="Terminar esta medida y empezar otra">✔ Terminar</button><button type="button" class="plegar-todo" data-ms-med="borrar" title="Borrar todas las medidas">🗑</button>` : ''}</span></div>
         <div class="ms-capas"><span class="ms-fondo-sel" title="Imagen de fondo para ubicar municipios, pueblos, vías y ríos alrededor"><span class="meta">Fondo:</span>${Object.entries(MS_FONDOS).map(([k, v]) => `<button type="button" class="${msE.fondo === k ? 'on' : ''}" data-ms-fondo="${k}">${v.n}</button>`).join('')}</span><span class="meta">Capas:</span>${MS_CAPAS.map(([k, n, c, t]) => `<button type="button" class="ms-capa ${msE.capas[k] ? 'on' : ''}" data-ms-capa="${k}" title="${t}"><i style="--c:${c}" class="ms-capa-${k}"></i>${n}</button>`).join('')}</div>
@@ -171,7 +171,7 @@ function renderMaestro(){
         <div class="ms-gps-txt" id="ms-gps" ${msE.gps.on ? '' : 'hidden'}></div>
         <div class="ms-medidas" id="ms-med"></div>
         <div class="fr-cley" id="ms-ley"></div>
-        <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha · en «Capas» se prenden o apagan ríos, reservorios, canales, drenaje secundario, vías y el sentido de surco (las flechas muestran hacia dónde corre el agua) · 📏 Distancia y ⬛ Área / figura miden sobre el mapa (en metros, hectáreas y m²); con el teclado: Esc o Enter terminan la figura, otro Esc sale de medir y Ctrl+Z o Retroceso quitan el último punto. Solo se dibujan las suertes que están en la cartografía.</div></div>
+        <div class="meta" style="padding:0 12px 10px">＋/－, Ctrl + rueda o dos dedos para acercar · arrastra para moverte · ⟲ ⟳, Shift + arrastrar, clic derecho o girar dos dedos para <b>girar el mapa</b> (toca la brújula para volver al norte) · al acercarte aparece el número de cada suerte · toca una suerte para abrir su ficha · en «Capas» se prenden o apagan ríos, reservorios, canales, drenaje secundario, vías y el sentido de surco (las flechas muestran hacia dónde corre el agua) · 📏 Distancia y ⬛ Área / figura miden sobre el mapa (en metros, hectáreas y m²); con el teclado: Esc o Enter terminan la figura, otro Esc sale de medir y Ctrl+Z o Retroceso quitan el último punto. Solo se dibujan las suertes que están en la cartografía.</div></div>
       <div class="fr-lado">
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por variedad</b></div>${barras(msCuenta(L, 'variedad'), area, v => v, 10, '#7c3aed')}</div>
         <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>Área por estado</b></div>${barras(msCuenta(L, 'estado'), area, v => v, 8, '#0891b2')}</div>
@@ -195,6 +195,13 @@ function renderMaestro(){
   if (msE.ficha) msFicha(msE.ficha);
 }
 
+// Giro del mapa (como Google Earth): W.a = ángulo en radianes (positivo = el mapa gira en el sentido del reloj).
+// Todo se dibuja en la pantalla «sin girar» (U) y el contexto del canvas gira alrededor del centro del mapa.
+function msRotM(W, dpr){ const a = W.a || 0, c = Math.cos(a), s = Math.sin(a), cx = W.ancho / 2, cy = W.alto / 2;
+  return [dpr * c, dpr * s, -dpr * s, dpr * c, dpr * (cx - c * cx + s * cy), dpr * (cy - s * cx - c * cy)]; }
+// Punto de la pantalla real (px, py) → pantalla sin girar
+function msAU(W, px, py){ const a = -(W.a || 0), c = Math.cos(a), s = Math.sin(a), cx = W.ancho / 2, cy = W.alto / 2, dx = px - cx, dy = py - cy; return [cx + c * dx - s * dy, cy + s * dx + c * dy]; }
+const msAngN = a => { a = a % (2 * Math.PI); if (a > Math.PI) a -= 2 * Math.PI; if (a <= -Math.PI) a += 2 * Math.PI; return a; };
 // Mapa: las suertes de la cartografía coloreadas según la vista elegida, con zoom (＋/－, Ctrl + rueda, dos
 // dedos), arrastre y el número de cada suerte cuando cabe (al acercarse aparece el código completo)
 function msMapa(L){
@@ -210,15 +217,21 @@ function msMapa(L){
     : Math.min(Math.round(ancho * M.alto / M.ancho), Math.round(window.innerHeight * 0.72));
   cv.width = ancho * dpr; cv.height = alto * dpr; cv.style.height = alto + 'px';
   // Vista (se conserva al cambiar filtros mientras el tamaño sea el mismo)
-  const ajustar = () => { const s = Math.min(ancho / M.ancho, alto / M.alto) * 0.96; msE.vista = {s, ox:(ancho - M.ancho * s) / 2, oy:(alto - M.alto * s) / 2, ancho, alto}; };
+  const ajustar = () => { const s = Math.min(ancho / M.ancho, alto / M.alto) * 0.96; msE.vista = {s, ox:(ancho - M.ancho * s) / 2, oy:(alto - M.alto * s) / 2, ancho, alto, a:0}; };
   if (!msE.vista || msE.vista.ancho !== ancho || msE.vista.alto !== alto) ajustar();
   const g = cv.getContext('2d'), Vw = () => msE.vista;
   const sx = x => Vw().ox + x * Vw().s, sy = y => Vw().oy + (M.alto - y) * Vw().s;
   const linea = (r, cerrar) => { for (let k = 0; k < r.length; k += 2) { const x = sx(r[k]), y = sy(r[k + 1]); k ? g.lineTo(x, y) : g.moveTo(x, y); } if (cerrar) g.closePath(); };
   const cuenta = {};
   M.suertes.forEach(su => { const x = fila(su); if (x) { const c = V.cat(x, top); cuenta[c] = (cuenta[c] || 0) + su[2]; } });
+  // Con el mapa girado, los textos se escriben derechos (cada uno gira al revés en su punto)
+  const derecho = fn => { const a = Vw().a || 0; if (!a) return fn();
+    const env = orig => function(t, x, y, mw){ this.save(); this.translate(x, y); this.rotate(-a); if (mw != null) orig.call(this, t, 0, 0, mw); else orig.call(this, t, 0, 0); this.restore(); };
+    g.fillText = env(CanvasRenderingContext2D.prototype.fillText); g.strokeText = env(CanvasRenderingContext2D.prototype.strokeText);
+    try { fn(); } finally { delete g.fillText; delete g.strokeText; } };
   function dibujar(){
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#eef2f6'; g.fillRect(0, 0, ancho, alto);
+    g.setTransform(...msRotM(Vw(), dpr));   // el mapa gira alrededor del centro (Vw().a)
     const C = msE.capas, s = Vw().s, conFondo = msE.fondo !== 'no';
     if (conFondo) msFondoDibujar(g, dpr, ancho, alto, Vw());
     if (C.red && !conFondo) { g.strokeStyle = '#7fb3e6'; g.lineWidth = 1.2; g.beginPath(); M.rios.forEach(r => linea(r)); g.stroke(); }
@@ -240,24 +253,32 @@ function msMapa(L){
     if (C.drensec) trazo(M.drensec || [], '#0891b2', s > 0.3 ? 1.8 : 1.2, [6, 3]);
     if (C.vias) { const V2 = (M.vias || []).map(v => v[1]), w = s > 0.3 ? 2.2 : 1.4, gu = s > 0.3 ? [9, 5] : [6, 4]; trazo(V2, 'rgba(255,255,255,.85)', w + 2, gu); trazo(V2, '#111827', w, gu); }
     if (C.surcos) msSurcosDibujar(g, sx, sy, s);
-    msCapasEtiquetas(g, sx, sy, s, ancho, alto);
-    frEtiquetasSuertes(g, sx, sy, Vw().s, ancho, alto);
+    derecho(() => msCapasEtiquetas(g, sx, sy, s, ancho, alto));
+    frEtiquetasSuertes(g, sx, sy, Vw().s, ancho, alto, Vw().a || 0);
     msGpsDibujar(g, sx, sy, Vw().s);
-    msMedDibujar(g, sx, sy);
+    derecho(() => msMedDibujar(g, sx, sy));
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);   // crédito y brújula van sin girar
     if (conFondo) msFondoCredito(g, ancho, alto);
-    msNorte(g, ancho);
+    msNorte(g, ancho, Vw().a || 0);
   }
   msE.dibujar = dibujar;
-  msE.aMundo = (cx, cy) => { const r = cv.getBoundingClientRect(), W = Vw(); return [(cx - r.left - W.ox) / W.s, M.alto - (cy - r.top - W.oy) / W.s]; };
+  msE.aMundo = (cx, cy) => { const r = cv.getBoundingClientRect(), W = Vw(), [ux, uy] = msAU(W, cx - r.left, cy - r.top); return [(ux - W.ox) / W.s, M.alto - (uy - W.oy) / W.s]; };
+  // Cambia escala o giro dejando quieto el punto de la pantalla (px, py)
+  const fijar = (px, py, cambio) => { const W = Vw(), [ux, uy] = msAU(W, px, py), wx = (ux - W.ox) / W.s, wy = (uy - W.oy) / W.s; cambio(W); W.a = msAngN(W.a || 0);
+    const [u2x, u2y] = msAU(W, px, py); W.ox = u2x - wx * W.s; W.oy = u2y - wy * W.s; };
+  msE.girar = (grados, animar) => { const W = Vw(), a0 = W.a || 0, a1 = grados === 0 ? 0 : a0 + grados * Math.PI / 180, d = msAngN(a1 - a0);
+    if (!animar || !d) { fijar(ancho / 2, alto / 2, X => { X.a = a0 + d; }); dibujar(); return; }
+    const t0 = performance.now(), paso = t => { const k = Math.min(1, (t - t0) / 280), e = 1 - (1 - k) ** 3; fijar(ancho / 2, alto / 2, X => { X.a = a0 + d * e; }); dibujar(); if (k < 1) requestAnimationFrame(paso); };
+    requestAnimationFrame(paso); };
   msMedPintar();
   msE.zoom = f => zoom(f, ancho / 2, alto / 2);
   msE.ajustar = () => { ajustar(); dibujar(); };
   dibujar();
   q('ms-ley').innerHTML = cats.filter(c => cuenta[c]).map(c => `<span><i style="background:${color(c)}"></i>${esc(c)} <small class="meta">${msN(cuenta[c], 0)} ha</small></span>`).join('') + '<span><i style="background:#f1f5f9;border:1px solid #cbd5e1"></i>Sin datos con este filtro</span>';
-  const zoom = (f, px, py) => { const W = Vw(), ns = Math.max(0.02, Math.min(4, W.s * f)), k = ns / W.s; W.ox = px - (px - W.ox) * k; W.oy = py - (py - W.oy) * k; W.s = ns; dibujar(); };
+  const zoom = (f, px, py) => { fijar(px, py, W => { W.s = Math.max(0.02, Math.min(4, W.s * f)); }); dibujar(); };
   // Globo y ficha: celda de la malla → suerte de la cartografía → fila del maestro
   const G = frMalla(), tip = q('ms-tip');
-  const enPunto = (cx, cy) => { const r = cv.getBoundingClientRect(), px = cx - r.left, py = cy - r.top, W = Vw(), wx = (px - W.ox) / W.s, wy = M.alto - (py - W.oy) / W.s;
+  const enPunto = (cx, cy) => { const r = cv.getBoundingClientRect(), px = cx - r.left, py = cy - r.top, W = Vw(), [ux, uy] = msAU(W, px, py), wx = (ux - W.ox) / W.s, wy = M.alto - (uy - W.oy) / W.s;
     const gx = Math.floor(wx / FR_CELDA), gy = Math.floor((M.alto - wy) / FR_CELDA); if (gx < 0 || gy < 0 || gx >= G.W || gy >= G.H) return null;
     const c = G.celda[gy * G.W + gx]; if (c < 0) return null; const su = M.suertes[G.sue[c]];
     return {px, py, su, x:fila(su)}; };
@@ -266,17 +287,26 @@ function msMapa(L){
     tip.innerHTML = `<b>${esc(p.su[0])}</b> · ${esc(msHacN(p.su[1]))}${x ? `<br>${esc(x.variedad || '—')} · corte ${msN(x.nCorte)} · ${msN(x.edad, 1)} meses<br>${msN(x.area, 2)} ha · próximo corte ${msF(msProx(x))}` : '<br><span style="opacity:.8">Sin datos con este filtro</span>'}${ss ? `<br>Surco: ${msSentidoTxt(ss)}` : ''}`;
     tip.hidden = false; tip.style.left = Math.max(4, Math.min(p.px + 14, ancho - tip.offsetWidth - 4)) + 'px'; tip.style.top = (p.py + 14 + tip.offsetHeight > alto ? p.py - tip.offsetHeight - 10 : p.py + 14) + 'px'; };
   cv.onwheel = e => { if (!e.ctrlKey) return; e.preventDefault(); const r = cv.getBoundingClientRect(); zoom(e.deltaY < 0 ? 1.25 : 0.8, e.clientX - r.left, e.clientY - r.top); };
-  const toques = new Map(); let arr = null, movido = false, pinza = null;
+  const toques = new Map(); let arr = null, movido = false, pinza = null, giro = null;
   cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); const r = cv.getBoundingClientRect(); toques.set(e.pointerId, [e.clientX - r.left, e.clientY - r.top]); movido = false;
     if (toques.size === 1) arr = [e.clientX, e.clientY, Vw().ox, Vw().oy];
-    if (toques.size === 2) { const [a, b] = [...toques.values()]; pinza = {d:Math.hypot(a[0] - b[0], a[1] - b[1]), s:Vw().s}; arr = null; } };
+    if (toques.size === 2) { const [a, b] = [...toques.values()]; pinza = {d:Math.hypot(a[0] - b[0], a[1] - b[1]), s:Vw().s, g:Math.atan2(b[1] - a[1], b[0] - a[0]), a:Vw().a || 0}; arr = null; giro = null; }
+    // Girar con el mouse: Shift + arrastrar o arrastrar con el botón derecho (el mapa gira alrededor del centro)
+    if (toques.size === 1 && e.pointerType === 'mouse' && (e.shiftKey || e.button === 2)) { const px = e.clientX - r.left, py = e.clientY - r.top; giro = {g:Math.atan2(py - alto / 2, px - ancho / 2), a:Vw().a || 0}; arr = null; } };
+  cv.oncontextmenu = e => e.preventDefault();
   cv.onpointermove = e => { const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
     if (toques.has(e.pointerId)) toques.set(e.pointerId, [px, py]);
-    if (pinza && toques.size === 2) { const [a, b] = [...toques.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom(pinza.s * d / pinza.d / Vw().s, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); movido = true; return; }
-    if (arr) { const dx = e.clientX - arr[0], dy = e.clientY - arr[1]; if (Math.abs(dx) + Math.abs(dy) > 5) movido = true; if (movido && msE.gps.seguir) { msE.gps.seguir = false; msGpsTexto(); } if (movido) { Vw().ox = arr[2] + dx; Vw().oy = arr[3] + dy; dibujar(); tip.hidden = true; } return; }
+    // Dos dedos: separar o juntar = zoom; girarlos = girar el mapa (como Google Earth)
+    if (pinza && toques.size === 2) { const [a, b] = [...toques.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), ga = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      fijar((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, W => { W.s = Math.max(0.02, Math.min(4, pinza.s * d / pinza.d)); W.a = pinza.a + (ga - pinza.g); }); dibujar(); movido = true; tip.hidden = true; return; }
+    if (giro) { const ga = Math.atan2(py - alto / 2, px - ancho / 2); fijar(ancho / 2, alto / 2, W => { W.a = giro.a + (ga - giro.g); }); dibujar(); movido = true; tip.hidden = true; return; }
+    if (arr) { const dx = e.clientX - arr[0], dy = e.clientY - arr[1]; if (Math.abs(dx) + Math.abs(dy) > 5) movido = true; if (movido && msE.gps.seguir) { msE.gps.seguir = false; msGpsTexto(); } if (movido) { const a = -(Vw().a || 0), c = Math.cos(a), s = Math.sin(a); Vw().ox = arr[2] + c * dx - s * dy; Vw().oy = arr[3] + s * dx + c * dy; dibujar(); tip.hidden = true; } return; }
     if (msE.med.modo && e.pointerType === 'mouse') { msE.med.cursor = msE.aMundo(e.clientX, e.clientY); dibujar(); return; }
     if (e.pointerType === 'mouse') globo(e.clientX, e.clientY); };
-  const soltar = e => { toques.delete(e.pointerId); if (toques.size < 2) pinza = null;
+  const soltar = e => { toques.delete(e.pointerId); if (toques.size < 2) pinza = null; giro = null;
+    if (!toques.size && Vw().a && Math.abs(Vw().a) < 0.06) msE.girar(0, true);   // a menos de ~3° del norte, se endereza
+    // Tocar la brújula: el mapa vuelve con el norte arriba
+    if (arr && !movido && e.type === 'pointerup') { const r = cv.getBoundingClientRect(); if (Math.hypot(e.clientX - r.left - (ancho - 30), e.clientY - r.top - 40) < 24) { arr = null; if (Vw().a) msE.girar(0, true); return; } }
     if (arr && !movido && e.type === 'pointerup' && msE.med.modo) { msMedPunto(msE.aMundo(e.clientX, e.clientY), Vw().s); dibujar(); msMedPintar(); }
     else if (arr && !movido && e.type === 'pointerup') { const p = enPunto(e.clientX, e.clientY); if (p) { msE.sel = p.su[0]; dibujar(); if (p.x) msFicha(p.x.s + '|' + p.x.hac); else globo(e.clientX, e.clientY); } }
     if (!toques.size) arr = null; };
@@ -367,7 +397,7 @@ function msFondoDibujar(g, dpr, ancho, alto, W, capa){
   const F = MS_FONDOS[msE.fondo]; if (!F || !F.url || !(W.s > 0) || !(ancho > 0) || !(alto > 0)) return;
   const tpl = capa === 'ref' ? F.ref : F.url; if (!tpl) return;
   const M = MAPA_FREATICO, aMundo = (px, py) => [(px - W.ox) / W.s + M.x0, M.alto - (py - W.oy) / W.s + M.y0];
-  const ll = [aMundo(0, 0), aMundo(ancho, 0), aMundo(0, alto), aMundo(ancho, alto)].map(p => frTMinv(p[0], p[1]));
+  const ll = [[0, 0], [ancho, 0], [0, alto], [ancho, alto]].map(([px, py]) => aMundo(...msAU(W, px, py))).map(p => frTMinv(p[0], p[1]));   // esquinas de la pantalla (con el giro)
   const lat0 = Math.min(...ll.map(p => p[0])), lat1 = Math.max(...ll.map(p => p[0])), lon0 = Math.min(...ll.map(p => p[1])), lon1 = Math.max(...ll.map(p => p[1]));
   // Nivel de zoom: un pixel del mosaico ≈ un pixel de pantalla (sin pasar de ~150 mosaicos)
   const latM = (lat0 + lat1) / 2, mpp = 1 / (W.s * dpr);
@@ -383,10 +413,10 @@ function msFondoDibujar(g, dpr, ancho, alto, W, capa){
     const im = msTile(tpl.replace('{z}', z).replace('{y}', y).replace('{x}', x)); if (!im) continue;
     const nw = aPant(latDe(y, z), lonDe(x, z)), ne = aPant(latDe(y, z), lonDe(x + 1, z)), sw = aPant(latDe(y + 1, z), lonDe(x, z));
     // medio pixel de más para que no se vean rayas entre mosaicos
-    g.setTransform(dpr * (ne[0] - nw[0]) / 255.5, dpr * (ne[1] - nw[1]) / 255.5, dpr * (sw[0] - nw[0]) / 255.5, dpr * (sw[1] - nw[1]) / 255.5, dpr * nw[0], dpr * nw[1]);
+    g.setTransform(...msRotM(W, dpr)); g.transform((ne[0] - nw[0]) / 255.5, (ne[1] - nw[1]) / 255.5, (sw[0] - nw[0]) / 255.5, (sw[1] - nw[1]) / 255.5, nw[0], nw[1]);
     g.drawImage(im, 0, 0, 256, 256);
   }
-  g.restore(); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.restore(); g.setTransform(...msRotM(W, dpr));
 }
 function msFondoCredito(g, ancho, alto){
   const F = MS_FONDOS[msE.fondo]; if (!F || !F.cred) return;
@@ -503,12 +533,12 @@ function msBrujulaOn(on){
 const MS_RUMBO_N = ['norte', 'noreste', 'este', 'sureste', 'sur', 'suroeste', 'oeste', 'noroeste'];
 function msGpsRumboTxt(){ const el = q('ms-gps-rumbo'), G = msE.gps; if (el) el.textContent = G.rumbo != null ? `🧭 mirando al ${MS_RUMBO_N[Math.round(G.rumbo / 45) % 8]} (${Math.round(G.rumbo)}°)` : ''; }
 // Rosa del norte en la esquina del mapa
-function msNorte(g, ancho){
-  const x = ancho - 30, y = 40;
-  g.save(); g.beginPath(); g.arc(x, y, 20, 0, 2 * Math.PI); g.fillStyle = 'rgba(255,255,255,.9)'; g.fill(); g.lineWidth = 1; g.strokeStyle = 'rgba(15,23,42,.25)'; g.stroke();
+function msNorte(g, ancho, ang){
+  const x0 = ancho - 30, y0 = 40, a = ang || 0, x = 0, y = 0;
+  g.save(); g.translate(x0, y0); g.rotate(a); g.beginPath(); g.arc(x, y, 20, 0, 2 * Math.PI); g.fillStyle = 'rgba(255,255,255,.9)'; g.fill(); g.lineWidth = 1; g.strokeStyle = 'rgba(15,23,42,.25)'; g.stroke();
   g.beginPath(); g.moveTo(x, y - 15); g.lineTo(x + 6, y + 1); g.lineTo(x, y - 3); g.lineTo(x - 6, y + 1); g.closePath(); g.fillStyle = '#dc2626'; g.fill();
   g.beginPath(); g.moveTo(x, y + 15); g.lineTo(x + 6, y - 1); g.lineTo(x, y + 3); g.lineTo(x - 6, y - 1); g.closePath(); g.fillStyle = '#94a3b8'; g.fill();
-  g.font = '800 10px system-ui,Segoe UI,Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#0f172a'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText('N', x, y - 28); g.fillText('N', x, y - 28);
+  g.font = '800 10px system-ui,Segoe UI,Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#0f172a'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.9)'; g.rotate(-a); const nx = 28 * Math.sin(a), ny = -28 * Math.cos(a); g.strokeText('N', nx, ny); g.fillText('N', nx, ny);   // la N va derecha, en la punta roja
   g.restore();
 }
 // ── Medir sobre el mapa: distancias (líneas) y áreas (figuras). La cartografía está en metros (MAGNA Colombia Oeste),
@@ -601,6 +631,7 @@ q('maestro').addEventListener('click', e => {
   if (t.closest('[data-ms-limpiar]')) { msE.zona = msE.hac = msE.uso = msE.estado = msE.variedad = msE.txt = ''; renderMaestro(); return; }
   if (t.closest('[data-ms-mas]')) { msE.mas = true; renderMaestro(); return; }
   const zb = t.closest('[data-ms-zoom]'); if (zb) { msE.zoom && msE.zoom(+zb.dataset.msZoom); return; }
+  const gb = t.closest('[data-ms-girar]'); if (gb) { msE.girar && msE.girar(+gb.dataset.msGirar, true); return; }
   const md = t.closest('[data-ms-med]');
   if (md) { msMedAccion(md.dataset.msMed); return; }
   if (t.closest('[data-ms-ajustar]')) { msE.sel = null; msE.ajustar && msE.ajustar(); return; }

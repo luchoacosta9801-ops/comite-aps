@@ -353,7 +353,7 @@ let FRB1 = null;   // por código de suerte: dónde y cómo va su número (se ca
 // Número de cada suerte sobre su pedazo más grande, con las celdas de la malla: se toma la celda más cercana al
 // centro (siempre cae dentro, aunque la suerte sea diagonal o tenga forma de L) y el eje largo de la suerte (las
 // franjas angostas se rotulan a lo largo, girando el texto). Solo el número de suerte, sin el sector.
-function frEtiquetasSuertes(g, sx, sy, s, ancho, alto){
+function frEtiquetasSuertes(g, sx, sy, s, ancho, alto, giro){   // giro: ángulo del mapa girado (maestro), para que el texto nunca quede de cabeza
   if (!FRB1) {
     const G = frMalla(), M = MAPA_FREATICO, porPol = {};
     // Solo celdas firmes (frCeldaFirme): las sueltas corrían el centro y alargaban la suerte
@@ -379,6 +379,7 @@ function frEtiquetasSuertes(g, sx, sy, s, ancho, alto){
     let a = 0, dispW, dispH;
     if (b.largo / b.ancho >= 1.6) { a = -b.th; if (a > Math.PI / 2) a -= Math.PI; if (a < -Math.PI / 2) a += Math.PI; if (Math.abs(a) < 0.12) a = 0; dispW = b.largo * s * 0.85; dispH = b.ancho * s; }
     else { dispW = dispH = Math.min(b.largo, b.ancho) * s * 0.9; }
+    if (giro) { let t = b.largo / b.ancho >= 1.6 ? a + giro : 0; while (t > Math.PI / 2) t -= Math.PI; while (t <= -Math.PI / 2) t += Math.PI; a = t - giro; }
     if (dispH < 8 || dispW < 12) continue;
     const fz = Math.max(7, Math.min(10.5, dispH * 0.45)), corto = b.cod.includes('-') ? b.cod.split('-')[1] : b.cod;
     g.font = `700 ${fz}px system-ui,Segoe UI,Arial`;
