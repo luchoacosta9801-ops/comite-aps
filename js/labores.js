@@ -229,10 +229,10 @@ function renderLabores(){
     : `${B.sn ? 'Excel' : 'Reporte'} ${B.archivo}${B.hoja ? ` · hoja ${B.hoja}` : ''} (${labF(B.fecha)}): ${nRep} suertes${nMs ? ` + ${nMs} cosechadas según el maestro que el Excel aún no trae` : ''} · ${msN(ha(T), 1)} ha`;
   cont.innerHTML = `
     <div class="lab-top"><div class="sim-tit" title="${esc(origen)}">🚜 Control labores campo${B ? '' : ' <small class="lab-aviso">sin Excel cargado</small>'}${B && B.mod ? `<small class="lab-ver" title="Hora en que se guardó el Excel que muestra el panel">Excel guardado ${labHoraTxt(B.mod)}</small>` : ''}</div>
-      <div class="lab-acc">${ed ? `<label class="lab-ico" title="Cargar Excel de labores pendientes">📂<input type="file" id="lab-archivo" accept=".xlsx,.xls,.xlsm" hidden></label>
+      <div class="lab-acc">${ed ? `<label class="lab-ico" title="Cargar Excel de labores pendientes · o un Excel descargado con ⬇️ para restaurar el panel">📂<input type="file" id="lab-archivo" accept=".xlsx,.xls,.xlsm" hidden></label>
         <button type="button" class="lab-ico" data-lab-servidor title="Traer el último Excel de Documents\\OPERACIONES CAMPO - LEVANTE">🔄</button>
         <button type="button" class="lab-add-btn" data-lab-add title="Agregar una suerte (por ejemplo, una cosechada hace poco) a mano o desde un Excel">➕ Suerte</button>` : ''}
-        <button type="button" class="lab-ico" data-lab-excel title="Descargar en Excel">⬇️</button></div></div>
+        <button type="button" class="lab-ico" data-lab-excel title="Descargar en Excel toda la información (suertes, fechas, áreas, contratistas, programación) · sirve de respaldo: con 📂 se vuelve a cargar">⬇️</button></div></div>
     <div class="lab-minis">${kpi}</div>
     <div hidden><!-- reemplazado por 📅 Programación semanal (17 nov 2026) -->
       <div class="sim-card abierta"><div class="sim-card-h" style="cursor:default"><b>📅 Programa de roturación y fertilización</b> <span class="meta">· por semana</span></div>
@@ -357,7 +357,11 @@ const labHoraTxt = iso => { const h = +String(iso).slice(11, 13), m = String(iso
 const labHoraISO = d => `${labISO(d)}T${[d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':')}`;
 function labCargarArchivo(file){
   if (!file) return; toast(`⏳ Leyendo ${file.name}…`);
-  Promise.all([cargarXLSX(), file.arrayBuffer()]).then(([X, buf]) => labAplicar(Object.assign(labLeerReporte(X, buf, file.name, labISO(new Date(file.lastModified))), {mod:labHoraISO(new Date(file.lastModified))}))).catch(e => toast('⚠ ' + (e.message || e)));
+  Promise.all([cargarXLSX(), file.arrayBuffer()]).then(([X, buf]) => {
+    // ¿Es un Excel descargado con ⬇️ (trae la hoja «Respaldo»)? Entonces se restaura el panel completo
+    let R = null; try { R = labLeerRespaldo(X, X.read(buf, {type:'array', sheets:['Respaldo']})); } catch (e) { R = null; }
+    if (R) { labRestaurar(R, file.name); return; }
+    labAplicar(Object.assign(labLeerReporte(X, buf, file.name, labISO(new Date(file.lastModified))), {mod:labHoraISO(new Date(file.lastModified))})); }).catch(e => toast('⚠ ' + (e.message || e)));
 }
 // auto = true: solo pregunta la hora del Excel de la carpeta y lo trae si es otro archivo o se guardó después del cargado
 // (al abrir el panel en modo editor, al recargar la página y al volver a la pestaña); sin avisos si el servidor no está
@@ -596,25 +600,88 @@ let labEspera = 0;
 q('labores').addEventListener('input', e => { if (e.target.id === 'lab-txt') { labE.txt = e.target.value; clearTimeout(labEspera); labEspera = setTimeout(() => redibujarConservando('lab-txt', renderLabores), 250); } });
 q('labores').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.lab-kpi[data-lab-labor]')) { e.preventDefault(); e.target.click(); } });
 
+// ⬇️ Excel del Control de labores: TODA la información del panel (sirve de respaldo si la página falla).
+// Hojas: «Labores» (todas las suertes, una fila por suerte con cada labor: estado, fechas, total/parcial, ha realizadas,
+// contratistas, implemento, producto…), «Contratistas» (una fila por suerte · labor · contratista con sus ha),
+// «Programación semanal» (todas las semanas), «Tabla filtrada» (si hay filtros activos), «Parámetros» y «Respaldo»
+// (los datos tal cual, en JSON; con 📂 se cargan de nuevo y el panel queda exactamente como estaba: labRestaurar).
+const LAB_RESPALDO = 'comite-aps-labores-respaldo';
 function labExcel(){
   cargarXLSX().then(XLSX => {
-    const L = labFiltradas(labSuertes()), wb = XLSX.utils.book_new(), P = labPar();
-    const cab = ['Suerte', 'Hacienda', 'Zona', 'Zona agroecológica', 'Área (ha)', 'Variedad', 'Corte', 'Fecha de cosecha (o siembra)', 'Días desde el corte', 'Origen'];
-    const B = labReporte(), sn = !!(B && B.sn);
-    cab.push('Parcial (ha)');
-    LAB_LABORES.forEach(Lb => cab.push(`${Lb.n} (${P[Lb.k][0]}–${P[Lb.k][1]} d)`, ...(Lb.bd ? [sn ? `${Lb.n} · Excel (S/N)` : `${Lb.n} · ha pendientes (reporte)`] : []), `${Lb.n} programada`, `${Lb.n} hecha`));
-    cab.push('¿Tiene roturación?', '¿Única roturación?', 'Roturación · implemento', 'Roturación · contratista', 'Roturación · área realizada (ha)', '¿Tiene 2da roturación?', '2da · implemento', '2da · contratista', '2da · área realizada (ha)',
-      '¿Tiene fertilización?', 'Fertilización · contratista', 'Producto o mezcla', 'Dosis', 'Fertilización · área realizada (ha)', 'Observaciones');
+    const T = labSuertes(), Lf = labFiltradas(T), wb = XLSX.utils.book_new(), P = labPar(), D = labDatos(), B = labReporte(), sn = !!(B && B.sn);
+    const hojaX = (filas, anchos) => { const ws = XLSX.utils.aoa_to_sheet(filas); if (anchos) ws['!cols'] = anchos.map(w => ({wch:w})); if (filas.length > 1) ws['!autofilter'] = {ref:XLSX.utils.encode_range({s:{r:0, c:0}, e:{r:filas.length - 1, c:filas[0].length - 1}})}; return ws; };
     const sino = v => v === 'si' ? 'Sí' : v === 'no' ? 'No' : '';
-    const filas = [cab, ...L.map(o => { const f = [o.x.s, msHacN(o.x.hac), o.x.zona ?? '', o.x.zonaAgro || '', +(+o.x.area || 0).toFixed(2), o.x.variedad || '', o.x.nCorte ?? '', o.x.ultCorte, o.dd, o.fuente === 'reporte' ? (sn ? 'Excel labores pendientes' : 'Reporte de levante') : o.fuente === 'manual' ? 'Agregada' : 'Maestro', o.x.par || ''];
-      LAB_LABORES.forEach(Lb => { const r = o.reg[Lb.k] || {}; f.push(LAB_EST[labEstado(o, Lb).e].n); if (Lb.bd) f.push(o.bd ? (sn ? String(o.bd[Lb.bd] || '').toUpperCase() : o.bd[Lb.bd] ?? '') : ''); f.push(r.p || '', r.r || ''); });
-      const a = o.reg.rotur || {}, b = o.reg.rotur2 || {}, c = o.reg.fert || {};
-      const hr = (k, x) => labEstado(o, LAB_LABORES.find(Lb => Lb.k === k)).e === 'hecha' ? +labHaReal(o, x).toFixed(2) : '';
-      f.push(sino(a.tiene), sino(a.unica), a.impl || '', labContrTxt(a), hr('rotur', a), sino(b.tiene), b.impl || '', labContrTxt(b), hr('rotur2', b), sino(c.tiene), labContrTxt(c), c.prod || '', c.dosis || '', hr('fert', c), (o.reg.nota || {}).obs || '');
-      return f; })];
-    XLSX.utils.book_append_sheet(wb, hoja(XLSX, filas), 'Labores');
+    const n2 = v => v === '' || v == null || isNaN(+v) ? '' : +(+v).toFixed(2);
+    const origen = o => o.fuente === 'reporte' ? (sn ? 'Excel labores pendientes' : 'Reporte de levante') : o.fuente === 'manual' ? 'Agregada a mano' : 'Maestro (cosechada, aún no en el Excel)';
+    // ── Labores: una fila por suerte ──
+    const cab = ['Suerte', 'Hacienda', 'Zona', 'Zona agroecológica', 'Área (ha)', 'Parcial según Excel (ha)', 'Variedad', 'Corte', 'Fecha de corte (o siembra)', '¿Desde siembra?', 'Días desde el corte', 'Origen'];
+    LAB_LABORES.forEach(Lb => cab.push(`${Lb.n} · estado (${P[Lb.k][0]}–${P[Lb.k][1]} d)`, `${Lb.n} · ¿tiene?`, ...(Lb.bd ? [sn ? `${Lb.n} · Excel (S/N)` : `${Lb.n} · ha pendientes (reporte)`] : []),
+      `${Lb.n} · ha pendientes`, `${Lb.n} · programada (fecha)`, `${Lb.n} · área a programar`, `${Lb.n} · ha a programar`, `${Lb.n} · realizada (fecha)`, `${Lb.n} · total / parcial`, `${Lb.n} · ha realizadas`,
+      `${Lb.n} · contratista(s)`, ...(Lb.k === 'fert' ? [`${Lb.n} · producto o mezcla`, `${Lb.n} · dosis`] : [`${Lb.n} · implemento`]), `${Lb.n} · observación`));
+    cab.push('¿Única roturación?', 'Observaciones de la suerte');
+    const filaSuerte = o => {
+      const f = [o.x.s, msHacN(o.x.hac) || '', o.x.zona ?? '', o.x.zonaAgro || '', n2(o.x.area), n2(o.x.par), o.x.variedad || '', o.x.nCorte ?? (o.x.tipo || ''), o.x.ultCorte || '', o.x.desdeSiembra ? 'Sí' : '', o.dd, origen(o)];
+      LAB_LABORES.forEach(Lb => { const r = o.reg[Lb.k] || {}, est = labEstado(o, Lb).e, hecha = est === 'hecha';
+        f.push(LAB_EST[est].n, sino(r.tiene));
+        if (Lb.bd) f.push(o.bd ? (sn ? String(o.bd[Lb.bd] || '').toUpperCase() : o.bd[Lb.bd] ?? '') : '');
+        f.push(labPorHacer(est) ? n2(labHa(o, Lb)) : '', r.p || '', r.pat === 'parcial' ? 'Parcial' : r.p ? 'Total' : '', r.pat === 'parcial' ? n2(r.pha) : '', r.r || '',
+          hecha ? (r.at === 'parcial' ? 'Parcial' : 'Total') : '', hecha ? n2(labHaReal(o, r)) : '', labContrTxt(r),
+          ...(Lb.k === 'fert' ? [r.prod || '', r.dosis || ''] : [r.impl || '']), r.obs || ''); });
+      f.push(sino((o.reg.rotur || {}).unica), (o.reg.nota || {}).obs || '');
+      return f; };
+    const anchoS = [10, 14, 6, 10, 9, 9, 12, 7, 12, 8, 8, 18, ...LAB_LABORES.flatMap(Lb => [14, 8, ...(Lb.bd ? [10] : []), 10, 12, 10, 10, 12, 10, 10, 26, ...(Lb.k === 'fert' ? [18, 10] : [14]), 20]), 10, 30];
+    XLSX.utils.book_append_sheet(wb, hojaX([cab, ...T.map(filaSuerte)], anchoS), 'Labores');
+    // ── Contratistas: una fila por suerte · labor · contratista ──
+    const fc = [['Suerte', 'Hacienda', 'Zona', 'Labor', 'Estado', 'Fecha realizada', 'Contratista', 'Hectáreas', 'Total / parcial', 'Implemento o producto']];
+    T.forEach(o => LAB_LABORES.forEach(Lb => { const r = o.reg[Lb.k] || {}, est = labEstado(o, Lb).e, R = labRep(r);
+      if (!R.length && !r.contr) return;
+      const base = [o.x.s, msHacN(o.x.hac) || '', o.x.zona ?? '', Lb.n, LAB_EST[est].n, r.r || ''], que = Lb.k === 'fert' ? (r.prod || '') : (r.impl || '');
+      if (R.length) R.forEach(p => fc.push([...base, p.c || 'Sin contratista', n2(p.ha), R.length > 1 ? 'Reparto' : (r.at === 'parcial' ? 'Parcial' : 'Total'), que]));
+      else fc.push([...base, r.contr, est === 'hecha' ? n2(labHaReal(o, r)) : n2(o.x.area), est === 'hecha' ? (r.at === 'parcial' ? 'Parcial' : 'Total') : 'Asignado (sin realizar)', que]); }));
+    XLSX.utils.book_append_sheet(wb, hojaX(fc, [10, 14, 6, 16, 12, 12, 24, 10, 16, 20]), 'Contratistas');
+    // ── Programación semanal: todas las semanas ──
+    const porKey = new Map(T.map(o => [o.key, o])), PG = labProg();
+    const fp = [['Semana (lunes)', 'Suerte', 'Hacienda', 'Zona', 'Labor', 'Día', 'Contratista', 'Implemento', 'Producto o mezcla', 'Total / parcial', 'Área (ha)', 'Estado', 'Observación']];
+    Object.keys(PG).sort().forEach(w => (PG[w] || []).forEach(r => { const o = porKey.get(r.key), Lb = LAB_LABORES.find(L => L.k === r.lab) || {n:r.lab || ''};
+      fp.push([w, r.s || (o && o.x.s) || '', msHacN(o ? o.x.hac : r.hac) || '', (o ? o.x.zona : r.z) ?? '', Lb.n, r.dia || '', r.contr || '', r.impl || '', r.prod || '',
+        r.pa ? 'Parcial' : 'Total', n2(+r.ha || (o ? o.x.area : '')), r.ok ? 'Realizada' : 'Pendiente', r.obs || '']); }));
+    XLSX.utils.book_append_sheet(wb, hojaX(fp, [12, 10, 14, 6, 16, 11, 22, 14, 18, 12, 9, 11, 30]), 'Programación semanal');
+    // ── Tabla filtrada (solo si hay filtros activos) ──
+    if (Lf.length !== T.length) XLSX.utils.book_append_sheet(wb, hojaX([cab, ...Lf.map(filaSuerte)], anchoS), 'Tabla filtrada');
+    // ── Parámetros y origen ──
+    const fpar = [['Dato', 'Valor'], ['Descargado', new Date().toLocaleString('es-CO')], ['Por', FIRMA],
+      ['Excel de labores pendientes', B ? `${B.archivo || ''}${B.hoja ? ` · hoja ${B.hoja}` : ''}` : 'Sin Excel cargado'], ['Fecha del Excel', B ? B.fecha || '' : ''], ['Excel guardado', B && B.mod ? B.mod : ''],
+      ['Suertes en total', T.length], ['Del Excel', T.filter(o => o.fuente === 'reporte').length], ['Cosechadas según el maestro', T.filter(o => o.fuente === 'maestro').length], ['Agregadas a mano', T.filter(o => o.fuente === 'manual').length],
+      ['Área total (ha)', n2(sum(T, o => +o.x.area || 0))], ['Del maestro, cosechadas en los últimos (días)', P.dias],
+      ...LAB_LABORES.map(Lb => [`${Lb.n}: ventana (días después del corte)`, `${P[Lb.k][0]} a ${P[Lb.k][1]}`]),
+      ['Tardía', `Pendiente con más de ${LAB_TARDE} días desde el corte`],
+      ['Restaurar', 'Si la página falla: en Control labores toca 📂 y carga este mismo archivo; la hoja «Respaldo» deja el panel exactamente como estaba.']];
+    XLSX.utils.book_append_sheet(wb, hojaX(fpar, [44, 70]), 'Parámetros');
+    // ── Respaldo (JSON en trozos de 30.000 caracteres: una celda de Excel admite hasta 32.767) ──
+    const trozos = s => { const a = []; for (let i = 0; i < s.length; i += 30000) a.push(s.slice(i, i + 30000)); return a; };
+    const fr = [['Módulo', 'Trozo', 'Datos (JSON) · no modificar esta hoja'], [LAB_RESPALDO, 0, JSON.stringify({version:1, fecha:new Date().toISOString(), modulos:['labores', 'levante']})]];
+    [['labores', D], ['levante', B]].forEach(([k, v]) => trozos(JSON.stringify(v === undefined ? null : v)).forEach((t, i) => fr.push([k, i + 1, t])));
+    XLSX.utils.book_append_sheet(wb, hojaX(fr, [12, 6, 80]), 'Respaldo');
     XLSX.writeFile(wb, `control-labores-${labHoy()}.xlsx`);
-  });
+    toast('⬇️ Excel con toda la información del Control de labores (incluye la hoja «Respaldo» para restaurar)');
+  }).catch(e => toast('⚠ No se pudo armar el Excel: ' + (e.message || e)));
+}
+// Lee la hoja «Respaldo» de un Excel descargado con ⬇️; null si el libro no la trae
+function labLeerRespaldo(X, wb){
+  const ws = wb.Sheets['Respaldo']; if (!ws) return null;
+  const F = X.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
+  if (!F[1] || F[1][0] !== LAB_RESPALDO) return null;
+  const meta = JSON.parse(F[1][2] || '{}'), partes = {};
+  F.slice(2).forEach(r => { if (!r[0]) return; (partes[r[0]] = partes[r[0]] || [])[+r[1]] = String(r[2]); });
+  const datos = {}; Object.keys(partes).forEach(k => { datos[k] = JSON.parse(partes[k].join('')); });
+  return {meta, datos};
+}
+function labRestaurar(R, nombre){
+  const D = R.datos, nReg = D.labores && D.labores.reg ? Object.keys(D.labores.reg).length : 0;
+  if (!D.labores || typeof D.labores !== 'object') { toast('⚠ El respaldo no trae los datos de labores'); return; }
+  if (!confirm(`Restaurar el Control de labores desde «${nombre}» (descargado el ${new Date(R.meta.fecha).toLocaleString('es-CO')}):\n\n• ${nReg} suertes con registro de labores (fechas, contratistas, áreas…)\n• Programación semanal${D.levante ? `\n• Excel de labores pendientes: ${D.levante.archivo || ''}` : ''}\n\nLo que hay ahora en el panel queda reemplazado por lo del archivo. ¿Restaurar? Luego revisa y dale 🚀 Publicar.`)) return;
+  modCambio(() => { DB.labores = D.labores; if (D.levante) DB.levante = D.levante; });
+  toast('✓ Control de labores restaurado desde el Excel · revisa y dale 🚀 Publicar');
 }
 
 // ── ➕ Agregar suertes (modo editor): a mano (con los datos del maestro) o desde otro Excel ──
