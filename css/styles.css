@@ -1667,3 +1667,10 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .lf-rep-f .lf-rep-fe{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--bdr);border-radius:10px;background:#fff;max-width:150px}
 
 .lab-cz.lab-cz-pe{border-style:dashed;color:#64748b;background:#fff}
+
+/* Promedio de días de lucro por labor (24 nov 2026) */
+.lab-mini-prom{font-size:11px;color:#475569}
+.lab-mini-prom b{font-family:var(--mono);color:#0f172a}
+.lab-th-prom{display:block;font-size:9.5px;font-weight:700;color:#7c3aed;white-space:nowrap}
+.rp-prom{font-size:11.5px;color:#475569;margin:-2px 0 6px}
+.rp-prom b{color:#0f172a}
