@@ -232,7 +232,8 @@ function renderLabores(){
   const semPg = labPgSemana(), enSem = new Set((labProg()[semPg] || []).map(r => r.key + '|' + r.lab));
   const fichaBtn = o => { const yaEn = LAB_LABORES.some(Lb => enSem.has(o.key + '|' + Lb.k) && (!LbSel || Lb === LbSel));
     const cz = !ed ? '' : o.cierre ? `<button type="button" class="lab-cz" data-lab-cierre="${esc(o.key)}|abrir" title="${esc(o.cierre.t)} · tocar para reabrir (vuelve a sumar en proceso)">🔓 Reabrir</button>`
-      : labTodoHecho(o) ? `<button type="button" class="lab-cz" data-lab-cierre="${esc(o.key)}|cerrar" title="${o.x.par ? `Las labores están realizadas, pero el Excel marca esta suerte como parcial (${msN(o.x.par, 2)} ha): revisa que esté toda el área y ciérrala` : 'Las labores están realizadas pero alguna es parcial: ciérrala si ya no se va a completar'} (deja de sumar en el área en proceso)">🔒 Cerrar</button>` : '';
+      : labTodoHecho(o) ? `<button type="button" class="lab-cz" data-lab-cierre="${esc(o.key)}|cerrar" title="${o.x.par ? `Las labores están realizadas, pero el Excel marca esta suerte como parcial (${msN(o.x.par, 2)} ha): revisa que esté toda el área y ciérrala` : 'Las labores están realizadas pero alguna es parcial: ciérrala si ya no se va a completar'} (deja de sumar en el área en proceso)">🔒 Cerrar</button>`
+      : `<button type="button" class="lab-cz lab-cz-pe" data-lab-cierre="${esc(o.key)}|cerrar" title="Cerrar aunque tenga labores pendientes (por ejemplo, si ya no se van a hacer): deja de sumar en el área en proceso">🔒 Cerrar</button>`;
     return `<td class="lab-acc-fila">${cz}<button type="button" class="plegar-todo lab-fbtn" data-lab-ficha="${esc(o.key)}" title="Ficha de labores: roturación y fertilización (con quién, implemento, producto)">📝</button>${ed ? `<button type="button" class="lab-env${yaEn ? ' ya' : ''}" data-lab-env="${esc(o.key)}" title="${yaEn ? `Ya está en la programación de la semana del ${labF(semPg)} (tócalo para enviar otra labor)` : `Enviar a la programación de la semana del ${labF(semPg)}`}">${yaEn ? '✓ Enviada' : '📤 Enviar'}</button>` : ''}</td>`; };
   const datos = o => `<td class="b lab-cod"><a href="#" data-lab-ficha="${esc(o.key)}" title="Abrir la ficha de labores">${esc(o.x.s)}</a>${o.fuente === 'maestro' ? ' <small class="lab-fu" title="Cosechada según el maestro; aún no está en el Excel de labores pendientes">maestro</small>' : o.fuente === 'manual' ? ' <small class="lab-fu lab-fu-man" title="Agregada a mano o desde otro Excel; aún no está en el Excel de labores pendientes">agregada</small>' : ''}${o.cierre ? ` <small class="lab-fu lab-fu-cer" title="${esc(o.cierre.t)} · no suma en el área en proceso">🔒 cerrada</small>` : ''}</td>
     <td>${esc(msHacN(o.x.hac)) || '<span class="meta">—</span>'}</td><td>${esc(o.x.zona ?? '')}</td><td>${esc(o.x.zonaAgro || '')}</td><td class="n">${msN(o.x.area, 2)}${o.x.par ? `<small class="lab-t" title="Parcial (ha) según el Excel">parcial ${msN(o.x.par, 2)}</small>` : ''}</td>
@@ -588,7 +589,11 @@ labFichaEl().addEventListener('click', e => {
     modCambio(() => { const D = DB.labores; D.extra = (D.extra || []).filter(x => !(x.s === s && x.f === f)); if (!D.extra.length) delete D.extra; if (D.reg) delete D.reg[`${s}|${f}`]; });
     toast(`🗑 Se quitó la suerte ${s} · recuerda 🚀 Publicar`); return; }
   const cz = t.closest('[data-lf-cierre]');
-  if (cz && MODO_EDICION && labE.ficha) { const key = labE.ficha; labCerrarSet(key, cz.dataset.lfCierre); save(); renderEstadoEdicion(); labE.sucio = true; labFicha(key);
+  if (cz && MODO_EDICION && labE.ficha) { const key = labE.ficha, o = cz.dataset.lfCierre === 'cerrar' && labSuertes().find(y => y.key === key);
+    const faltan = o ? LAB_LABORES.filter(L => labPorHacer(labEstado(o, L).e) || labEstado(o, L).e === 'sindato').map(L => L.n) : [];
+    if (faltan.length && !confirm(`Esta suerte todavía tiene pendiente: ${faltan.join(', ')}.
+
+¿Cerrarla de todos modos? Deja de sumar en el área en proceso (se puede reabrir con 🔓).`)) return; labCerrarSet(key, cz.dataset.lfCierre); save(); renderEstadoEdicion(); labE.sucio = true; labFicha(key);
     toast(cz.dataset.lfCierre === 'cerrar' ? '🔒 Suerte cerrada: ya no suma en proceso · recuerda 🚀 Publicar' : '🔓 Suerte reabierta · recuerda 🚀 Publicar'); return; }
   // Reparto por contratista: empezar, agregar y quitar filas
   const ri = t.closest('[data-lfr-ini]');
@@ -632,7 +637,12 @@ q('labores').addEventListener('click', e => {
   if (t.closest('[data-lab-pg]')) { labProgramacion(); return; }
   const env = t.closest('[data-lab-env]'); if (env) { labEnviar(env.dataset.labEnv, labE.labor || null); return; }
   const cz = t.closest('[data-lab-cierre]');
-  if (cz) { const [s, f, que] = cz.dataset.labCierre.split('|'); modCambio(() => labCerrarSet(`${s}|${f}`, que));
+  if (cz) { const [s, f, que] = cz.dataset.labCierre.split('|'), o = que === 'cerrar' && labSuertes().find(y => y.key === `${s}|${f}`);
+    const faltan = o ? LAB_LABORES.filter(L => labPorHacer(labEstado(o, L).e) || labEstado(o, L).e === 'sindato').map(L => L.n) : [];
+    if (faltan.length && !confirm(`La suerte ${s} todavía tiene pendiente: ${faltan.join(', ')}.
+
+¿Cerrarla de todos modos? Deja de sumar en el área en proceso (se puede reabrir con 🔓).`)) return;
+    modCambio(() => labCerrarSet(`${s}|${f}`, que));
     toast(que === 'cerrar' ? `🔒 ${s} cerrada: ya no suma en proceso · recuerda 🚀 Publicar` : `🔓 ${s} reabierta · recuerda 🚀 Publicar`); return; }
   const mk = t.closest('[data-lab-m]'); if (mk) { const [s, f, k, que] = mk.dataset.labM.split('|'); labMarcar(`${s}|${f}`, k, que); return; }
   if (t.closest('[data-lab-add]')) { labE.add = null; labAgregar(); return; }

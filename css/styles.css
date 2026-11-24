@@ -1665,3 +1665,5 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 
 /* Reparto por contratista: fecha de cada uno (24 nov 2026) */
 .lf-rep-f .lf-rep-fe{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--bdr);border-radius:10px;background:#fff;max-width:150px}
+
+.lab-cz.lab-cz-pe{border-style:dashed;color:#64748b;background:#fff}
