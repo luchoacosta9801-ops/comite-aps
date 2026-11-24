@@ -7,6 +7,34 @@ param([string]$Mensaje = "Actualizar Comité APS", [switch]$Prueba)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 $utf8 = New-Object System.Text.UTF8Encoding($false)
+$env:GIT_TERMINAL_PROMPT = '0'
+
+# Con el publicador en línea (publicador/worker.js) otros usuarios publican directo en GitHub: antes de subir la
+# versión se traen esos commits. js/datos.js (que servidor.ps1 acaba de escribir ya mezclado con lo publicado) se
+# conserva tal cual; si hay otros cambios sin commit se guardan aparte (stash) y se vuelven a poner.
+if (-not $Prueba) {
+  git fetch -q origin
+  if ($LASTEXITCODE -ne 0) { throw "No se pudo consultar GitHub (git fetch)." }
+  $atras = [int](git rev-list --count HEAD..origin/main)
+  if ($atras -gt 0) {
+    Write-Host "Trayendo $atras publicación(es) hechas desde otros equipos"
+    $datos = Join-Path $PSScriptRoot 'js\datos.js'; $tmp = [IO.Path]::GetTempFileName()
+    $conDatos = [bool](git status --porcelain -- js/datos.js)
+    if ($conDatos) { Copy-Item $datos $tmp -Force; git checkout -q -- js/datos.js }
+    $marca = "publicar-auto-$(Get-Date -Format yyyyMMddHHmmss)"
+    git stash push -q --include-untracked -m $marca
+    $guardado = [bool]((git stash list) -match $marca)
+    $ErrorActionPreference = 'Continue'
+    git rebase -q origin/main
+    $okRebase = $LASTEXITCODE -eq 0
+    if (-not $okRebase) { git rebase --abort }
+    if ($guardado) { git stash pop -q; if ($LASTEXITCODE -ne 0) { $ErrorActionPreference = 'Stop'; throw "Conflicto al reponer cambios locales (quedan en git stash: $marca)." } }
+    $ErrorActionPreference = 'Stop'
+    if ($conDatos) { Copy-Item $tmp $datos -Force }
+    Remove-Item $tmp -ErrorAction SilentlyContinue
+    if (-not $okRebase) { throw "No se pudo traer lo publicado desde otros equipos (git rebase)." }
+  }
+}
 
 $actual = [int]((Get-Content version.json -Raw | ConvertFrom-Json).version)
 $nueva = $actual + 1

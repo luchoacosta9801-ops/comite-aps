@@ -9,8 +9,22 @@ $salida = Join-Path $env:TEMP 'comite-servidor-salida.log'
 $servidor = Join-Path $PSScriptRoot 'servidor.ps1'
 function Anotar($t) { "$(Get-Date -Format s) $t" | Out-File $log -Append -Encoding utf8 }
 function Vivo { try { (Invoke-WebRequest -UseBasicParsing 'http://localhost:8080/api/estado' -TimeoutSec 8).StatusCode -eq 200 } catch { $false } }
-$proc = $null; $fallas = 0
+# Cada ~2 min trae lo que otros publicaron con el publicador en línea (solo avance rápido, sin tocar cambios
+# locales: si js/datos.js tiene cambios sin publicar o algo choca, no hace nada y lo resuelve publicar.ps1)
+$env:GIT_TERMINAL_PROMPT = '0'
+function Traer {
+  try {
+    Push-Location $PSScriptRoot
+    git fetch -q origin 2>$null
+    if ($LASTEXITCODE -eq 0 -and [int](git rev-list --count HEAD..origin/main) -gt 0 -and -not (git status --porcelain -- js/datos.js)) {
+      git merge -q --ff-only origin/main 2>$null
+      if ($LASTEXITCODE -eq 0) { Anotar 'trajo publicaciones de otros equipos' }
+    }
+  } catch {} finally { Pop-Location }
+}
+$proc = $null; $fallas = 0; $vuelta = 0
 while ($true) {
+  if (($vuelta++ % 6) -eq 0) { Traer }
   if (Vivo) { $fallas = 0 }
   else {
     $fallas++

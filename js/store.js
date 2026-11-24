@@ -172,9 +172,23 @@ const SEED = {
 `;
 }
 
+// Con el publicador en línea otros usuarios publican sin pasar por este PC: antes de publicar desde aquí se trae lo
+// publicado ahora (GET /datos) y se mezcla de 3 vías (accMezclar, acceso.js): base = lo que se cargó (SEED), mío = DB,
+// srv = lo publicado. Así no se pisan los cambios de Wilmer u otros. Sin publicador o sin internet se publica DB tal cual.
+async function mezclarConPublicado(d){
+  if (!PUBLICADOR_URL || typeof accMezclar !== 'function') return d;
+  let r; try { r = await fetch(PUBLICADOR_URL + '/datos', { cache:'no-store' }).then(x => x.json()); } catch (e) { return d; }
+  if (!r || !r.ok || !r.contenido) return d;
+  let srv; try { srv = new Function(r.contenido + '\n;return SEED;')(); } catch (e) { return d; }
+  if (!srv || !srv.meta || srv.meta.corte === SEED.meta.corte) return d;   // nadie publicó después de lo que se cargó aquí
+  const m = clone(d);
+  new Set([...Object.keys(srv), ...Object.keys(d)]).forEach(k => { if (k === 'meta') return;
+    const v = accMezclar(SEED[k], d[k], srv[k]); if (v === undefined) delete m[k]; else m[k] = v; });
+  return m;
+}
 // Envía los datos al servidor local, que escribe js/datos.js y ejecuta publicar.ps1
 function publicarDatos(mensaje, publicar = true){
-  const d = clone(DB);
+  return mezclarConPublicado(clone(DB)).then(d => {
   d.meta.corte = new Date().toISOString();   // corte nuevo: todos los navegadores lo toman
   return fetch(API_BASE + 'api/publicar', {
     method: 'POST',
@@ -183,10 +197,13 @@ function publicarDatos(mensaje, publicar = true){
   }).then(r => r.json().catch(() => ({ ok:false, error:'Respuesta no válida del servidor' })))
     .then(res => {
       if (!res.ok) throw new Error(res.error || res.salida || 'No se pudo publicar');
+      Object.keys(DB).forEach(k => { if (k !== 'meta' && !(k in d)) delete DB[k]; });
+      Object.keys(d).forEach(k => { if (k !== 'meta') DB[k] = d[k]; });   // DB queda = lo publicado (con lo de otros)
       DB.meta.corte = d.meta.corte;
       save(); guardarBase(DB);
       return res;
     });
+  });
 }
 function servidorDisponible(){
   if (location.protocol === 'file:') return Promise.resolve(false);
