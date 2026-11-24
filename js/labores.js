@@ -148,6 +148,16 @@ function labEstado(o, L){
   if (o.dd <= d1) return {e:'pendiente', t:`Quedan ${d1 - o.dd} d${pend}`};
   return {e:'vencida', t:`Vencida hace ${o.dd - d1} d${pend}`};
 }
+// Oportunidad de una labor realizada: días de lucro al ejecutarla (fecha realizada − fecha de corte) contra el fin de
+// su ventana (Parámetros). Oportuna si se hizo dentro de la ventana (o antes); tardía si después. null si no tiene fecha.
+function labOport(o, L){
+  const r = o.reg[L.k] || {}; if (!r.r || !o.x.ultCorte) return null;
+  const d = labDias(o.x.ultCorte, r.r), fin = labPar()[L.k][1];
+  return {d, fin, tarde:d > fin, n:d > fin ? 'Tardía' : 'Oportuna'};
+}
+// Condición del suelo al hacer la labor (evaluación): x.suelo = 'friable' | 'humedo'
+const LAB_SUELO = [['friable', 'Friable'], ['humedo', 'Húmedo']];
+const labSueloN = v => (LAB_SUELO.find(([k]) => k === v) || [, ''])[1];
 const labUrgente = e => e === 'pendiente' || e === 'vencida' || e === 'atrasada';
 // Por hacer: todo lo que no está hecho ni «no aplica» (incluye próximas y programadas); así cuadra con el reporte
 // «Sin dato» (el Excel no dice s ni n) va aparte: no se cuenta como pendiente hasta que se confirme en la ficha
@@ -481,8 +491,10 @@ function labFicha(key){
   const SINO = [['si', 'Sí'], ['no', 'No']];
   const txt = (k, campo, val, ph, lista) => `<input type="text" ${dis} data-lft="${k}|${campo}" value="${esc(val || '')}" placeholder="${ph}"${lista ? ` list="lf-dl-${lista}"` : ''}>`;
   // Fecha: si ya la tiene es la fecha en que se hizo (r); si no, la fecha programada (p)
-  const fecha = (k, x) => x.tiene === 'si' || x.r ? `<label>Fecha en que se hizo<input type="date" ${dis} data-lft="${k}|r" value="${esc(x.r || '')}"></label>`
+  const fecha = (k, x) => x.tiene === 'si' || x.r ? `<label>Fecha en que se hizo<input type="date" ${dis} data-lft="${k}|r" value="${esc(x.r || '')}">${(() => { const op = labOport(o, L(k)); return op ? `<small class="lf-op ${op.tarde ? 'tarde' : 'ok'}" title="Ventana de ${L(k).n.toLowerCase()}: hasta el día ${op.fin} después del corte (Parámetros)">${op.tarde ? '⏰' : '✓'} ${op.n} · a los ${op.d} días</small>` : ''; })()}</label>`
     : `<label>Fecha programada<input type="date" ${dis} data-lft="${k}|p" value="${esc(x.p || '')}"></label>`;
+  // Evaluación de la condición del suelo en la labor: Friable / Húmedo (tocar otra vez para quitar)
+  const suelo = (k, x) => `<div class="lf-q lf-suelo">Condición del suelo ${seg(k, 'suelo', x.suelo, [['friable', '🟫 Friable'], ['humedo', '💧 Húmedo']])}</div>`;
   const estado = k => { const s = labEstado(o, L(k)), E = LAB_EST[s.e]; return `<span class="lab-chip" style="color:${E.col};background:${E.bg}" title="${esc(s.t)}">${s.n || E.n}</span>`; };
   // Contratista: lista fija (LAB_CONTR) + «Otro…» que abre un campo para escribirlo
   // Con reparto por contratista, el contratista y el área se anotan en el bloque «Reparto por contratista»
@@ -509,13 +521,13 @@ function labFicha(key){
       ${otro ? txt(k, 'impl', LAB_IMPL.includes(x.impl) ? '' : x.impl, 'Escribe el implemento', 'impl') : ''}</label>`; };
   const pase = (k, x, titulo, conTiene) => `<div class="lf-pase"><div class="lf-pt"><b>${titulo}</b> ${estado(k)}${conTiene ? ` ${exc(k)}` : ''}</div>
     ${conTiene ? `<div class="lf-q">¿Tiene ${titulo.toLowerCase()}? ${seg(k, 'tiene', x.tiene, SINO)}</div>` : ''}
-    ${area(k, k === 'rotur' ? rot : x)}
+    ${area(k, k === 'rotur' ? rot : x)}${suelo(k, x)}
     <div class="lf-campos">${contr(k, x)}${implSel(k, x)}${fecha(k, x)}</div>${rep(k, x)}</div>`;
   let cuerpoRot = ''; const unica = labUnica(o);
   if (unica === 'nr') cuerpoRot = `<div class="la-info la-auto">🌱 ${labPlantilla(o) ? 'Plantilla (corte 1): ' : ''}<b>no se rotura</b>; la 1ra y la 2da roturación quedan como «no aplica». Si sí se va a roturar, elige «Sí» o «No» arriba.</div>`;
   else if (unica === 'si') cuerpoRot = `<div class="lf-pase"><div class="lf-pt"><b>Roturación única</b> ${estado('rotur')}</div>
       <div class="lf-q">Implemento ${seg('rotur', 'impl', LAB_IMPL_UNICA.includes(rot.impl) ? rot.impl : '', LAB_IMPL_UNICA.map(i => [i, i]))}</div>
-      ${area('rotur', rot)}
+      ${area('rotur', rot)}${suelo('rotur', rot)}
       <div class="lf-campos">${contr('rotur', rot)}${fecha('rotur', rot)}</div>${rep('rotur', rot)}</div>`;
   else if (unica === 'no') cuerpoRot = pase('rotur', rot, '1ra roturación', false) + pase('rotur2', rot2, '2da roturación', true);
   else cuerpoRot = `<div class="meta lf-ayuda">Responde si es <b>única roturación</b> (subesca o triple) o si lleva <b>1ra y 2da</b> roturación, para anotar contratista, implemento, área y fecha.</div>`;
@@ -531,7 +543,7 @@ function labFicha(key){
         ${cuerpoRot}</div>
       <div class="lf-sec" style="--c:#1baf7a"><div class="lf-h">🌱 Fertilización ${estado('fert')} ${exc('fert')}</div>
         <div class="lf-q">¿Tiene fertilización? ${seg('fert', 'tiene', fer.tiene, SINO)}</div>
-        ${area('fert', fer)}
+        ${area('fert', fer)}${suelo('fert', fer)}
         <div class="lf-campos">${contr('fert', fer, '¿Con quién?')}
           <label>Producto o mezcla${txt('fert', 'prod', fer.prod, 'Ej.: urea + KCl', 'prod')}</label>
           <label>Dosis${txt('fert', 'dosis', fer.dosis, 'Ej.: 6 bultos/ha')}</label>${fecha('fert', fer)}</div>${rep('fert', fer)}</div>
@@ -665,7 +677,7 @@ function labExcel(){
     // ── Labores: una fila por suerte ──
     const cab = ['Suerte', 'Hacienda', 'Zona', 'Zona agroecológica', 'Área (ha)', 'Parcial según Excel (ha)', 'Variedad', 'Corte', 'Fecha de corte (o siembra)', '¿Desde siembra?', 'Días desde el corte', 'Origen', 'Cierre'];
     LAB_LABORES.forEach(Lb => cab.push(`${Lb.n} · estado (${P[Lb.k][0]}–${P[Lb.k][1]} d)`, `${Lb.n} · ¿tiene?`, ...(Lb.bd ? [sn ? `${Lb.n} · Excel (S/N)` : `${Lb.n} · ha pendientes (reporte)`] : []),
-      `${Lb.n} · ha pendientes`, `${Lb.n} · programada (fecha)`, `${Lb.n} · área a programar`, `${Lb.n} · ha a programar`, `${Lb.n} · realizada (fecha)`, `${Lb.n} · total / parcial`, `${Lb.n} · ha realizadas`,
+      `${Lb.n} · ha pendientes`, `${Lb.n} · programada (fecha)`, `${Lb.n} · área a programar`, `${Lb.n} · ha a programar`, `${Lb.n} · realizada (fecha)`, `${Lb.n} · días de lucro al ejecutar`, `${Lb.n} · oportunidad (ventana ${P[Lb.k][0]}–${P[Lb.k][1]} d)`, `${Lb.n} · condición del suelo`, `${Lb.n} · total / parcial`, `${Lb.n} · ha realizadas`,
       `${Lb.n} · contratista(s)`, ...(Lb.k === 'fert' ? [`${Lb.n} · producto o mezcla`, `${Lb.n} · dosis`] : [`${Lb.n} · implemento`]), `${Lb.n} · observación`));
     cab.push('¿Única roturación?', 'Observaciones de la suerte');
     const filaSuerte = o => {
@@ -673,12 +685,12 @@ function labExcel(){
       LAB_LABORES.forEach(Lb => { const r = o.reg[Lb.k] || {}, est = labEstado(o, Lb).e, hecha = est === 'hecha';
         f.push(LAB_EST[est].n, sino(r.tiene));
         if (Lb.bd) f.push(o.bd ? (sn ? String(o.bd[Lb.bd] || '').toUpperCase() : o.bd[Lb.bd] ?? '') : '');
-        f.push(labPorHacer(est) ? n2(labHa(o, Lb)) : '', r.p || '', r.pat === 'parcial' ? 'Parcial' : r.p ? 'Total' : '', r.pat === 'parcial' ? n2(r.pha) : '', r.r || '',
+        f.push(labPorHacer(est) ? n2(labHa(o, Lb)) : '', r.p || '', r.pat === 'parcial' ? 'Parcial' : r.p ? 'Total' : '', r.pat === 'parcial' ? n2(r.pha) : '', r.r || '', ...(op => [op ? op.d : '', op ? op.n : '', labSueloN(r.suelo)])(labOport(o, Lb)),
           hecha ? (r.at === 'parcial' ? 'Parcial' : 'Total') : '', hecha ? n2(labHaReal(o, r)) : '', labContrTxt(r),
           ...(Lb.k === 'fert' ? [r.prod || '', r.dosis || ''] : [r.impl || '']), r.obs || ''); });
       f.push(sino((o.reg.rotur || {}).unica), (o.reg.nota || {}).obs || '');
       return f; };
-    const anchoS = [10, 14, 6, 10, 9, 9, 12, 7, 12, 8, 8, 18, 20, ...LAB_LABORES.flatMap(Lb => [14, 8, ...(Lb.bd ? [10] : []), 10, 12, 10, 10, 12, 10, 10, 26, ...(Lb.k === 'fert' ? [18, 10] : [14]), 20]), 10, 30];
+    const anchoS = [10, 14, 6, 10, 9, 9, 12, 7, 12, 8, 8, 18, 20, ...LAB_LABORES.flatMap(Lb => [14, 8, ...(Lb.bd ? [10] : []), 10, 12, 10, 10, 12, 10, 14, 12, 10, 10, 26, ...(Lb.k === 'fert' ? [18, 10] : [14]), 20]), 10, 30];
     XLSX.utils.book_append_sheet(wb, hojaX([cab, ...T.map(filaSuerte)], anchoS), 'Labores');
     // ── Contratistas: una fila por suerte · labor · contratista ──
     const fc = [['Suerte', 'Hacienda', 'Zona', 'Labor', 'Estado', 'Fecha realizada', 'Contratista', 'Hectáreas', 'Total / parcial', 'Implemento o producto']];

@@ -1630,3 +1630,9 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 #lab-tabla .lab-cuenta{height:20px;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
 @media (max-width:1180px){#lab-tabla .lab-barra{flex-wrap:wrap}#lab-tabla .lab-barra-izq{flex:1 1 100%}}
 @media (max-width:760px){.lab-flash{flex:1 1 100%;width:100%;height:auto}.lab-flash.lx-vacio{display:none}}
+
+/* Ficha de labores: condición del suelo y oportunidad de la labor (24 nov 2026) */
+.lf-suelo .lf-seg button.on{background:#7c5a3a;border-color:#7c5a3a;color:#fff}
+.lf-suelo .lf-seg button[data-lf$="|humedo"].on{background:#0e7490;border-color:#0e7490}
+.lf-op{display:block;margin-top:3px;font-size:11px;font-weight:700}
+.lf-op.ok{color:#15803d}.lf-op.tarde{color:#c2410c}
