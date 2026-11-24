@@ -247,7 +247,7 @@ function renderLabores(){
   const estBtns = `<div class="lab-pills">${[['', 'Todas'], ['hecha', 'Realizadas'], ['pend', 'Pendientes'], ['tarde', `Tardías +${LAB_TARDE} d`], ['sindato', 'Sin dato'], ['cerrada', '🔒 Cerradas']].filter(([v]) => (v !== 'sindato' && v !== 'cerrada') || nEst(v) || labE.estado === v).map(([v, t]) =>
     `<button type="button" class="${labE.estado === v ? 'on' : ''} est-${v || 'todas'}" data-lab-est="${v}">${t} <b>${nEst(v)}</b></button>`).join('')}</div>`;
   // Indicador rápido (a la derecha de los filtros): con una labor elegida, dona de avance + hectáreas pendientes y
-  // realizadas; con «Todas», una barra de avance por labor. Usa zona, hacienda y origen (incluye las cerradas en lo realizado)
+  // realizadas; con «Todas» queda el espacio en blanco (mismo tamaño, para que nada se mueva al cambiar de labor). Usa zona, hacienda y origen (incluye las cerradas en lo realizado)
   const flashDe = Lb => { const E = baseT.map(o => labEstado(o, Lb).e), de = f => baseT.filter((o, i) => f(E[i]));
     const H = de(e => e === 'hecha'), Pn = de(labPorHacer), S = de(e => e === 'sindato');
     const hr = sum(H, o => labHaReal(o, o.reg[Lb.k])), hp = sum(Pn, o => labHa(o, Lb)), hs = sum(S, o => +o.x.area || 0), tot = hr + hp + hs;
@@ -261,9 +261,7 @@ function renderLabores(){
           <button type="button" class="lx-n lx-pe" data-lab-est="pend" title="Ver las suertes pendientes"><span>Pendiente</span><b>${msN(f.hp, 1)} ha</b><small>${f.Pn.length} suertes${f.v ? ` · ${f.v} vencidas` : ''}</small></button>
           <div class="lx-n lx-ok"><span>Realizado</span><b>${msN(f.hr, 1)} ha</b><small>${f.H.length} suertes</small></div>
           <div class="lx-pie">${f.pr} programadas${f.S.length ? ` · ${f.S.length} sin dato (${msN(f.hs, 1)} ha)` : ''}</div></div></div>`; }
-    return `<div class="lab-flash lx-todas"><div class="lx-t">⚡ Avance por labor${dondeF ? ` <small>· ${esc(dondeF)}</small>` : ''}</div>${LAB_LABORES.map(Lb => { const f = flashDe(Lb);
-      return `<button type="button" class="lx-fila" style="--c:${Lb.col}" data-lab-labor="${Lb.k}" title="${esc(`${Lb.n}: ${msN(f.hr, 1)} ha realizadas y ${msN(f.hp, 1)} ha pendientes · toca para verla`)}"><span class="lx-fn">${Lb.ico} ${Lb.c}</span><span class="lx-bar"><i style="width:${f.pct.toFixed(1)}%"></i></span><b>${msN(f.pct, 0)}%</b>
-        <small>${msN(f.hr, 0)} ha hechas · <em>${msN(f.hp, 0)} ha pendientes</em></small></button>`; }).join('')}</div>`; })();
+    return '<div class="lab-flash lx-vacio" aria-hidden="true"></div>'; })();   // sin labor elegida: espacio reservado (el general está en 📊 Indicadores)
   // De dónde salen los datos: solo en el globo del título (para no llenar la página de texto)
   const origen = !B ? 'Sin Excel de labores pendientes cargado'
     : `${B.sn ? 'Excel' : 'Reporte'} ${B.archivo}${B.hoja ? ` · hoja ${B.hoja}` : ''} (${labF(B.fecha)}): ${nRep} suertes${nMs ? ` + ${nMs} cosechadas según el maestro que el Excel aún no trae` : ''} · ${msN(ha(T), 1)} ha`;

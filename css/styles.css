@@ -1620,3 +1620,13 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .lx-fila small{grid-column:2/4;font-size:10.5px;color:var(--muted)}
 .lx-fila small em{font-style:normal;color:#b91c1c}
 @media (max-width:760px){.lab-flash{min-width:0;width:100%}.lx-dona{width:70px;height:70px}.lx-n b{font-size:17px}}
+
+/* Indicador rápido fijo: columnas de ancho fijo para que nada se desplace al elegir una labor (24 nov 2026) */
+#lab-tabla .lab-barra{flex-wrap:nowrap;justify-content:center;align-items:center}
+#lab-tabla .lab-barra-izq{flex:0 0 660px}
+.lab-flash{flex:0 0 440px;width:440px;height:150px;box-sizing:border-box;min-width:0}
+.lab-flash.lx-vacio{visibility:hidden}
+#lab-tabla .lab-estados .lab-pills button b{display:inline-block;min-width:2.1em;text-align:left;font-variant-numeric:tabular-nums}
+#lab-tabla .lab-cuenta{height:20px;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+@media (max-width:1180px){#lab-tabla .lab-barra{flex-wrap:wrap}#lab-tabla .lab-barra-izq{flex:1 1 100%}}
+@media (max-width:760px){.lab-flash{flex:1 1 100%;width:100%;height:auto}.lab-flash.lx-vacio{display:none}}

@@ -1,6 +1,6 @@
 // Cache para que la app abra sin internet una vez instalada.
-const CACHE = 'comite-aps-v218';
-const ARCHIVOS = ['./','index.html','css/styles.css?v=218','js/datos.js?v=218','js/data.js?v=218','js/store.js?v=218','js/importer.js?v=218','js/app.js?v=218','js/exportar.js?v=218','js/gestion.js?v=218','js/sim-datos.js?v=218','js/simulador.js?v=218','js/portal.js?v=218','js/inge.js?v=218','img/logo-riopaila.png','img/portada.svg','img/icono-192.png','manifest.webmanifest'];
+const CACHE = 'comite-aps-v219';
+const ARCHIVOS = ['./','index.html','css/styles.css?v=219','js/datos.js?v=219','js/data.js?v=219','js/store.js?v=219','js/importer.js?v=219','js/app.js?v=219','js/exportar.js?v=219','js/gestion.js?v=219','js/sim-datos.js?v=219','js/simulador.js?v=219','js/portal.js?v=219','js/inge.js?v=219','img/logo-riopaila.png','img/portada.svg','img/icono-192.png','manifest.webmanifest'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
