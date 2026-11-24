@@ -1568,15 +1568,18 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 /* Control labores (24 nov 2026): labores arriba y filtros de estado debajo, centrados y más grandes;
    la tabla ya no se estira a todo el ancho (columnas juntas, centrada) */
 #lab-tabla .lab-barra{flex-direction:column;align-items:center;gap:10px;padding:14px 12px 12px}
-#lab-tabla .lab-seg{padding:4px}
-#lab-tabla .lab-seg button{font-size:13px;padding:6px 14px}
+#lab-tabla .lab-seg{padding:5px;border-radius:14px;gap:4px;background:#eef2f7}
+#lab-tabla .lab-seg button{font-size:15.5px;font-weight:800;padding:10px 22px;border-radius:10px}
+#lab-tabla .lab-seg button.on{box-shadow:0 2px 6px rgba(15,23,42,.14);outline:2px solid var(--c,#0f172a);outline-offset:-2px}
 #lab-tabla .lab-estados{display:flex;justify-content:center;width:100%}
 #lab-tabla .lab-estados .lab-pills{justify-content:center;gap:8px}
-#lab-tabla .lab-estados .lab-pills button{font-size:13px;font-weight:700;padding:7px 16px;border-width:1.5px;min-width:110px;box-shadow:0 1px 2px rgba(15,23,42,.06);transition:background .15s,border-color .15s}
+#lab-tabla .lab-estados .lab-pills{gap:6px}
+#lab-tabla .lab-estados .lab-pills button{font-size:12px;font-weight:600;padding:4px 12px;border-width:1px;transition:background .15s,border-color .15s}
+#lab-tabla .lab-estados .lab-pills button.est-todas.on{background:#475569;border-color:#475569}
 #lab-tabla .lab-estados .lab-pills button:hover{border-color:#94a3b8}
 #lab-tabla .lab-estados .lab-pills button b{margin-left:5px}
 #lab-tabla .lab-cuenta{margin-left:0;text-align:center}
 #lab-tabla .lab-tab{width:auto;margin:0 auto}
 #lab-tabla .lab-tab td,#lab-tabla .lab-tab th{padding-left:10px;padding-right:10px}
-@media (max-width:760px){#lab-tabla .lab-estados .lab-pills button{min-width:0;padding:6px 12px;font-size:12px}#lab-tabla .lab-seg button{padding:5px 9px;font-size:12px}}
+@media (max-width:760px){#lab-tabla .lab-estados .lab-pills button{padding:4px 10px;font-size:11.5px}#lab-tabla .lab-seg button{padding:7px 11px;font-size:13px}}
 

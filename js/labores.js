@@ -241,7 +241,8 @@ function renderLabores(){
           return `<tr${w === 'atrasadas' ? ' style="background:#fff7ed"' : ''}><td>${w === 'atrasadas' ? '<b style="color:#c2410c">Atrasadas</b>' : `Semana del ${labF(w)}`}</td>${PROG.map(Lb => `<td class="n">${c(Lb.k)}</td>`).join('')}</tr>`; }).join('') || `<tr><td colspan="${PROG.length + 1}" class="nores">Aún no hay labores programadas.</td></tr>`}</tbody></table></div></div>
     </div>
     <div class="sim-card abierta" id="lab-tabla">
-      <div class="lab-barra">${selector}<div class="lab-estados">${estBtns}</div><span class="lab-cuenta">${ed && LbSel ? '<span class="lab-ley2"><i style="background:#d03b3b"></i>Pendiente <i style="background:#2a78d6"></i>Programada <i style="background:#0ca30c"></i>Ejecutada</span>' : ''}${L.length} suertes · ${msN(ha(L), 1)} ha</span></div>
+      <div class="lab-barra">${selector}<div class="lab-estados">${estBtns}</div><span class="lab-cuenta">${ed && LbSel ? '<span class="lab-ley2"><i style="background:#d03b3b"></i>Pendiente <i style="background:#2a78d6"></i>Programada <i style="background:#0ca30c"></i>Ejecutada</span>' : ''}<span title="${esc(`Suertes que muestra la tabla con estos filtros y su área total (no solo lo pendiente).
+En total hay ${T.length}: ${nRep} del Excel de labores pendientes${T.filter(o => o.fuente === 'maestro').length ? `, ${T.filter(o => o.fuente === 'maestro').length} cosechadas según el maestro que el Excel aún no trae` : ''}${T.filter(o => o.fuente === 'manual').length ? `, ${T.filter(o => o.fuente === 'manual').length} agregadas a mano` : ''}.`)}">${L.length} suertes en la tabla · ${msN(ha(L), 1)} ha de área</span></span></div>
       <div class="lab-filtros">
         <input id="lab-txt" class="pr-buscar" placeholder="🔎 Buscar suerte, hacienda o variedad…" value="${esc(labE.txt)}">
         <select id="lab-zona">${opt('', 'Zona', labE.zona)}${opt('1', 'Zona 1', labE.zona)}${opt('2', 'Zona 2', labE.zona)}</select>
