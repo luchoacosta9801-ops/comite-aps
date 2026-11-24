@@ -246,6 +246,24 @@ function renderLabores(){
   const nEst = v => v === 'cerrada' ? baseT.length - base.length : !v ? base.length : base.filter(o => LbSel ? labCumple(labEstado(o, LbSel).e, v, o) : (() => { const E = LAB_LABORES.map(Lb => labEstado(o, Lb).e); return v === 'hecha' ? E.every(e => labCumple(e, v, o)) : E.some(e => labCumple(e, v, o)); })()).length;
   const estBtns = `<div class="lab-pills">${[['', 'Todas'], ['hecha', 'Realizadas'], ['pend', 'Pendientes'], ['tarde', `Tardías +${LAB_TARDE} d`], ['sindato', 'Sin dato'], ['cerrada', '🔒 Cerradas']].filter(([v]) => (v !== 'sindato' && v !== 'cerrada') || nEst(v) || labE.estado === v).map(([v, t]) =>
     `<button type="button" class="${labE.estado === v ? 'on' : ''} est-${v || 'todas'}" data-lab-est="${v}">${t} <b>${nEst(v)}</b></button>`).join('')}</div>`;
+  // Indicador rápido (a la derecha de los filtros): con una labor elegida, dona de avance + hectáreas pendientes y
+  // realizadas; con «Todas», una barra de avance por labor. Usa zona, hacienda y origen (incluye las cerradas en lo realizado)
+  const flashDe = Lb => { const E = baseT.map(o => labEstado(o, Lb).e), de = f => baseT.filter((o, i) => f(E[i]));
+    const H = de(e => e === 'hecha'), Pn = de(labPorHacer), S = de(e => e === 'sindato');
+    const hr = sum(H, o => labHaReal(o, o.reg[Lb.k])), hp = sum(Pn, o => labHa(o, Lb)), hs = sum(S, o => +o.x.area || 0), tot = hr + hp + hs;
+    return {Lb, H, Pn, S, hr, hp, hs, pct:tot ? hr / tot * 100 : 0, v:de(e => e === 'vencida' || e === 'atrasada').length, pr:de(e => e === 'programada' || e === 'atrasada').length}; };
+  const dondeF = [labE.zona ? `Zona ${labE.zona}` : '', labE.hac ? msHacN(labE.hac) : ''].filter(Boolean).join(' · ');
+  const flash = (() => {
+    if (LbSel) { const f = flashDe(LbSel);
+      return `<div class="lab-flash" style="--c:${LbSel.col}" title="${esc(`${LbSel.n}${dondeF ? ' · ' + dondeF : ''}: ${msN(f.hr, 1)} ha realizadas (${f.H.length} suertes, incluye las cerradas) y ${msN(f.hp, 1)} ha pendientes (${f.Pn.length} suertes)`)}">
+        <div class="lx-dona" style="--p:${f.pct.toFixed(1)}"><span><b>${msN(f.pct, 0)}%</b><small>avance</small></span></div>
+        <div class="lx-nums"><div class="lx-t">${LbSel.ico} ${LbSel.n}${dondeF ? ` <small>· ${esc(dondeF)}</small>` : ''}</div>
+          <button type="button" class="lx-n lx-pe" data-lab-est="pend" title="Ver las suertes pendientes"><span>Pendiente</span><b>${msN(f.hp, 1)} ha</b><small>${f.Pn.length} suertes${f.v ? ` · ${f.v} vencidas` : ''}</small></button>
+          <div class="lx-n lx-ok"><span>Realizado</span><b>${msN(f.hr, 1)} ha</b><small>${f.H.length} suertes</small></div>
+          <div class="lx-pie">${f.pr} programadas${f.S.length ? ` · ${f.S.length} sin dato (${msN(f.hs, 1)} ha)` : ''}</div></div></div>`; }
+    return `<div class="lab-flash lx-todas"><div class="lx-t">⚡ Avance por labor${dondeF ? ` <small>· ${esc(dondeF)}</small>` : ''}</div>${LAB_LABORES.map(Lb => { const f = flashDe(Lb);
+      return `<button type="button" class="lx-fila" style="--c:${Lb.col}" data-lab-labor="${Lb.k}" title="${esc(`${Lb.n}: ${msN(f.hr, 1)} ha realizadas y ${msN(f.hp, 1)} ha pendientes · toca para verla`)}"><span class="lx-fn">${Lb.ico} ${Lb.c}</span><span class="lx-bar"><i style="width:${f.pct.toFixed(1)}%"></i></span><b>${msN(f.pct, 0)}%</b>
+        <small>${msN(f.hr, 0)} ha hechas · <em>${msN(f.hp, 0)} ha pendientes</em></small></button>`; }).join('')}</div>`; })();
   // De dónde salen los datos: solo en el globo del título (para no llenar la página de texto)
   const origen = !B ? 'Sin Excel de labores pendientes cargado'
     : `${B.sn ? 'Excel' : 'Reporte'} ${B.archivo}${B.hoja ? ` · hoja ${B.hoja}` : ''} (${labF(B.fecha)}): ${nRep} suertes${nMs ? ` + ${nMs} cosechadas según el maestro que el Excel aún no trae` : ''} · ${msN(ha(T), 1)} ha`;
@@ -263,9 +281,9 @@ function renderLabores(){
           return `<tr${w === 'atrasadas' ? ' style="background:#fff7ed"' : ''}><td>${w === 'atrasadas' ? '<b style="color:#c2410c">Atrasadas</b>' : `Semana del ${labF(w)}`}</td>${PROG.map(Lb => `<td class="n">${c(Lb.k)}</td>`).join('')}</tr>`; }).join('') || `<tr><td colspan="${PROG.length + 1}" class="nores">Aún no hay labores programadas.</td></tr>`}</tbody></table></div></div>
     </div>
     <div class="sim-card abierta" id="lab-tabla">
-      <div class="lab-barra">${selector}<div class="lab-estados">${estBtns}</div><span class="lab-cuenta">${ed && LbSel ? '<span class="lab-ley2"><i style="background:#d03b3b"></i>Pendiente <i style="background:#2a78d6"></i>Programada <i style="background:#0ca30c"></i>Ejecutada</span>' : ''}<span title="${esc(`Suertes que muestra la tabla con estos filtros y su área total (no solo lo pendiente).
+      <div class="lab-barra"><div class="lab-barra-izq">${selector}<div class="lab-estados">${estBtns}</div><span class="lab-cuenta">${ed && LbSel ? '<span class="lab-ley2"><i style="background:#d03b3b"></i>Pendiente <i style="background:#2a78d6"></i>Programada <i style="background:#0ca30c"></i>Ejecutada</span>' : ''}<span title="${esc(`Suertes que muestra la tabla con estos filtros y su área total (no solo lo pendiente).
 En total hay ${T.length}: ${nRep} del Excel de labores pendientes${T.filter(o => o.fuente === 'maestro').length ? `, ${T.filter(o => o.fuente === 'maestro').length} cosechadas según el maestro que el Excel aún no trae` : ''}${T.filter(o => o.fuente === 'manual').length ? `, ${T.filter(o => o.fuente === 'manual').length} agregadas a mano` : ''}.${T.some(o => o.cierre) ? `
-Cerradas (no suman en proceso): ${T.filter(o => o.cierre).length} suertes · ${msN(ha(T.filter(o => o.cierre)), 1)} ha. Se ven con el botón «🔒 Cerradas».` : ''}`)}">${L.length} suertes ${labE.estado === 'cerrada' ? 'cerradas' : 'en proceso'} · ${msN(ha(L), 1)} ha de área</span></span></div>
+Cerradas (no suman en proceso): ${T.filter(o => o.cierre).length} suertes · ${msN(ha(T.filter(o => o.cierre)), 1)} ha. Se ven con el botón «🔒 Cerradas».` : ''}`)}">${L.length} suertes ${labE.estado === 'cerrada' ? 'cerradas' : 'en proceso'} · ${msN(ha(L), 1)} ha de área</span></span></div>${flash}</div>
       <div class="lab-filtros">
         <input id="lab-txt" class="pr-buscar" placeholder="🔎 Buscar suerte, hacienda o variedad…" value="${esc(labE.txt)}">
         <select id="lab-zona">${opt('', 'Zona', labE.zona)}${opt('1', 'Zona 1', labE.zona)}${opt('2', 'Zona 2', labE.zona)}</select>

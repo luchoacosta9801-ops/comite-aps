@@ -1589,3 +1589,34 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .lab-cz{display:block;margin:0 auto 4px;padding:2px 8px;border:1px solid #94a3b8;border-radius:999px;background:#f8fafc;color:#334155;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
 .lab-cz:hover{background:#e2e8f0}
 .lab-pills .est-cerrada.on{background:#334155;color:#fff;border-color:#334155}
+
+/* Indicador rápido a la derecha de los filtros del control de labores (24 nov 2026) */
+#lab-tabla .lab-barra{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px 32px}
+#lab-tabla .lab-barra-izq{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
+.lab-flash{display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:16px;background:linear-gradient(135deg,#fff 40%,color-mix(in srgb,var(--c,#475569) 9%,#fff));border:1px solid color-mix(in srgb,var(--c,#475569) 30%,#e2e8f0);box-shadow:0 4px 14px rgba(15,23,42,.08);min-width:300px}
+.lx-dona{--p:0;width:86px;height:86px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p) * 1%),#fee2e2 0);display:grid;place-items:center;position:relative;flex:none}
+.lx-dona::before{content:'';position:absolute;inset:10px;border-radius:50%;background:#fff}
+.lx-dona span{position:relative;text-align:center;line-height:1}
+.lx-dona b{display:block;font-size:21px;font-weight:800;color:#0f172a}
+.lx-dona small{font-size:10px;color:var(--muted)}
+.lx-nums{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
+.lx-t{grid-column:1/-1;font-size:12.5px;font-weight:800;color:#334155}
+.lx-t small{font-weight:600;color:var(--muted)}
+.lx-n{display:flex;flex-direction:column;align-items:flex-start;padding:6px 12px;border-radius:10px;border:0;text-align:left;font:inherit;min-width:0}
+.lx-n span{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.lx-n b{font-size:20px;font-weight:800;line-height:1.15;white-space:nowrap}
+.lx-n small{font-size:10.5px;color:#475569}
+.lx-pe{background:#fee2e2;color:#b91c1c;cursor:pointer;transition:transform .12s}
+.lx-pe:hover{transform:translateY(-1px);box-shadow:0 0 0 2px #fca5a5}
+.lx-ok{background:#dcfce7;color:#15803d}
+.lx-pie{grid-column:1/-1;font-size:10.5px;color:var(--muted)}
+.lx-todas{flex-direction:column;align-items:stretch;gap:4px}
+.lx-fila{display:grid;grid-template-columns:84px 1fr 40px;align-items:center;gap:1px 8px;background:none;border:0;padding:3px 6px;border-radius:8px;cursor:pointer;font:inherit;text-align:left}
+.lx-fila:hover{background:#f1f5f9}
+.lx-fn{font-size:12px;font-weight:700;color:#334155;white-space:nowrap}
+.lx-bar{height:10px;border-radius:99px;background:#fee2e2;overflow:hidden}
+.lx-bar i{display:block;height:100%;background:var(--c);border-radius:99px}
+.lx-fila b{font-size:14px;font-weight:800;text-align:right;color:#0f172a}
+.lx-fila small{grid-column:2/4;font-size:10.5px;color:var(--muted)}
+.lx-fila small em{font-style:normal;color:#b91c1c}
+@media (max-width:760px){.lab-flash{min-width:0;width:100%}.lx-dona{width:70px;height:70px}.lx-n b{font-size:17px}}
