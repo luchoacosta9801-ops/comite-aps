@@ -247,7 +247,7 @@ const IV = (() => {
     if (SS) filas.push(`➜ Sentido de surco: <b>${msSentidoTxt(SS)}</b> (el agua corre en esa dirección · ${SS.n} flecha${SS.n === 1 ? "" : "s"} en la capa)`);
     // Control de labores (levante de socas): estado de la suerte si está entre las cosechadas recientes
     const LBS = typeof labSuertes === 'function' ? labSuertes().find(o => o.x.s === s && (!MS || o.x.hac === MS.hac)) : null;
-    if (LBS) { filas.push(`🚜 Levante (${LBS.x.desdeSiembra ? 'sembrada' : 'cosechada'} ${labF(LBS.x.ultCorte)}, hace ${LBS.dd} d): ${LAB_LABORES.map(Lb => `${Lb.n} <b>${LAB_EST[labEstado(LBS, Lb).e].n.toLowerCase()}</b>`).join(' · ')}`);
+    if (LBS) { filas.push(`🚜 Levante (${LBS.x.desdeSiembra ? 'sembrada' : 'cosechada'} ${labF(LBS.x.ultCorte)}, hace ${LBS.dd} d): ${LAB_LABORES.map(Lb => `${Lb.n} <b>${LAB_EST[labEstado(LBS, Lb).e].n.toLowerCase()}</b>`).join(' · ')}${LBS.cierre ? ` · 🔒 <b>cerrada</b> (${esc(LBS.cierre.t.toLowerCase())})` : labTodoHecho(LBS) ? ' · todo realizado pero con algún parcial: espera 🔒 Cerrar' : ''}`);
       // Ficha de labores: roturación (única o 1ra/2da, implemento, contratista) y fertilización (con quién, producto, dosis)
       const r1 = LBS.reg.rotur || {}, r2 = LBS.reg.rotur2 || {}, fe = LBS.reg.fert || {}, como = x => [x.impl, (x.contr || labRep(x).length) ? 'con ' + labContrTxt(x) : '', x.prod, x.dosis].filter(Boolean).map(esc).join(' · ');
       const fr = [r1.unica === 'si' ? `roturación única${como(r1) ? ' · ' + como(r1) : ''}` : como(r1) ? `1ra roturación: ${como(r1)}` : '', r1.unica !== 'si' && como(r2) ? `2da roturación: ${como(r2)}` : '', como(fe) ? `fertilización: ${como(fe)}` : '', LBS.reg.nota && LBS.reg.nota.obs ? `"${esc(LBS.reg.nota.obs)}"` : ''].filter(Boolean);
@@ -592,7 +592,7 @@ const IV = (() => {
     {k:['cosecha','cosechadas','sustento','afectacion','tch','powerpoint','ppt'], r:'En <b>💧 Niveles freáticos → 🌾 Cosecha vs niveles</b> cargas el Excel de suertes cosechadas. A cada suerte se le asigna su pozo de influencia, se promedia el nivel antes del corte y se califica 5 / 3 / 1 (menos de 0,8 m / 0,8–1,2 / 1,2 m o más). Por defecto cada fecha de corte se lleva al <b>mismo día del año anterior</b> (15 oct 2026 → 15 oct 2025). Cruza el nivel freático antes del corte, la <b>lluvia</b> de la hacienda frente a lo normal y el <b>tipo de suelo</b> (zona agroecológica del maestro), y da la justificación de cada suerte. Si trae TCH compara la producción. Genera el <b>📄 informe de sustento</b> y lo exporta a <b>📊 PowerPoint</b> con gráficas, mapa y casos críticos.'},
     {k:['informe','informe de isobatas','generar informe'], r:'En <b>💧 Niveles freáticos</b>, elige la lectura y pulsa <b>📄 Generar informe de isóbatas</b> (debajo del plano). Sale el informe con objetivo, metodología, mapa, tabla de áreas por condición, análisis automático, comparación con la lectura anterior, pozos críticos y conclusiones. Las lluvias y observaciones de campo se escriben ahí mismo; luego <b>🖨 Imprimir / Guardar PDF</b>. El mapa de isobatas (IDW) se calcula solo en la página y se puede <b>⬇ Descargar</b> como imagen.'},
     {k:['control de labores','labores de levante','programar roturacion','programar parcial','varios contratistas','repartir','reparto','dos contratistas','parcial por contratista','tardias','tardia','tardios','mas de 60 dias','60 dias','dato tardio','suertes criticas','mas criticas','tardias por hacienda','roturacion parcial','area parcial','parcial','hectareas parciales','programar fertilizacion','programo','programar','alerta de despaje','marcar labor','marco','marcar hecha','ficha de labores','anotar contratista','anotar fertilizacion','anotar roturacion','roturacion unica','subsolador o triple','producto de fertilizacion','mezcla','realizadas','ver todas','que suertes tienen roturacion','que suertes tienen fertilizacion','indicadores de labores','graficos de labores','contratista','contratistas','subesca','area realizada','control labores campo','agregar suerte','suerte nueva','cosechada hace poco','agregar suertes','programacion semanal','programar la semana','enviar suerte','listado semanal','plan semanal','plantilla','no se rotura','corte 1'], r:'Tarjeta <b>🚜 Control labores campo</b> del portal (o el botón 🚜 Labores del dashboard del Comité APS). La base es el Excel <b>«Maestro Suertes y labores pendientes»</b>, hoja <b>Hoja1 (2)</b> (carpeta Documentos › OPERACIONES CAMPO - LEVANTE): una fila por suerte pendiente de levante y a la derecha las columnas <b>1ra</b> y <b>2da</b> (roturación) y <b>abono</b> (fertilización): <b>S</b> = la tiene (hecha), <b>N</b> = no la tiene (pendiente), vacía = <b>sin dato</b> (se confirma en la ficha). En modo editor, al abrir el panel, al recargar la página o al volver a la pestaña, revisa solo si el Excel de la carpeta se guardó de nuevo y lo trae; también se carga con los íconos de arriba a la derecha: <b>🔄</b> trae el último de la carpeta y <b>📂</b> carga un Excel (<b>⬇️</b> descarga el listado en Excel); se cruza con el maestro (hacienda, variedad, corte) y también salen las cosechadas según el maestro que el Excel aún no trae. Pasando el mouse sobre el título se ve de qué archivo salen los datos. En cada suerte, el botón <b>📝 Ficha</b> (o tocar el número de la suerte) abre la ficha de labores: primero ¿única roturación? (Sí, No o <b>No se rotura</b>: las suertes en <b>corte 1 (plantilla)</b> quedan solas como «No se rotura», y se puede cambiar) y luego ¿tiene roturación? (sí: <b>Subesca</b> o <b>Triple</b>; no: 1ra y 2da con contratista, implemento —<b>Convencional, Subesca, Triple</b> u «Otro…»— y fecha) y ¿tiene fertilización? ¿con quién? ¿qué producto o mezcla? y dosis. El contratista se elige de la lista (<b>Bienes y Maquinaria, Riocas, Camaro, Galvil, Agromorales</b>) u «Otro…» para escribirlo. Cuando la labor ya está hecha pregunta el <b>área realizada</b>: Total (área del maestro) o Parcial (trae la «parcial (ha)» del Excel y se puede cambiar). El botón <b>📊 Indicadores</b> (junto a los filtros) abre gráficos: % realizado por labor, área realizada vs pendiente, participación por contratista, implemento, productos de fertilización y área pendiente por hacienda (con los filtros de zona, hacienda y búsqueda). En la tabla, «Pendiente» incluye las vencidas y «Días de lucro» son los días desde el corte (o la siembra). Lo de la ficha manda sobre el Excel y sale en el 📊 Excel de descarga. En la tabla (modo editor) la vista general muestra en cada labor solo el estado (Realizada / Pendiente / Programada); al elegir una labor (botones de arriba) la columna «Marcar» trae dos botones: <b>Programada</b> (la programa con la fecha de hoy) y <b>Ejecutada</b> (la da por hecha hoy); el activo se pinta (azul programada, verde ejecutada) y la raya roja indica pendiente; tocar el activo lo quita y otras fechas se ponen en la ficha. Para armar la <b>programación semanal</b>: en la tabla (modo editor) cada suerte tiene el botón <b>📤 Enviar</b> (manda la labor elegida arriba o la primera pendiente; tocar otra vez manda la siguiente) y el botón <b>📅 Programación semanal</b> (junto a Indicadores) abre la lista de la semana, con ◀ ▶ para cambiar de semana: ahí se asigna labor, día, contratista, implemento o producto, área y observación, la lista va separada en <b>Roturación</b> y <b>Fertilización</b> y, dentro de cada una, <b>por contratista</b> con sus totales (con botones para ver solo una y un filtro por contratista); al enviar trae por defecto el contratista, implemento o producto que ya tenga la ficha (editable); cada fila tiene el botón <b>Pendiente</b>, que al tocarlo cambia a <b>✓ Realizada</b> (queda hecha en la ficha); el botón <b>Tardías +60 d</b> deja solo las suertes con labores pendientes y más de 60 días de lucro (el dato ya llega tarde para roturar o fertilizar; con una labor elegida arriba mira solo esa) y con ⬇️ se descargan en Excel (en 📊 Indicadores hay tortas de <b>pendientes tardías vs a tiempo</b> por labor: 1ra roturación, 2da roturación y fertilización; las <b>tardías por hacienda</b> en barras por labor, y la lista de <b>suertes más críticas</b>, las de más días de lucro con lo que les falta); si una labor la hicieron <b>varios contratistas</b> (por ejemplo una parte con Riocas y otra con Camaro), en la ficha 📝 de la labor ya realizada toca <b>👥 La hicieron varios contratistas: repartir el área</b> y escribe las hectáreas de cada uno (➕ Otro contratista, 🗑 para quitar); la suma es el área realizada (parcial si no llega al área de la suerte) y los indicadores reparten las hectáreas entre ellos; en la tabla general, una labor <b>realizada parcial</b> muestra debajo de «Realizada» las hectáreas hechas (la columna Área sigue con el área de la suerte); el <b>área</b> de cada fila se elige <b>Total</b> (toda la suerte) o <b>Parcial</b> (escribes las hectáreas que se van a hacer, por ejemplo roturar 5 ha de una suerte de 12), y en la ficha 📝 de una labor sin hacer aparece «Área a programar: Total / Parcial»; se quita con 🗑 y se descarga en ⬇️ Excel o 🖨 Imprimir con la misma separación. Para <b>agregar una suerte</b> (por ejemplo, una cosechada hace poco que el Excel aún no trae), en modo editor está el botón <b>➕ Suerte</b>: a mano (al escribir el código trae solo del maestro la fecha del último corte, el área, hacienda, variedad y corte; luego pregunta primero si la roturación es única y después si tiene 1ra, 2da y fertilización) o <b>📂 desde un Excel</b> con SUERTE y fecha de corte (agrega solo las que no están, sin reemplazar el Excel principal). Salen con la etiqueta «agregada», se quitan desde su ficha y se ocultan solas cuando el Excel principal ya las trae. Al tocar un recuadro de arriba (1ra roturación, 2da, fertilización…) el listado muestra <b>todas</b> las suertes de esa labor, realizadas y pendientes, en el orden del Excel; con los botoncitos <b>Todas / Realizadas / Pendientes / Vencidas / Sin dato</b> se filtra; «⚡ En bloque» (modo editor) está plegado debajo de los filtros, y bajo cada estado se ve lo que dice la casilla del Excel (S o N). Las labores que sigue son 1ra roturación, 2da roturación y fertilización (despaje y reencalle ya no se siguen en el panel); se programan; las ventanas se cambian en Parámetros. En modo editor cada labor se marca hecha con ✓ Hoy en la tabla; las fechas programada y hecha se ponen en la ficha 📝, o en bloque para las suertes filtradas; luego 🚀 Publicar. Las suertes que van a renovación no entran.'},
-    {k:['cerrar suerte','suerte cerrada','suertes cerradas','cerradas','area en proceso','en proceso','reabrir suerte','cierre de suerte','dejar de sumar'], r:'En <b>🚜 Control labores campo</b> una suerte <b>se cierra sola</b> cuando la 1ra y 2da roturación y la <b>fertilización</b> están realizadas en el <b>100 % del área</b>: deja de sumar en «suertes en proceso · ha» (arriba de la tabla, en 📊 Indicadores y en la tarjeta del portal). Si alguna labor quedó <b>parcial</b> y ya no se va a completar, en modo editor aparece <b>🔒 Cerrar</b> en la fila (o en la ficha 📝, sección «Cierre de la suerte»). Las cerradas se ven con el botón <b>🔒 Cerradas</b> y se reabren con <b>🔓 Reabrir</b>. Luego dale 🚀 Publicar.'},
+    {k:['cerrar suerte','cerrar una suerte','cierro','cierra una suerte','cerrar la suerte','suerte cerrada','suertes cerradas','cerradas','area en proceso','en proceso','reabrir suerte','cierre de suerte','dejar de sumar'], r:'En <b>🚜 Control labores campo</b> una suerte <b>se cierra sola</b> cuando la 1ra y 2da roturación y la <b>fertilización</b> están realizadas en el <b>100 % del área</b>: deja de sumar en «suertes en proceso · ha» (arriba de la tabla, en 📊 Indicadores y en la tarjeta del portal). Si alguna labor quedó <b>parcial</b> y ya no se va a completar, en modo editor aparece <b>🔒 Cerrar</b> en la fila (o en la ficha 📝, sección «Cierre de la suerte»). Las cerradas se ven con el botón <b>🔒 Cerradas</b> y se reabren con <b>🔓 Reabrir</b>. Luego dale 🚀 Publicar.'},
     {k:['excel de labores','descargar labores','respaldo de labores','restaurar labores','copia de labores','si falla la pagina','base de datos de labores','exportar labores'], r:'En <b>🚜 Control labores campo</b>, el botón <b>⬇️</b> descarga un Excel con <b>toda</b> la información: hoja <b>Labores</b> (cada suerte con fecha de corte, días, estado de cada labor, fechas programada y realizada, total o parcial, hectáreas realizadas y pendientes, contratistas, implemento, producto y dosis, observaciones), <b>Contratistas</b> (una fila por suerte, labor y contratista con sus hectáreas), <b>Programación semanal</b> (todas las semanas), <b>Parámetros</b> y <b>Respaldo</b>. Si la página falla o se pierden datos, en modo editor toca <b>📂</b> y carga ese mismo Excel: el panel queda exactamente como estaba (luego 🚀 Publicar). No modifiques la hoja «Respaldo».'},
     {k:['mover el inge','mover inge','estorba','arrastrar','inge virtual'], r:'Al <b>👷 Inge Virtual</b> lo puedes arrastrar: toma el botón y suéltalo donde no te estorbe; la ventana del chat se mueve tomándola de la barra azul de arriba. La página recuerda dónde los dejaste en ese navegador.'},
     {k:['celular','movil','telefono movil'], r:'La página funciona en el celular: el menú se compacta, las tablas pasan a tarjetas y las presentaciones se deslizan con el dedo.'},
@@ -620,6 +620,107 @@ const IV = (() => {
     return R.length ? `Esto es lo que encontré en la plataforma:${lista(R.map(([, d]) => d.res))}` : null;
   }
 
+  // ── Control labores campo (levante de socas): preguntas con datos del panel ──
+  // Entiende labor (1ra / 2da roturación, roturación, fertilización), hacienda, zona y contratista, y responde
+  // pendientes (con lista de suertes), realizadas y avance, cerradas, parciales, tardías, vencidas, programación
+  // semanal, productos, implementos, suertes que no se roturan y agregadas a mano. null si la pregunta no es de levante.
+  function levanteTxt(t){
+    if (typeof labSuertes !== 'function' || typeof LAB_LABORES === 'undefined') return null;
+    const T0 = labSuertes(); if (!T0.length) return null;
+    const contrs = [...new Set([...(typeof LAB_CONTR !== 'undefined' ? LAB_CONTR : []), ...T0.flatMap(o => LAB_LABORES.flatMap(Lb => { const x = o.reg[Lb.k] || {}; return [x.contr, ...labRep(x).map(p => p.c)]; }))].filter(c => c && c.length > 3))];
+    const contr = contrs.find(c => tiene(t, n(c)));
+    const clave = tiene(t, 'levante', 'rotura', 'roturar', 'fertiliz', 'abono', 'abonar', 'abonad', 'control de labores', 'control labores', 'labores pendientes', 'labores de soca', 'labor de soca', 'despaje', 'reencalle', 'subesca', 'suertes cerradas', 'cerradas', 'cerrar suerte', 'por cerrar', 'sin cerrar', 'tardia', 'tardias', 'programacion semanal', 'suertes agregadas', 'agregadas a mano', 'no se roturan', 'no se rotura');
+    if (!clave && !contr) return null;
+    if (/\b\d{4}-?\d{3}\b/.test(t)) return null;   // una suerte concreta: la responde su ficha
+    if (tiene(t, 'que es', 'que son', 'para que sirve', 'significa', 'como se hace')) return null;
+    if (/^(como|donde|de que forma)\b/.test(t) && !tiene(t, 'va ', 'van ', 'esta ', 'estan ', 'vamos', 'falta')) return null;   // «¿cómo cierro / cargo…?»: lo explica el «cómo se hace»
+    if (tiene(t, 'contratista') && !contr) return null;   // contratistas en general: bloque de contratistas
+    const labs = tiene(t, '1ra', 'primera') ? ['rotur'] : tiene(t, '2da', 'segunda') ? ['rotur2'] : tiene(t, 'rotura', 'roturar', 'subesca', 'implemento') ? ['rotur', 'rotur2'] : tiene(t, 'fertiliz', 'abon', 'producto', 'dosis', 'mezcla') ? ['fert'] : [];
+    const LBs = labs.length ? LAB_LABORES.filter(L => labs.includes(L.k)) : LAB_LABORES;
+    const hacs = [...new Set(T0.map(o => o.x.hac).filter(Boolean))].sort((a, b) => b.length - a.length);
+    const hac = hacs.find(h => (' ' + t + ' ').includes(' ' + n(h) + ' ')) || hacs.find(h => { const c = n(h).replace(/^la /, ''); return c.length > 4 && t.includes(c); });
+    const z = zonaEn(t), T = T0.filter(o => (!hac || o.x.hac === hac) && (!z || +o.x.zona === z)), A = T.filter(o => !o.cierre);
+    const donde = [hac ? msHacN(hac) : '', z ? 'Zona ' + z : ''].filter(Boolean).join(' · ');
+    const tit = s => `<b>🚜 ${s}</b>${donde ? ` · ${esc(donde)}` : ''}`;
+    const est = (o, L) => labEstado(o, L).e, haS = arr => sum(arr, o => +o.x.area || 0);
+    const linea = o => `<b>${esc(o.x.s)}</b> ${esc(msHacN(o.x.hac))} · ${f2(o.x.area)} ha · ${o.dd} d de lucro`;
+    const top = (arr, f, k = 12) => lista(arr.slice(0, k).map(f)) + (arr.length > k ? `<small>… y ${arr.length - k} más en el control.</small>` : '');
+    const IRL = ir('lab', 'Abrir control labores campo');
+    const nomL = L => `${L.ico} ${L.n}`;
+    // 1. Cerradas (y las que esperan cierre a mano)
+    if (tiene(t, 'cerrad', 'cerrar', 'cierre')) {
+      const PC = A.filter(o => labTodoHecho(o));
+      if (tiene(t, 'por cerrar', 'sin cerrar', 'falta cerrar', 'faltan cerrar', 'faltan por cerrar', 'pendiente', 'confirmar', 'revisar'))
+        return `${tit('Suertes con todo realizado que esperan cierre a mano')}: <b>${PC.length}</b> · ${ha(haS(PC))}${top(PC, o => `${linea(o)}${o.x.par ? ` · el Excel la marca parcial (${f2(o.x.par)} ha)` : ` · parcial: ${LAB_LABORES.filter(L => (o.reg[L.k] || {}).at === 'parcial').map(L => `${L.n} ${f2(labHaReal(o, o.reg[L.k]))} ha`).join(', ')}`}`)}Se cierran con <b>🔒 Cerrar</b> en la fila (modo editor) si ya se completó o no se va a completar.${IRL}`;
+      const C = T.filter(o => o.cierre), au = C.filter(o => o.cierre.auto).length, H = {};
+      C.forEach(o => { const k = msHacN(o.x.hac) || '—'; H[k] = (H[k] || 0) + (+o.x.area || 0); });
+      return `${tit('Suertes cerradas')}: <b>${C.length}</b> · <b>${ha(haS(C))}</b> (${au} solas al 100 %, ${C.length - au} a mano). Ya no suman en proceso: quedan <b>${A.length}</b> suertes en proceso · ${ha(haS(A))}.${!hac ? lista(Object.entries(H).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([h, v]) => `${esc(h)}: ${ha(v)}`)) : top(C, linea)}${PC.length ? `<br>${PC.length} más tienen todo realizado pero con algún parcial: pregunta «¿qué suertes faltan por cerrar?».` : ''} Se ven con el botón <b>🔒 Cerradas</b>.${IRL}`;
+    }
+    // 2. Parciales
+    if (tiene(t, 'parcial')) {
+      const P = A.filter(o => o.x.par || LBs.some(L => est(o, L) === 'hecha' && (o.reg[L.k] || {}).at === 'parcial'));
+      return `${tit('Suertes en proceso con labores parciales')}: <b>${P.length}</b>${top(P, o => `${linea(o)} · ${[...LBs.filter(L => est(o, L) === 'hecha' && (o.reg[L.k] || {}).at === 'parcial').map(L => `${L.n} hecha en ${f2(labHaReal(o, o.reg[L.k]))} ha`), o.x.par ? `Excel: parcial ${f2(o.x.par)} ha` : ''].filter(Boolean).join(' · ')}`)}${IRL}`;
+    }
+    // 3. Tardías (pendientes con más de LAB_TARDE días de lucro)
+    if (tiene(t, 'tardi', 'mas de 60', 'muy atrasad', 'mas atrasad', 'criticas', 'critica')) {
+      const R = A.filter(o => o.dd > LAB_TARDE && LBs.some(L => labPorHacer(est(o, L)))).sort((a, b) => b.dd - a.dd);
+      return `${tit(`Pendientes tardías (más de ${LAB_TARDE} días de lucro)`)}${labs.length ? ` · ${LBs.map(L => L.n).join(' y ')}` : ''}: <b>${R.length}</b> suertes · ${ha(haS(R))}${top(R, o => `${linea(o)} · falta: ${LBs.filter(L => labPorHacer(est(o, L))).map(L => L.n).join(', ')}`)}${IRL}`;
+    }
+    // 4. Vencidas o atrasadas
+    if (tiene(t, 'vencid', 'atrasad')) {
+      return `${tit('Labores vencidas o atrasadas')}${LBs.map(L => { const V = A.filter(o => ['vencida', 'atrasada'].includes(est(o, L))).sort((a, b) => b.dd - a.dd);
+        return `<br>${nomL(L)}: <b>${V.length}</b> suertes · ${ha(sum(V, o => labHa(o, L)))}${top(V, linea, 8)}`; }).join('')}${IRL}`;
+    }
+    // 5. Un contratista: hectáreas realizadas por labor y lo que tiene asignado sin hacer
+    if (contr) {
+      const fil = LBs.map(L => { let h = 0; const S = [], asig = [];
+        T.forEach(o => { const x = o.reg[L.k] || {}, R = labRep(x), e = est(o, L);
+          const mio = R.length ? sum(R.filter(p => n(p.c) === n(contr)), p => +p.ha || 0) : n(x.contr || '') === n(contr) ? labHaReal(o, x) : 0;
+          if (e === 'hecha' && mio > 0) { h += mio; S.push(o); } else if (e !== 'hecha' && n(x.contr || '') === n(contr)) asig.push(o); });
+        return {L, h, S, asig}; });
+      return `${tit(`${esc(contr)} en levante`)}${lista(fil.map(f => `${nomL(f.L)}: <b>${ha(f.h)}</b> realizadas en ${f.S.length} suertes${f.asig.length ? ` · ${f.asig.length} asignadas sin realizar (${f.asig.map(o => esc(o.x.s)).slice(0, 8).join(', ')})` : ''}`))}Total realizado: <b>${ha(sum(fil, f => f.h))}</b>.${IRL}`;
+    }
+    // 6. Productos de fertilización / implementos de roturación
+    if (tiene(t, 'producto', 'mezcla', 'dosis', 'implemento', 'subesca', 'triple', 'convencional')) {
+      const esF = tiene(t, 'producto', 'mezcla', 'dosis', 'fertiliz', 'abon'), M = {}, sinA = {v:0};
+      T.forEach(o => (esF ? [LAB_LABORES.find(L => L.k === 'fert')] : LAB_LABORES.filter(L => L.k !== 'fert')).forEach(L => { if (est(o, L) !== 'hecha') return;
+        const x = o.reg[L.k] || {}, k = esF ? [x.prod, x.dosis ? `dosis ${x.dosis}` : ''].filter(Boolean).join(' · ') : x.impl; const h = labHaReal(o, x);
+        if (k) M[k] = (M[k] || 0) + h; else sinA.v += h; }));
+      const E = Object.entries(M).sort((a, b) => b[1] - a[1]);
+      return `${tit(esF ? 'Productos de fertilización (ha fertilizadas)' : 'Implementos en roturación (ha roturadas, 1ra y 2da)')}${E.length ? lista(E.map(([k, v]) => `${esc(k)}: <b>${ha(v)}</b>`)) : '<br>Aún no hay nada anotado en las fichas.'}${sinA.v > 0.005 ? `<small>+ ${ha(sinA.v)} realizadas sin anotar en la ficha 📝.</small>` : ''}${IRL}`;
+    }
+    // 7. Programación semanal
+    if (tiene(t, 'program')) {
+      const w = labPgSemana(), P = (labProg()[w] || []).filter(r => (!labs.length || labs.includes(r.lab)) && (!hac || T.some(o => o.key === r.key)));
+      const fd = d => /^\d{4}-\d{2}-\d{2}/.test(d || '') ? labF(d) : esc(d || '');
+      const g = LBs.map(L => { const R = P.filter(r => r.lab === L.k); return R.length ? `${nomL(L)}: ${R.length} suertes · ${ha(sum(R, r => +r.ha || (T0.find(o => o.key === r.key) || {x:{}}).x.area || 0))} (${R.filter(r => r.ok).length} ejecutadas)` : ''; }).filter(Boolean);
+      return `${tit(`Programación de la semana del ${labF(w)}`)}: <b>${P.length}</b> labores${lista(g)}${top(P, r => { const L = LAB_LABORES.find(x => x.k === r.lab) || {n:r.lab}; return `<b>${esc(r.s || '')}</b> · ${esc(L.n)}${r.dia ? ` · ${fd(r.dia)}` : ''}${r.contr ? ` · ${esc(r.contr)}` : ''}${r.pa ? ` · parcial ${f2(+r.ha || 0)} ha` : ''} · ${r.ok ? '✓ ejecutada' : 'pendiente'}`; }, 15)}Se arma con <b>📤 Enviar</b> en cada fila y se ve en <b>📅 Programación semanal</b>.${IRL}`;
+    }
+    // 8. Suertes que no se roturan (plantillas o 2da de una roturación única)
+    if (tiene(t, 'no se rotura', 'no se roturan', 'plantilla', 'unica')) {
+      const N = T.filter(o => est(o, LAB_LABORES[0]) === 'noaplica'), U = T.filter(o => est(o, LAB_LABORES[0]) !== 'noaplica' && est(o, LAB_LABORES[1]) === 'noaplica');
+      return `${tit('Roturación que no aplica')}<br>No se roturan (plantillas, corte 1, o marcadas así): <b>${N.length}</b> · ${ha(haS(N))}${top(N, linea, 8)}Con roturación única (subesca o triple, sin 2da): <b>${U.length}</b> · ${ha(haS(U))}${IRL}`;
+    }
+    // 9. Agregadas a mano
+    if (tiene(t, 'agregad', 'a mano', 'manual')) {
+      const M = T.filter(o => o.fuente === 'manual');
+      return `${tit('Suertes agregadas a mano')} (aún no vienen en el Excel de labores pendientes): <b>${M.length}</b>${top(M, o => `${linea(o)} · corte ${labF(o.x.ultCorte)}`)}${IRL}`;
+    }
+    // 10. Realizadas y avance (incluye las cerradas)
+    if (tiene(t, 'realizad', 'hecha', 'hechas', 'hecho', 'avance', 'porcentaje', 'llevamos', 'ejecutad', 'se ha hecho', 'se han hecho', 'cumplimiento')) {
+      return `${tit('Avance del levante')} (suertes en proceso y cerradas)${lista(LBs.map(L => { const ap = T.filter(o => est(o, L) !== 'noaplica'), H = ap.filter(o => est(o, L) === 'hecha'), hr = sum(H, o => labHaReal(o, o.reg[L.k])), tot = haS(ap);
+        return `${nomL(L)}: <b>${ha(hr)}</b> realizadas de ${ha(tot)} (<b>${tot ? f2(hr / tot * 100) : 0} %</b>) · ${H.length} de ${ap.length} suertes`; }))}${IRL}`;
+    }
+    // 11. Pendientes (por defecto): por labor, con lista de suertes si se pide una labor, hacienda o zona
+    const pend = LBs.map(L => { const P = A.filter(o => labPorHacer(est(o, L))).sort((a, b) => b.dd - a.dd); return {L, P, h:sum(P, o => labHa(o, L)), v:P.filter(o => ['vencida', 'atrasada'].includes(est(o, L))).length, pr:P.filter(o => ['programada', 'atrasada'].includes(est(o, L))).length, sd:A.filter(o => est(o, L) === 'sindato').length}; });
+    const detalle = labs.length || hac || z || tiene(t, 'que suertes', 'cuales', 'lista', 'listado');
+    const resumen = `${tit('Control de labores de levante')} · <b>${A.length}</b> suertes en proceso (${ha(haS(A))})${T.length > A.length ? ` · ${T.length - A.length} cerradas (${ha(haS(T.filter(o => o.cierre)))}) que ya no suman` : ''}`;
+    const filas = pend.map(d => `${nomL(d.L)}: <b>${ha(d.h)}</b> pendientes en ${d.P.length} suertes${d.v ? ` · <b style="color:#b91c1c">${d.v} vencidas</b>` : ''}${d.pr ? ` · ${d.pr} programadas` : ''}${d.sd ? ` · ${d.sd} sin dato en el Excel` : ''}`);
+    if (detalle) return `${resumen}${pend.map((d, i) => `<br>${filas[i]}${top(d.P, o => `${linea(o)} · ${LAB_EST[est(o, d.L)].n.toLowerCase()}`, labs.length === 1 ? 15 : 8)}`).join('')}${IRL}`;
+    const H = {}; pend.forEach(d => d.P.forEach(o => { const k = msHacN(o.x.hac) || '—'; H[k] = (H[k] || 0) + labHa(o, d.L); }));
+    return `${resumen}${lista(filas)}Haciendas con más hectáreas pendientes: ${Object.entries(H).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([h, v]) => `${esc(h)} ${ha(v)}`).join(' · ')}.<br><small>También puedes preguntar: «¿qué suertes faltan por fertilizar en La Luisa?», «¿cuántas suertes cerradas hay?», «¿qué ha hecho Riocas?», «suertes tardías», «programación de la semana», «avance de la fertilización».</small>${IRL}`;
+  }
+
   const AYUDA = `Soy el <b>Inge Virtual</b> 👷 (si te estorbo, arrástrame a otro lado de la pantalla). Conozco toda la plataforma: comité APS, presupuesto 2026 y 2027, días de lucro, agronomía, simulador, <b>niveles freáticos</b>, <b>lluvias</b>, <b>maestro de suertes</b>, cosecha vs niveles, proyectos, protocolos de emergencia, el equipo y conceptos de ingeniería agrícola y civil. Prueba:`;
   const EJEMPLOS = ['Resumen de la semana', '¿Cómo están los niveles freáticos?', '¿Qué suertes están en nivel crítico?', '¿Cuánto llovió en marzo?', '¿Qué se corta en noviembre?', 'Variedades de La Luisa 1', 'Suertes candidatas a renovar', '¿Cuánto falta del presupuesto 2026?', '¿En qué estado está la 3111-131?', '¿Qué hacer si se rompe un dique?', '¿Quién es el jefe de zona 1?', '¿Qué es la descepada?'];
 
@@ -629,6 +730,7 @@ const IV = (() => {
     if (/^(hola|buenas|buenos|hey|que mas|saludos)\b/.test(t) && t.split(' ').length < 4) return `¡Hola! ${AYUDA}`;
     if (tiene(t, 'gracias', 'listo', 'perfecto') && t.split(' ').length < 4) return 'Con gusto 👷. ¿Algo más?';
     if (tiene(t, 'ayuda', 'que sabes', 'que puedes', 'que preguntas')) return AYUDA;
+    { const lv = levanteTxt(t); if (lv) return lv; }
     // Control labores campo: contratistas (lista de la ficha y hectáreas realizadas anotadas por labor)
     if (typeof labIndDatos === 'function' && tiene(t, 'contratista', 'contratistas') && !tiene(t, 'tarifa', 'costo', 'simulador')) {
       const D = labIndDatos(), C = [...LAB_CONTR, 'Otros'];
@@ -636,14 +738,6 @@ const IV = (() => {
         return `${d.Lb.ico} ${d.Lb.n}: ${an.length ? an.join(' · ') : 'sin contratistas anotados'}${d.contr['Sin anotar'] ? ` <span style="color:#64748b">(+ ${ha(d.contr['Sin anotar'])} realizadas sin anotar)</span>` : ''}`; });
       return `<b>🚜 Contratistas de levante</b>: ${LAB_CONTR.map(esc).join(', ')} (u «Otro…» en la ficha 📝 de cada suerte).${lista(fil)}Más detalle en <b>📊 Indicadores</b> del control.${ir('lab', 'Abrir control labores campo')}`;
     }
-    // Control de labores de levante: resumen de lo que falta (despaje, reencalle, roturación, fertilización)
-    if (typeof labResumen === 'function' && tiene(t, 'despaje', 'reencalle', 'roturacion', 'fertilizacion', 'levante', 'control de labores', 'labores pendientes', 'labores de soca')
-      && !tiene(t, 'que es', 'que son', 'para que', 'significa', 'como se hace') && !(/^(como|donde|de que forma)\b/.test(t) && !tiene(t, 'esta ', 'estan ', 'va ', 'van ', 'falta'))) {
-      const R = labResumen();
-      return R.n ? `<b>🚜 Control de labores</b> · ${R.n} suertes en proceso (${ha(R.ha)})${R.nCer ? ` · ${R.nCer} ya cerradas (${ha(R.haCer)}), con todas las labores al 100 %, no suman` : ''}${lista(R.L.map(l => `${l.Lb.ico} ${l.Lb.n}: <b>${ha(l.haUrg)}</b> por hacer (${l.urg.length} suertes)${l.ven.length ? ` · <b style="color:#b91c1c">${l.ven.length} vencidas</b>` : ''}${l.Lb.tipo === 'prog' ? ` · ${l.prog.length} programadas` : ''} · ${l.hecha.length} hechas${l.sin && l.sin.length ? ` · ${l.sin.length} sin dato en el Excel` : ''}`))}${ir('lab', 'Abrir control de labores')}`
-        : `No hay suertes cosechadas recientes en el maestro.${ir('lab', 'Abrir control de labores')}`;
-    }
-
     // 1) Cómo usar la plataforma
     if (/^(como|donde|de que forma)\b/.test(t) && !tiene(t, 'va ', 'van ', 'esta ', 'estan ', 'vamos')) { const r = comoTxt(t); if (r) return r; }
 
