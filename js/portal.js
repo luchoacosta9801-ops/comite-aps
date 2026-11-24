@@ -113,7 +113,7 @@ function renderPortal(){
         `${S.length} suertes en proceso · <b>${moneyM(simTot)}</b> · ${simDifT >= 0 ? 'ahorro' : 'sobrecosto'} ${moneyM(Math.abs(simDifT))}`, 'var(--green)')}
       ${typeof labResumen !== 'function' || typeof maestroSuertes !== 'function' || !maestroSuertes() ? '' : (() => { const R = labResumen(), u = R.L.reduce((a, l) => a + l.urg.length, 0), v = R.L.reduce((a, l) => a + l.ven.length, 0);
         return card('lab', '🚜', 'Control labores campo', 'Levante de socas: 1ra y 2da roturación y fertilización por suerte, con contratista, área realizada e indicadores.',
-        `<b>${R.n}</b> suertes · <b>${u}</b> labores pendientes`, '#b45309'); })()}
+        `<b>${R.n}</b> suertes en proceso · <b>${u}</b> labores pendientes${R.nCer ? ` · ${R.nCer} cerradas` : ''}`, '#b45309'); })()}
       ${typeof maestroSuertes !== 'function' ? '' : (() => { const M = maestroSuertes(), L = M ? msFilas().filter(x => x.emp === 'RIOP') : [];
         return card('maes', '📚', 'Maestro de suertes', 'El maestro de suertes en versión digital: áreas, variedades, edades, cortes y próximos cortes de cada suerte, con mapa.',
         M ? `<b>${L.length}</b> suertes Riopaila · <b>${f2(sum(L, x => x.area || 0))} ha</b>${M.fecha ? ` · ${esc(M.fecha)}` : ''}` : 'Por cargar', '#7c3aed'); })()}
