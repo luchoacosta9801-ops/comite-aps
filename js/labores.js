@@ -50,7 +50,7 @@ const labHaReal = (o, x) => x && x.at === 'parcial' ? (+x.ha || +o.x.par || +o.x
 // Reparto del área realizada entre contratistas: x.rep = [{c, ha}] (varios contratistas en la misma suerte y labor).
 // x.contr queda con el primero y at/ha con la suma, para que el resto del panel siga funcionando igual
 const labRep = x => (x && Array.isArray(x.rep) ? x.rep : []).filter(p => p && (p.c || +p.ha));
-const labContrTxt = x => { const R = labRep(x); return R.length ? R.map(p => `${p.c || 'Sin contratista'}${+p.ha ? ' ' + msN(+p.ha, 2) + ' ha' : ''}`).join(' + ') : (x && x.contr) || ''; };
+const labContrTxt = x => { const R = labRep(x); return R.length ? R.map(p => `${p.c || 'Sin contratista'}${+p.ha ? ' ' + msN(+p.ha, 2) + ' ha' : ''}${p.f ? ` (${labF(p.f)})` : ''}`).join(' + ') : (x && x.contr) || ''; };
 
 function labDatos(){
   if (DB.labores === undefined && typeof SEED !== 'undefined' && SEED.labores) DB.labores = clone(SEED.labores);
@@ -506,7 +506,7 @@ function labFicha(key){
     const R = x.rep, tot = sum(R, p => +p.ha || 0), ar = +o.x.area || 0;
     const sel = (i, c) => `<select ${dis} data-lfr="${k}|${i}|c"><option value="">— Contratista —</option>${[...LAB_CONTR, ...(c && !LAB_CONTR.includes(c) ? [c] : [])].map(n => `<option ${c === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}<option value="__otro">Otro…</option></select>`;
     return `<div class="lf-rep"><div class="lf-rep-t">👥 Reparto por contratista <small>${msN(tot, 2)} de ${msN(ar, 2)} ha${tot > 0 && tot < ar - 0.005 ? ' · parcial' : tot > ar + 0.005 ? ' · ⚠ pasa el área de la suerte' : ''}</small></div>
-      ${R.map((p, i) => `<div class="lf-rep-f">${sel(i, p.c)}<span class="lf-ha"><input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-lfr="${k}|${i}|ha" value="${esc(p.ha ?? '')}" placeholder="0,00"> ha</span>${ed ? `<button type="button" class="lf-rep-x" data-lfr-x="${k}|${i}" title="Quitar este contratista">🗑</button>` : ''}</div>`).join('')}
+      ${R.map((p, i) => `<div class="lf-rep-f">${sel(i, p.c)}<span class="lf-ha"><input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-lfr="${k}|${i}|ha" value="${esc(p.ha ?? '')}" placeholder="0,00"> ha</span><input type="date" class="lf-rep-fe" ${dis} data-lfr="${k}|${i}|f" value="${esc(p.f || '')}" title="Fecha en que este contratista hizo su parte">${ed ? `<button type="button" class="lf-rep-x" data-lfr-x="${k}|${i}" title="Quitar este contratista">🗑</button>` : ''}</div>`).join('')}
       ${ed ? `<button type="button" class="plegar-todo" data-lfr-add="${k}">➕ Otro contratista</button>` : ''}</div>`; };
   const contr = (k, x, etiqueta) => { if (conRep(x)) return ''; const otro = (labE.otro || {})[k] || !!(x.contr && !LAB_CONTR.includes(x.contr));
     return `<label>${etiqueta || 'Contratista'}<select ${dis} data-lfc="${k}"><option value="">— Elegir —</option>${LAB_CONTR.map(c => `<option ${x.contr === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}<option value="__otro" ${otro ? 'selected' : ''}>Otro…</option></select>
@@ -573,8 +573,10 @@ function labRepGuardar(k, R){
   if (!MODO_EDICION || !labE.ficha) return;
   const key = labE.ficha, o = labSuertes().find(y => y.key === key); if (!o) return;
   const ar = +o.x.area || 0, ponerArea = h => { if (h > 0 && h < ar - 0.005) { labSet(key, k, 'at', 'parcial'); labSet(key, k, 'ha', String(+h.toFixed(2))); } else { labSet(key, k, 'at', ''); labSet(key, k, 'ha', ''); } };
-  if (R.length <= 1) { const p = R[0] || {}; labSet(key, k, 'rep', ''); labSet(key, k, 'contr', p.c || ''); ponerArea(+p.ha || 0); }
-  else { labSet(key, k, 'rep', R.map(p => ({c:p.c || '', ha:p.ha ?? ''}))); labSet(key, k, 'contr', (R.find(p => p.c) || {}).c || ''); ponerArea(sum(R, p => +p.ha || 0)); }
+  if (R.length <= 1) { const p = R[0] || {}; labSet(key, k, 'rep', ''); labSet(key, k, 'contr', p.c || ''); ponerArea(+p.ha || 0); if (p.f) labSet(key, k, 'r', p.f); }
+  else { labSet(key, k, 'rep', R.map(p => Object.assign({c:p.c || '', ha:p.ha ?? ''}, p.f ? {f:p.f} : {}))); labSet(key, k, 'contr', (R.find(p => p.c) || {}).c || ''); ponerArea(sum(R, p => +p.ha || 0));
+    // Con fechas por contratista, la labor queda realizada en la última (la que la completa): con esa se mide si fue oportuna
+    const ult = R.map(p => p.f).filter(Boolean).sort().pop(); if (ult) labSet(key, k, 'r', ult); }
   save(); renderEstadoEdicion(); labE.sucio = true; labFicha(key);
 }
 labFichaEl().addEventListener('click', e => {
@@ -591,7 +593,7 @@ labFichaEl().addEventListener('click', e => {
   // Reparto por contratista: empezar, agregar y quitar filas
   const ri = t.closest('[data-lfr-ini]');
   if (ri) { const k = ri.dataset.lfrIni, o = labSuertes().find(y => y.key === labE.ficha), x = (o && o.reg[k]) || {};
-    labRepGuardar(k, [{c:x.contr || '', ha:o ? String(+(+labHaReal(o, x)).toFixed(2)) : ''}, {c:'', ha:''}]); return; }
+    labRepGuardar(k, [Object.assign({c:x.contr || '', ha:o ? String(+(+labHaReal(o, x)).toFixed(2)) : ''}, x.r ? {f:x.r} : {}), {c:'', ha:''}]); return; }
   const ra = t.closest('[data-lfr-add]'); if (ra) { labRepGuardar(ra.dataset.lfrAdd, [...labRepDe(ra.dataset.lfrAdd), {c:'', ha:''}]); return; }
   const rx = t.closest('[data-lfr-x]'); if (rx) { const [k, i] = rx.dataset.lfrX.split('|'); labRepGuardar(k, labRepDe(k).filter((p, j) => j !== +i)); return; }
   const b = t.closest('[data-lf]'); if (!b) return;
@@ -700,7 +702,7 @@ function labExcel(){
     T.forEach(o => LAB_LABORES.forEach(Lb => { const r = o.reg[Lb.k] || {}, est = labEstado(o, Lb).e, R = labRep(r);
       if (!R.length && !r.contr) return;
       const base = [o.x.s, msHacN(o.x.hac) || '', o.x.zona ?? '', Lb.n, LAB_EST[est].n, r.r || ''], que = Lb.k === 'fert' ? (r.prod || '') : (r.impl || '');
-      if (R.length) R.forEach(p => fc.push([...base, p.c || 'Sin contratista', n2(p.ha), R.length > 1 ? 'Reparto' : (r.at === 'parcial' ? 'Parcial' : 'Total'), que]));
+      if (R.length) R.forEach(p => fc.push([...base.slice(0, 5), p.f || r.r || '', p.c || 'Sin contratista', n2(p.ha), R.length > 1 ? 'Reparto' : (r.at === 'parcial' ? 'Parcial' : 'Total'), que]));
       else fc.push([...base, r.contr, est === 'hecha' ? n2(labHaReal(o, r)) : n2(o.x.area), est === 'hecha' ? (r.at === 'parcial' ? 'Parcial' : 'Total') : 'Asignado (sin realizar)', que]); }));
     XLSX.utils.book_append_sheet(wb, hojaX(fc, [10, 14, 6, 16, 12, 12, 24, 10, 16, 20]), 'Contratistas');
     // ── Programación semanal: todas las semanas ──

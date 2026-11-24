@@ -1662,3 +1662,6 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .rp-e.ok{background:#dcfce7;color:#15803d}.rp-e.pe{background:#fee2e2;color:#b91c1c}
 .rp-op.ok{background:#ecfdf5;color:#047857}.rp-op.tarde{background:#fff7ed;color:#c2410c}.rp-op.sf{background:#f1f5f9;color:#64748b}
 @media (max-width:860px){.rp-tiles{grid-template-columns:1fr}}
+
+/* Reparto por contratista: fecha de cada uno (24 nov 2026) */
+.lf-rep-f .lf-rep-fe{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--bdr);border-radius:10px;background:#fff;max-width:150px}
