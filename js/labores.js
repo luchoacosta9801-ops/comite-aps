@@ -28,7 +28,8 @@ const LAB_LABORES = [
   {k:'fert',      n:'Fertilización',  c:'Fertiliz.', ico:'🌱', tipo:'prog',   col:'#1baf7a', bd:'fe'},
 ];
 // Contratistas de levante (16 nov 2026); «Otro» deja escribir uno que falte
-const LAB_CONTR = ['Bienes y Maquinaria', 'Riocas', 'Camaro', 'Galvil', 'Agromorales'];
+// «Propio» = labor hecha con maquinaria y personal propios (24 nov 2026)
+const LAB_CONTR = ['Bienes y Maquinaria', 'Riocas', 'Camaro', 'Galvil', 'Agromorales', 'Propio'];
 // Ventanas por defecto (días después del corte); el editor las cambia en «Parámetros»
 const LAB_DEF = {dias:60, despaje:[0, 10], reencalle:[5, 15], rotur:[15, 30], rotur2:[30, 50], fert:[25, 45]};
 const LAB_EST = {
