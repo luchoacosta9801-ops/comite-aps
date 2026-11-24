@@ -2,7 +2,7 @@
 const overlay=q('modal-overlay'),modalBody=q('modal-body'),modalFooter=q('modal-footer');
 
 function openModal(view){
-  if(!MODO_EDICION)return;   // la vista publicada es de solo lectura
+  if(!MODO_EDICION&&!(view==='publicar'&&typeof accLinea==='function'&&accLinea()))return;   // la vista publicada es de solo lectura (salvo publicar en línea)
   overlay.style.display='flex';document.body.style.overflow='hidden';showView(view);
 }
 function closeModal(){overlay.style.display='none';document.body.style.overflow='';}
@@ -497,6 +497,7 @@ function resumenCambios(){
     ${fila('Suertes en proceso',a.proc,b.proc)}${fila('Suertes en ruta',a.ruta,b.ruta)}</tbody></table>`;
 }
 function renderPublicar(){
+  if(typeof accLinea==='function'&&accLinea())return renderPublicarLinea(accLinea());
   const pend=hayCambiosSinPublicar();
   setHeader('🚀','Publicar para todos','Sube tus cambios a la página de GitHub Pages que ven todos');
   if(!SERVIDOR){

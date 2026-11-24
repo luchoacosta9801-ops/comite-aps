@@ -38,6 +38,9 @@ if (VISTAS_SOLO) document.documentElement.classList.add('acc-solo');
 let MODO_EDICION = EDITOR_TOTAL;
 // Dónde está servidor.ps1: el mismo sitio si se abrió desde él; si no, el del PC
 const API_BASE = ES_LOCAL && location.protocol.startsWith('http') ? '' : 'http://localhost:8080/';
+// Publicador en línea (publicador/worker.js en Cloudflare): deja publicar desde CUALQUIER equipo a los usuarios con perfil
+// editor / editor por panel (verifica su contraseña y sube solo los módulos de sus paneles). Vacío = solo publica este PC.
+const PUBLICADOR_URL = '';
 let DB;
 
 // ?editor=<clave> activa el editor en este navegador; ?editor=salir lo desactiva

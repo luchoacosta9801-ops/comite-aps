@@ -68,20 +68,104 @@ const ACC_PANELES = [
 const ROLES = {ver:'👁 Ver', panel:'🧩 Editor por panel', editor:'✏️ Editor (todo)'};
 const accRolOpts = r => Object.entries(ROLES).map(([k, t]) => `<option value="${k}" ${r === k ? 'selected' : ''}>${t}</option>`).join('');
 // Módulos que puede cambiar un usuario: los de sus paneles (o todos si es editor)
-const accModulos = x => x.rol === 'editor' ? MODULOS_LOCALES.filter(k => k !== 'usuarios') : ACC_PANELES.filter(p => (x.paneles || []).includes(p.v)).flatMap(p => p.m);
+// El editor (todo) manda cualquier parte de los datos (también lo importado del Excel: suertes, ruta, proceso…) menos usuarios y meta
+const accModulos = x => x.rol === 'editor' ? [...new Set([...Object.keys(SEED), ...Object.keys(DB || {})])].filter(k => k !== 'usuarios' && k !== 'meta') : ACC_PANELES.filter(p => (x.paneles || []).includes(p.v)).flatMap(p => p.m);
 
 // ── Enviar cambios (usuarios que editan desde otro equipo): solo este PC publica, así que los cambios se
 // mandan en un archivo al administrador, que los recibe en 🔐 Usuarios y accesos y publica ──
 function accPendientes(x){ return accModulos(x).filter(k => JSON.stringify(DB[k] === undefined ? null : DB[k]) !== JSON.stringify(SEED[k] === undefined ? null : SEED[k])); }
 async function accEnviar(x){
-  const ks = accPendientes(x); if (!ks.length) { toast('No tienes cambios por enviar'); return; }
+  const ks = accPendientes(x);
+  if (!ks.length) { accAvisoEnvio('No encontré cambios tuyos por enviar: lo que tienes ya es igual a lo publicado (o tus cambios son de paneles que no tienes asignados).', true); return; }
   const hoy = new Date(), modulos = {}; ks.forEach(k => { modulos[k] = DB[k] === undefined ? null : DB[k]; });
   const nombre = `cambios-${x.u}-${hoy.toISOString().slice(0, 10)}.json`;
   const txt = JSON.stringify({tipo:'comite-aps-cambios', u:x.u, nombre:x.nombre, fecha:hoy.toISOString(), base:SEED.meta.corte, modulos});
   const f = new File([txt], nombre, {type:'application/json'});
-  try { if (navigator.canShare && navigator.canShare({files:[f]})) { await navigator.share({files:[f], title:'Cambios Ingeniería Agrícola', text:`Cambios de ${x.nombre}`}); return; } } catch (e) { if (e.name === 'AbortError') return; }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = nombre; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  toast('📤 Se descargó el archivo de cambios: envíaselo al administrador');
+  // En celular se comparte (WhatsApp, correo…); en computador se descarga directo (el panel de compartir de Windows confundía)
+  const movil = matchMedia('(pointer: coarse)').matches;
+  try { if (movil && navigator.canShare && navigator.canShare({files:[f]})) { await navigator.share({files:[f], title:'Cambios Ingeniería Agrícola', text:`Cambios de ${x.nombre}`}); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  accAvisoEnvio(`✓ Se descargó <b>${esc(nombre)}</b> en tu carpeta <b>Descargas</b>. Envíaselo al administrador por correo o Teams (adjunta ese archivo). Tus cambios siguen en este navegador.`);
+}
+// Resultado del envío, visible dentro de la ventana de publicar (y como aviso)
+function accAvisoEnvio(html, malo){
+  const cajas = document.querySelectorAll('.pub-otro');
+  cajas.forEach(c => { let r = c.querySelector('.pub-otro-res'); if (!r) { r = document.createElement('div'); r.className = 'pub-otro-res'; c.appendChild(r); }
+    r.innerHTML = html; r.style.cssText = `margin-top:8px;font-weight:600;color:${malo ? 'var(--red,#c0392b)' : 'var(--green,#00875a)'}`; });
+  const u = cajas[cajas.length - 1]; if (u) u.querySelector('.pub-otro-res').scrollIntoView({block:'nearest', behavior:'smooth'});
+  toast(html.replace(/<[^>]+>/g, ''));
+}
+
+// ── Publicar en línea (PUBLICADOR_URL, publicador/worker.js): el usuario publica él mismo desde cualquier equipo ──
+// Sesión que publica en línea: link público, publicador configurado y perfil editor / editor por panel
+function accLinea(){ if (ES_LOCAL || !PUBLICADOR_URL) return null; const s = accSesion(); return s && (s.rol === 'editor' || s.rol === 'panel') ? s : null; }
+let accClaveMem = '';   // la contraseña solo vive en esta pestaña (nunca se guarda)
+// Mezcla de 3 vías: base = como estaba al cargar la página, mio = como lo dejó este usuario, srv = lo publicado ahora
+// (puede traer cambios de otro usuario). En objetos se mezcla clave por clave: gana lo que cambió este usuario y se
+// conserva lo que cambiaron otros (p. ej. labores de suertes distintas). En listas, si las cambió este usuario, gana la suya.
+function accMezclar(base, mio, srv){
+  const J = v => JSON.stringify(v === undefined ? null : v);
+  if (J(mio) === J(base)) return srv;
+  if (J(srv) === J(base) || J(srv) === J(mio)) return mio;
+  const obj = v => v && typeof v === 'object' && !Array.isArray(v);
+  if (!obj(base) || !obj(mio) || !obj(srv)) return mio;
+  const r = {};
+  new Set([...Object.keys(srv), ...Object.keys(mio)]).forEach(k => { const v = accMezclar(base[k], mio[k], srv[k]); if (v !== undefined) r[k] = v; });
+  return r;
+}
+async function accPublicarLinea(s, clave, mensaje, intento = 0){
+  const ks = accPendientes(s); if (!ks.length) throw new Error('No tienes cambios por publicar');
+  const jr = r => r.json().catch(() => ({ ok:false, error:'Respuesta no válida del publicador' }));
+  const r0 = await fetch(PUBLICADOR_URL + '/datos', { cache:'no-store' }).then(jr);
+  if (!r0.ok) throw new Error(r0.error || 'No se pudo leer lo publicado');
+  const srv = new Function(r0.contenido + '\n;return SEED;')();
+  const modulos = {}; ks.forEach(k => { const v = accMezclar(SEED[k], DB[k], srv[k]); modulos[k] = v === undefined ? null : v; });
+  const r = await fetch(PUBLICADOR_URL + '/publicar', { method:'POST', headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ u:s.u, clave, mensaje, sha:r0.sha, modulos }) });
+  const j = await jr(r);
+  if (r.status === 409 && j.conflicto && intento < 3) return accPublicarLinea(s, clave, mensaje, intento + 1);
+  if (!j.ok) { const e = new Error(j.error || 'No se pudo publicar'); e.codigo = r.status; throw e; }
+  ks.forEach(k => { if (modulos[k] === null) { delete DB[k]; delete SEED[k]; } else { DB[k] = modulos[k]; SEED[k] = clone(modulos[k]); } });   // queda igual a lo publicado (sin «●» mientras Pages se actualiza)
+  save();
+  return j;
+}
+const accNomModulo = k => (ACC_PANELES.find(p => p.m.includes(k)) || { t:k }).t;
+function renderPublicarLinea(s){
+  const ks = accPendientes(s), volver = '<button class="mbtn" onclick="closeModal()">Cerrar</button>';
+  setHeader('🚀', 'Publicar para todos', 'Tus cambios quedan en la página que ven todos');
+  if (!ks.length) { modalBody.innerHTML = '<div class="note" style="margin-top:0">✓ No tienes cambios pendientes: la página publicada ya muestra lo que tienes.</div>'; modalFooter.innerHTML = volver; return; }
+  modalBody.innerHTML = `<div class="note" style="margin-top:0">Vas a publicar tus cambios en:<br>• ${[...new Set(ks.map(accNomModulo))].join('<br>• ')}
+      <br><small>Si otra persona publicó entretanto, sus cambios se conservan: solo se reemplaza lo que tú editaste.</small></div>
+    <div class="mrow" style="margin-top:12px"><div><label class="mlabel">Descripción del cambio</label>
+      <input class="minput" id="pub-msg" value="Cambios de ${esc((s.nombre || s.u).split(' ')[0])}"></div></div>
+    <div class="mrow"><div><label class="mlabel">Tu contraseña (para confirmar que eres tú)</label>
+      <input class="minput" id="pub-clave" type="password" autocomplete="current-password"></div></div>
+    <div id="pub-res"></div>
+    <div style="margin-top:10px"><small>¿Sin internet o no funciona? <a href="#" onclick="accEnviar(accSesion());return false">📤 Enviar el archivo al administrador</a></small></div>`;
+  modalFooter.innerHTML = `${volver}<button class="mbtn mbtn-primary" id="pub-btn" onclick="confirmarPublicarLinea()">🚀 Publicar ahora</button>`;
+  const c = q('pub-clave'); c.value = accClaveMem;
+  c.addEventListener('keydown', e => { if (e.key === 'Enter') confirmarPublicarLinea(); });
+  setTimeout(() => { if (!c.value) c.focus(); }, 50);
+}
+function confirmarPublicarLinea(){
+  const s = accLinea(), btn = q('pub-btn'), res = q('pub-res'), clave = q('pub-clave').value;
+  if (!s || btn.disabled) return;
+  if (!clave) { res.innerHTML = '<div class="err">Escribe tu contraseña.</div>'; q('pub-clave').focus(); return; }
+  btn.disabled = true; btn.textContent = 'Publicando…';
+  res.innerHTML = '<div class="note">Subiendo tus cambios… (unos segundos)</div>';
+  accPublicarLinea(s, clave, q('pub-msg').value.trim() || 'Actualizar datos').then(j => {
+    accClaveMem = clave;
+    res.innerHTML = `<div class="note" style="border-color:rgba(0,135,90,.3);background:rgba(0,135,90,.06)">✓ Publicado (versión ${esc(String(j.version))}). En 1–2 minutos todos lo ven; las pestañas abiertas se actualizan solas.</div>`;
+    btn.textContent = '✓ Publicado'; toast('✓ Publicado para todos');
+    if (typeof renderEstadoEdicion === 'function') renderEstadoEdicion();
+  }).catch(e => {
+    if (e.codigo === 401) accClaveMem = '';
+    res.innerHTML = e instanceof TypeError
+      ? '<div class="err">No pude conectarme al publicador (¿sin internet?). Tus cambios siguen guardados en este navegador; vuelve a intentar, o usa 📤 Enviar el archivo al administrador.</div>'
+      : `<div class="err" style="white-space:pre-wrap">No se pudo publicar: ${esc(e.message)}</div>`;
+    btn.disabled = false; btn.textContent = '🚀 Reintentar';
+    if (e.codigo === 401) q('pub-clave').select();
+  });
 }
 
 // Al cargar: si hace falta, se tapa todo con la pantalla de entrada; si hay sesión, botones de salir y enviar cambios
@@ -110,11 +194,13 @@ async function accEnviar(x){
   if (s && !ES_LOCAL && (s.rol === 'panel' || s.rol === 'editor')) {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'fbtn-inicio acc-enviar'; b.id = 'acc-enviar'; b.hidden = true;
-    b.textContent = '📤 Enviar cambios'; b.title = 'Manda tus cambios al administrador para que los publique';
-    b.onclick = () => accEnviar(s);
+    const linea = !!accLinea(), txt = linea ? '🚀 Publicar' : '📤 Enviar cambios';
+    b.textContent = txt; b.title = linea ? 'Publica tus cambios para que todos los vean' : 'Manda tus cambios al administrador para que los publique';
+    b.onclick = () => linea ? openModal('publicar') : accEnviar(s);
     if (ref) ref.insertAdjacentElement('afterend', b);
     const base = renderEstadoEdicion;
-    renderEstadoEdicion = function(){ base(); const n = accPendientes(s).length; b.hidden = !n; b.textContent = `📤 Enviar cambios${n ? ' ●' : ''}`; };
+    renderEstadoEdicion = function(){ base(); const n = accPendientes(s).length; b.hidden = !n; b.textContent = `${txt}${n ? ' ●' : ''}`;
+      const p = q('btn-publicar'); if (linea && p) p.hidden = true; };   // en línea publica este botón (solo sus paneles)
     renderEstadoEdicion();
   }
 })();
