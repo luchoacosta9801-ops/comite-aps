@@ -1565,3 +1565,18 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .li-crit td.n,.li-crit th.n{text-align:right}
 .li-crit .li-tag-no{visibility:hidden}
 .pub-otro{margin-top:0 !important;margin-bottom:12px}
+/* Control labores (24 nov 2026): labores arriba y filtros de estado debajo, centrados y más grandes;
+   la tabla ya no se estira a todo el ancho (columnas juntas, centrada) */
+#lab-tabla .lab-barra{flex-direction:column;align-items:center;gap:10px;padding:14px 12px 12px}
+#lab-tabla .lab-seg{padding:4px}
+#lab-tabla .lab-seg button{font-size:13px;padding:6px 14px}
+#lab-tabla .lab-estados{display:flex;justify-content:center;width:100%}
+#lab-tabla .lab-estados .lab-pills{justify-content:center;gap:8px}
+#lab-tabla .lab-estados .lab-pills button{font-size:13px;font-weight:700;padding:7px 16px;border-width:1.5px;min-width:110px;box-shadow:0 1px 2px rgba(15,23,42,.06);transition:background .15s,border-color .15s}
+#lab-tabla .lab-estados .lab-pills button:hover{border-color:#94a3b8}
+#lab-tabla .lab-estados .lab-pills button b{margin-left:5px}
+#lab-tabla .lab-cuenta{margin-left:0;text-align:center}
+#lab-tabla .lab-tab{width:auto;margin:0 auto}
+#lab-tabla .lab-tab td,#lab-tabla .lab-tab th{padding-left:10px;padding-right:10px}
+@media (max-width:760px){#lab-tabla .lab-estados .lab-pills button{min-width:0;padding:6px 12px;font-size:12px}#lab-tabla .lab-seg button{padding:5px 9px;font-size:12px}}
+
