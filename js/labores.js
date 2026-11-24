@@ -101,7 +101,8 @@ function labSuertes(){
 // completar, y se reabre con 🔓 (reg.cierre.abierta = '1' evita que se vuelva a cerrar sola).
 const labTodoHecho = o => LAB_LABORES.every(Lb => { const e = labEstado(o, Lb).e; return e === 'hecha' || e === 'noaplica'; });
 const labCompleta = o => labTodoHecho(o) && labEstado(o, LAB_LABORES.find(L => L.k === 'fert')).e === 'hecha'
-  && LAB_LABORES.every(Lb => { const x = o.reg[Lb.k] || {}; return labEstado(o, Lb).e !== 'hecha' || x.at !== 'parcial' || labHaReal(o, x) >= (+o.x.area || 0) - 0.005; });
+  && LAB_LABORES.every(Lb => { const x = o.reg[Lb.k] || {}; return labEstado(o, Lb).e !== 'hecha' || x.at !== 'parcial' || labHaReal(o, x) >= (+o.x.area || 0) - 0.005; })
+  && !o.x.par;   // el Excel la marca «parcial (ha)»: no se cierra sola, alguien confirma con 🔒 Cerrar que quedó toda el área
 function labCierre(o){
   const c = o.reg.cierre || {};
   if (c.c) return {auto:false, f:c.c, t:`Cerrada a mano el ${labF(c.c)}`};
@@ -220,7 +221,7 @@ function renderLabores(){
   const semPg = labPgSemana(), enSem = new Set((labProg()[semPg] || []).map(r => r.key + '|' + r.lab));
   const fichaBtn = o => { const yaEn = LAB_LABORES.some(Lb => enSem.has(o.key + '|' + Lb.k) && (!LbSel || Lb === LbSel));
     const cz = !ed ? '' : o.cierre ? `<button type="button" class="lab-cz" data-lab-cierre="${esc(o.key)}|abrir" title="${esc(o.cierre.t)} · tocar para reabrir (vuelve a sumar en proceso)">🔓 Reabrir</button>`
-      : labTodoHecho(o) ? `<button type="button" class="lab-cz" data-lab-cierre="${esc(o.key)}|cerrar" title="Las labores están realizadas pero alguna es parcial: ciérrala si ya no se va a completar (deja de sumar en el área en proceso)">🔒 Cerrar</button>` : '';
+      : labTodoHecho(o) ? `<button type="button" class="lab-cz" data-lab-cierre="${esc(o.key)}|cerrar" title="${o.x.par ? `Las labores están realizadas, pero el Excel marca esta suerte como parcial (${msN(o.x.par, 2)} ha): revisa que esté toda el área y ciérrala` : 'Las labores están realizadas pero alguna es parcial: ciérrala si ya no se va a completar'} (deja de sumar en el área en proceso)">🔒 Cerrar</button>` : '';
     return `<td class="lab-acc-fila">${cz}<button type="button" class="plegar-todo lab-fbtn" data-lab-ficha="${esc(o.key)}" title="Ficha de labores: roturación y fertilización (con quién, implemento, producto)">📝</button>${ed ? `<button type="button" class="lab-env${yaEn ? ' ya' : ''}" data-lab-env="${esc(o.key)}" title="${yaEn ? `Ya está en la programación de la semana del ${labF(semPg)} (tócalo para enviar otra labor)` : `Enviar a la programación de la semana del ${labF(semPg)}`}">${yaEn ? '✓ Enviada' : '📤 Enviar'}</button>` : ''}</td>`; };
   const datos = o => `<td class="b lab-cod"><a href="#" data-lab-ficha="${esc(o.key)}" title="Abrir la ficha de labores">${esc(o.x.s)}</a>${o.fuente === 'maestro' ? ' <small class="lab-fu" title="Cosechada según el maestro; aún no está en el Excel de labores pendientes">maestro</small>' : o.fuente === 'manual' ? ' <small class="lab-fu lab-fu-man" title="Agregada a mano o desde otro Excel; aún no está en el Excel de labores pendientes">agregada</small>' : ''}${o.cierre ? ` <small class="lab-fu lab-fu-cer" title="${esc(o.cierre.t)} · no suma en el área en proceso">🔒 cerrada</small>` : ''}</td>
     <td>${esc(msHacN(o.x.hac)) || '<span class="meta">—</span>'}</td><td>${esc(o.x.zona ?? '')}</td><td>${esc(o.x.zonaAgro || '')}</td><td class="n">${msN(o.x.area, 2)}${o.x.par ? `<small class="lab-t" title="Parcial (ha) según el Excel">parcial ${msN(o.x.par, 2)}</small>` : ''}</td>
@@ -522,7 +523,7 @@ function labFicha(key){
         <textarea ${dis} data-lft="nota|obs" rows="2" placeholder="Notas de la suerte">${esc(nota.obs || '')}</textarea></div>
       ${(() => { const ci = o.cierre, comp = labTodoHecho(o);
         return `<div class="lf-sec" style="--c:#475569"><div class="lf-h">🔒 Cierre de la suerte <span class="lab-chip" style="${ci ? 'color:#334155;background:#e2e8f0' : 'color:#b45309;background:#fef3c7'}">${ci ? 'Cerrada' : 'En proceso'}</span></div>
-          <div class="meta lf-ayuda">${ci ? `${esc(ci.t)}. Ya no suma en el área en proceso.` : comp ? 'Las labores están realizadas, pero alguna es parcial. Si ya no se va a completar, ciérrala.' : 'Se cierra sola cuando la 1ra y 2da roturación y la fertilización estén realizadas en el 100 % del área.'}</div>
+          <div class="meta lf-ayuda">${ci ? `${esc(ci.t)}. Ya no suma en el área en proceso.` : comp ? (o.x.par && LAB_LABORES.every(Lb => (o.reg[Lb.k] || {}).at !== 'parcial') ? `Las labores están realizadas, pero el Excel marca esta suerte como <b>parcial (${msN(o.x.par, 2)} ha)</b>. Revisa que la fertilización cubra toda el área y ciérrala.` : 'Las labores están realizadas, pero alguna es parcial. Si ya no se va a completar, ciérrala.') : 'Se cierra sola cuando la 1ra y 2da roturación y la fertilización estén realizadas en el 100 % del área.'}</div>
           ${ed ? `<button type="button" class="plegar-todo" data-lf-cierre="${ci ? 'abrir' : 'cerrar'}">${ci ? '🔓 Reabrir (vuelve a sumar en proceso)' : '🔒 Cerrar suerte ya'}</button>` : ''}</div>`; })()}
       <div class="meta lf-ayuda">Lo que respondas aquí manda sobre el Excel. ${ed ? 'Se guarda solo; recuerda 🚀 Publicar.' : ''}</div>
       ${ed && o.fuente === 'manual' ? `<div class="lf-quitar"><button type="button" class="plegar-todo" data-lf-quitar="${esc(o.x.s)}|${esc(o.x.ultCorte)}">🗑 Quitar esta suerte agregada</button></div>` : ''}
