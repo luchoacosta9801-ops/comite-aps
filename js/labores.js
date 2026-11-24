@@ -298,6 +298,7 @@ Cerradas (no suman en proceso): ${T.filter(o => o.cierre).length} suertes · ${m
         <select id="lab-hac">${opt('', 'Hacienda', labE.hac)}${hacs.map(h => opt(h, msHacN(h), labE.hac)).join('')}</select>
         <select id="lab-orden" title="Orden">${opt('excel', 'Orden del Excel', labE.orden)}${opt('corte', 'Más antiguas', labE.orden)}${opt('nuevas', 'Más recientes', labE.orden)}${opt('hac', 'Por hacienda', labE.orden)}${opt('area', 'Por área', labE.orden)}</select>
         <button type="button" class="lab-ind-btn" data-lab-ind title="Gráficos de lo que muestra la tabla (con estos filtros)">📊 Indicadores</button>
+        <button type="button" class="lab-ind-btn lab-rp-btn" data-lab-rp title="Todo lo realizado y lo pendiente por labor, con fechas y si fue oportuna o tardía (con Excel)">📋 Realizado y pendiente</button>
         <button type="button" class="lab-pg-btn" data-lab-pg title="Suertes enviadas a la programación de la semana: labor, contratista, área y día">📅 Programación semanal <b>${(labProg()[semPg] || []).length}</b></button></div>
       ${ed ? `<details class="lab-prog"><summary>⚡ En bloque <span class="meta">· programar o marcar las suertes de la tabla</span></summary>
         <div>Fecha <input type="date" id="lab-pf" value="${esc(labE.progFecha || hoy)}"> <span class="meta">Programar:</span>
@@ -624,6 +625,7 @@ q('labores').addEventListener('click', e => {
   const ir = t.closest('[data-ir]'); if (ir) { irA(ir.dataset.ir); return; }
   const fi = t.closest('[data-lab-ficha]'); if (fi) { e.preventDefault(); labFicha(fi.dataset.labFicha); return; }
   if (t.closest('[data-lab-ind]')) { labIndicadores(); return; }
+  if (t.closest('[data-lab-rp]')) { labRealizado(); return; }
   if (t.closest('[data-lab-pg]')) { labProgramacion(); return; }
   const env = t.closest('[data-lab-env]'); if (env) { labEnviar(env.dataset.labEnv, labE.labor || null); return; }
   const cz = t.closest('[data-lab-cierre]');
@@ -1146,6 +1148,91 @@ function labIndEventos(e){
   e.addEventListener('pointerleave', () => { const T = tip(); if (T) T.hidden = true; });
   e.addEventListener('click', ev => { if (ev.target.matches('[data-li-cerrar]') || ev.target.closest('.ms-x')) labIndCerrar(); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && e.innerHTML) labIndCerrar(); });
+}
+
+// ── 📋 Realizado y pendiente: cada labor de cada suerte (también las cerradas) con su fecha, los días de lucro al
+// ejecutarla y si fue oportuna o tardía (fin de la ventana de ⚙️ Parámetros). Pendientes: a tiempo o vencidas según los
+// días de lucro de hoy. Filtros propios (labE.rp) y descarga a Excel de lo filtrado.
+const LAB_RP_OP = {ok:{hecha:'Oportuna', pend:'A tiempo'}, tarde:{hecha:'Tardía', pend:'Vencida'}, sf:{hecha:'Sin fecha', pend:'—'}};
+const labRpDef = () => ({lab:'', est:'', op:'', hac:'', z:'', desde:'', hasta:''});
+function labRpFilas(){
+  const P = labPar(), out = [];
+  labSuertes().forEach(o => LAB_LABORES.forEach(L => { const e = labEstado(o, L).e, r = o.reg[L.k] || {}, fin = P[L.k][1];
+    const comun = {o, L, fin, suelo:labSueloN(r.suelo), contr:labContrTxt(r), como:L.k === 'fert' ? [r.prod, r.dosis ? 'dosis ' + r.dosis : ''].filter(Boolean).join(' · ') : (r.impl || '')};
+    if (e === 'hecha') { const op = labOport(o, L); out.push(Object.assign(comun, {est:'hecha', f:r.r || '', d:op ? op.d : null, op:op ? (op.tarde ? 'tarde' : 'ok') : 'sf', ha:labHaReal(o, r), parcial:r.at === 'parcial'})); }
+    else if (labPorHacer(e)) out.push(Object.assign(comun, {est:'pend', f:r.p || '', d:o.dd, op:o.dd > fin ? 'tarde' : 'ok', ha:labHa(o, L)})); }));
+  return out;
+}
+function labRpFiltradas(F){
+  const f = labE.rp;
+  return F.filter(x => (!f.lab || x.L.k === f.lab) && (!f.est || x.est === f.est) && (!f.op || x.op === f.op) && (!f.hac || x.o.x.hac === f.hac) && (!f.z || String(x.o.x.zona) === f.z)
+    && (!f.desde || (x.est === 'hecha' && x.f >= f.desde)) && (!f.hasta || (x.est === 'hecha' && x.f && x.f <= f.hasta)))
+    .sort((a, b) => a.est !== b.est ? (a.est === 'hecha' ? -1 : 1) : a.est === 'hecha' ? (b.f || '').localeCompare(a.f || '') || a.o.x.s.localeCompare(b.o.x.s) : b.d - a.d);
+}
+const labRpEl = () => { let e = document.getElementById('lab-rp'); if (!e) { e = document.createElement('div'); e.id = 'lab-rp'; document.body.appendChild(e); labRpEventos(e); } return e; };
+function labRealizado(){
+  labE.rp = labE.rp || labRpDef();
+  const el = labRpEl(), F = labRpFilas(), f = labE.rp, A = labRpFiltradas(F);
+  const base = F.filter(x => (!f.hac || x.o.x.hac === f.hac) && (!f.z || String(x.o.x.zona) === f.z));
+  const s = a => sum(a, x => x.ha);
+  const tiles = LAB_LABORES.map(L => { const R = base.filter(x => x.L === L), H = R.filter(x => x.est === 'hecha'), Pn = R.filter(x => x.est === 'pend');
+    const b = (est, op, txt, arr, cls) => `<button type="button" class="rp-b rp-${cls}${f.lab === L.k && f.est === est && f.op === op ? ' on' : ''}" data-rp-set="${L.k}|${est}|${op}" title="Ver en la tabla"><b>${arr.length}</b> ${txt}<small>${msN(s(arr), 1)} ha</small></button>`;
+    return `<div class="rp-tile" style="--c:${L.col}"><div class="rp-tt">${L.ico} ${L.n}</div>
+      <div class="rp-g"><span class="rp-gl">Realizadas</span>${b('hecha', 'ok', 'oportunas', H.filter(x => x.op === 'ok'), 'ok')}${b('hecha', 'tarde', 'tardías', H.filter(x => x.op === 'tarde'), 'ta')}</div>
+      <div class="rp-g"><span class="rp-gl">Pendientes</span>${b('pend', 'ok', 'a tiempo', Pn.filter(x => x.op === 'ok'), 'at')}${b('pend', 'tarde', 'vencidas', Pn.filter(x => x.op === 'tarde'), 've')}</div></div>`; }).join('');
+  const opt = (v, t, sel) => `<option value="${esc(v)}" ${sel === v ? 'selected' : ''}>${esc(t)}</option>`;
+  const hacs = [...new Set(F.map(x => x.o.x.hac).filter(Boolean))].sort();
+  const fila = x => `<tr><td class="b">${esc(x.o.x.s)}${x.o.cierre ? ' <span title="Suerte cerrada">🔒</span>' : ''}</td><td>${esc(msHacN(x.o.x.hac))}</td><td>${esc(x.o.x.zona ?? '')}</td>
+    <td><span class="rp-lab" style="--c:${x.L.col}">${x.L.ico} ${esc(x.L.c)}</span></td><td>${x.est === 'hecha' ? '<span class="rp-e ok">Realizada</span>' : '<span class="rp-e pe">Pendiente</span>'}</td>
+    <td>${labF(x.o.x.ultCorte)}</td><td>${x.est === 'hecha' ? labF(x.f) : x.f ? `<span class="meta">prog.</span> ${labF(x.f)}` : '—'}</td><td class="n">${x.d ?? '—'}</td>
+    <td><span class="rp-op ${x.op}" title="Ventana hasta el día ${x.fin}">${LAB_RP_OP[x.op][x.est]}</span></td><td>${esc(x.suelo)}</td><td>${esc(x.contr)}</td><td>${esc(x.como)}</td><td class="n">${msN(x.ha, 2)}${x.parcial ? ' <small class="meta">parcial</small>' : ''}</td></tr>`;
+  const hayF = Object.keys(f).some(k => f[k]);
+  el.innerHTML = `<div class="ms-fondo li-fondo" data-rp-cerrar><div class="ms-ficha li-modal rp-modal" role="dialog" aria-label="Realizado y pendiente">
+    <div class="ms-fh"><div><b>📋 Realizado y pendiente · Control labores campo</b><small>Cada labor de cada suerte (también las cerradas): fecha, días de lucro al ejecutarla y si fue oportuna o tardía según la ventana de ⚙️ Parámetros</small></div><button type="button" class="ms-x" data-rp-cerrar title="Cerrar (Esc)">✕</button></div>
+    <div class="ms-cuerpo">
+      <div class="rp-tiles">${tiles}</div>
+      <div class="rp-fil">
+        <select data-rp-f="lab">${opt('', 'Todas las labores', f.lab)}${LAB_LABORES.map(L => opt(L.k, L.n, f.lab)).join('')}</select>
+        <select data-rp-f="est">${opt('', 'Realizadas y pendientes', f.est)}${opt('hecha', 'Solo realizadas', f.est)}${opt('pend', 'Solo pendientes', f.est)}</select>
+        <select data-rp-f="op">${opt('', 'Oportunas y tardías', f.op)}${opt('ok', 'Oportunas / a tiempo', f.op)}${opt('tarde', 'Tardías / vencidas', f.op)}${opt('sf', 'Realizadas sin fecha', f.op)}</select>
+        <select data-rp-f="hac">${opt('', 'Todas las haciendas', f.hac)}${hacs.map(h => opt(h, msHacN(h), f.hac)).join('')}</select>
+        <select data-rp-f="z">${opt('', 'Zona', f.z)}${opt('1', 'Zona 1', f.z)}${opt('2', 'Zona 2', f.z)}</select>
+        <label class="rp-fe" title="Solo realizadas en ese rango de fechas">Realizadas del <input type="date" data-rp-f="desde" value="${esc(f.desde)}"> al <input type="date" data-rp-f="hasta" value="${esc(f.hasta)}"></label>
+        ${hayF ? '<button type="button" class="plegar-todo" data-rp-limpiar>✕ Limpiar</button>' : ''}
+        <button type="button" class="lab-ind-btn" data-rp-excel title="Descargar en Excel lo que muestra la tabla">⬇️ Excel</button></div>
+      <div class="rp-res"><b>${A.length}</b> labores · <b>${msN(s(A), 1)} ha</b>${A.length ? ` · ${A.filter(x => x.est === 'hecha').length} realizadas, ${A.filter(x => x.est === 'pend').length} pendientes` : ''}</div>
+      <div class="rp-tw"><table class="sim-t rp-t"><thead><tr><th>Suerte</th><th>Hacienda</th><th>Z</th><th>Labor</th><th>Estado</th><th>Corte</th><th title="Fecha en que se hizo (o la programada si está pendiente)">Fecha</th><th class="n" title="Días de lucro al ejecutarla (realizadas) o a hoy (pendientes)">Días</th><th>Oportunidad</th><th>Suelo</th><th>Contratista</th><th>Implemento / producto</th><th class="n">Ha</th></tr></thead>
+        <tbody>${A.map(fila).join('') || '<tr><td colspan="13" class="nores">Nada con esos filtros.</td></tr>'}</tbody></table></div>
+    </div></div></div>`;
+}
+function labRpCerrar(){ const e = document.getElementById('lab-rp'); if (e) e.innerHTML = ''; }
+function labRpExcel(){
+  cargarXLSX().then(X => {
+    const A = labRpFiltradas(labRpFilas()), f = labE.rp || labRpDef();
+    const filas = [['Suerte', 'Hacienda', 'Zona', 'Labor', 'Estado', 'Fecha de corte', 'Fecha realizada', 'Fecha programada', 'Días de lucro (al ejecutar o a hoy)', 'Ventana hasta (días)', 'Oportunidad', 'Condición del suelo', 'Contratista(s)', 'Implemento / producto', 'Hectáreas', 'Total / parcial', 'Suerte cerrada'],
+      ...A.map(x => [x.o.x.s, msHacN(x.o.x.hac), x.o.x.zona ?? '', x.L.n, x.est === 'hecha' ? 'Realizada' : 'Pendiente', x.o.x.ultCorte || '', x.est === 'hecha' ? x.f : '', x.est === 'pend' ? x.f : '',
+        x.d ?? '', x.fin, LAB_RP_OP[x.op][x.est], x.suelo, x.contr, x.como, +(+x.ha).toFixed(2), x.est === 'hecha' ? (x.parcial ? 'Parcial' : 'Total') : '', x.o.cierre ? 'Sí' : ''])];
+    const ws = X.utils.aoa_to_sheet(filas); ws['!cols'] = [10, 14, 6, 16, 11, 12, 12, 12, 12, 10, 11, 12, 26, 20, 10, 10, 9].map(w => ({wch:w}));
+    if (filas.length > 1) ws['!autofilter'] = {ref:X.utils.encode_range({s:{r:0, c:0}, e:{r:filas.length - 1, c:filas[0].length - 1}})};
+    const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, 'Realizado y pendiente');
+    const desc = [['Filtro', 'Valor'], ['Labor', (LAB_LABORES.find(L => L.k === f.lab) || {n:'Todas'}).n], ['Estado', {hecha:'Solo realizadas', pend:'Solo pendientes'}[f.est] || 'Realizadas y pendientes'],
+      ['Oportunidad', {ok:'Oportunas / a tiempo', tarde:'Tardías / vencidas', sf:'Realizadas sin fecha'}[f.op] || 'Todas'], ['Hacienda', f.hac ? msHacN(f.hac) : 'Todas'], ['Zona', f.z || 'Todas'],
+      ['Realizadas desde', f.desde || ''], ['Realizadas hasta', f.hasta || ''], ['Labores', A.length], ['Hectáreas', +sum(A, x => +x.ha || 0).toFixed(2)],
+      ['Criterio', 'Oportuna: realizada hasta el fin de la ventana de la labor (días después del corte, ⚙️ Parámetros); tardía: después. Pendiente vencida: hoy ya pasó el fin de la ventana.'], ['Descargado', new Date().toLocaleString('es-CO')]];
+    const w2 = X.utils.aoa_to_sheet(desc); w2['!cols'] = [{wch:18}, {wch:90}]; X.utils.book_append_sheet(wb, w2, 'Filtros');
+    X.writeFile(wb, `labores-realizado-pendiente-${labHoy()}.xlsx`);
+    toast(`⬇️ Excel con ${A.length} labores`);
+  }).catch(e => toast('⚠ No se pudo armar el Excel: ' + (e.message || e)));
+}
+function labRpEventos(e){
+  e.addEventListener('click', ev => { const t = ev.target;
+    if (t.matches('[data-rp-cerrar]') || t.closest('.ms-x')) { labRpCerrar(); return; }
+    const b = t.closest('[data-rp-set]');
+    if (b) { const [lab, est, op] = b.dataset.rpSet.split('|'), f = labE.rp; if (f.lab === lab && f.est === est && f.op === op) Object.assign(f, {lab:'', est:'', op:''}); else Object.assign(f, {lab, est, op}); labRealizado(); return; }
+    if (t.closest('[data-rp-limpiar]')) { labE.rp = labRpDef(); labRealizado(); return; }
+    if (t.closest('[data-rp-excel]')) { labRpExcel(); return; } });
+  e.addEventListener('change', ev => { const k = ev.target.dataset.rpF; if (!k) return; labE.rp[k] = ev.target.value; labRealizado(); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && e.innerHTML) labRpCerrar(); });
 }
 
 // Resumen para el Inge Virtual y la tarjeta del portal
