@@ -656,7 +656,7 @@ const IV = (() => {
     // 0. Promedio de días de lucro por labor (sin las suertes con corte de 2025 en el maestro): labProm
     if (tiene(t, 'promedio', 'media', 'en promedio') && tiene(t, 'lucro', 'dias') && typeof labProm === 'function') {
       const R = LBs.map(L => { const P = A.filter(o => labPorHacer(est(o, L))), H = T.filter(o => est(o, L) === 'hecha');
-        const mP = labProm(P.map(o => ({d:o.dd, c:o.x.ultCorte}))), mR = labProm(H.map(o => { const op = labOport(o, L); return {d:op ? op.d : null, c:o.x.ultCorte}; }));
+        const mP = labProm(P.map(o => ({d:o.dd, c:labCorteRef(o)}))), mR = labProm(H.map(o => { const op = labOport(o, L); return {d:op ? op.d : null, c:labCorteRef(o)}; }));
         const v = m => m.p == null ? '—' : `<b>${Math.round(m.p)} días</b> (${m.n} suertes${m.fuera ? `, sin ${m.fuera} con corte 2025` : ''})`;
         return `${nomL(L)}: pendientes ${v(mP)} · al ejecutar ${v(mR)}`; });
       return `${tit('Promedio de días de lucro por labor')}${lista(R)}<small>No cuenta las suertes con fecha de corte anterior a 2026 (en el maestro quedaron con corte de 2025 y sus días salen muy altos). Las listas del control quedan ordenadas de mayor a menor días de lucro.</small> ${IRL}`;

@@ -162,12 +162,19 @@ const labSueloN = v => (LAB_SUELO.find(([k]) => k === v) || [, ''])[1];
 // Promedio de días de lucro sin las suertes con fecha de corte anterior a LAB_PROM_DESDE (en el maestro quedaron con
 // corte de 2025 y sus días salen muy altos: dañarían el promedio). items: [{d, c}] (días y fecha de corte)
 const LAB_PROM_DESDE = '2026-01-01';
+// Fecha de corte de referencia para el promedio: la más antigua entre la del control y la del maestro (si el maestro
+// trae corte de 2025, la suerte agregada a mano no cuenta aunque tenga otra fecha, p. ej. 3102-090). Solo en las
+// agregadas a mano: en las del Excel el maestro puede traer el corte anterior y la fecha buena es la del control
+function labCorteRef(o){
+  let m = null; try { if (o.fuente === 'manual' && typeof msFilas === 'function') { const F = msFilas(); if (labCorteRef.F !== F) { labCorteRef.F = F; labCorteRef.m = new Map(F.filter(x => x.emp === 'RIOP').map(x => [x.s, x.ultCorte])); } m = labCorteRef.m.get(o.x.s); } } catch (e) {}
+  return [o.x.ultCorte, m].filter(Boolean).sort()[0] || '';
+}
 function labProm(items){
   const ok = items.filter(i => i.d != null && i.c && i.c >= LAB_PROM_DESDE);
   return {p:ok.length ? sum(ok, i => i.d) / ok.length : null, n:ok.length, fuera:items.filter(i => i.d != null && !(i.c && i.c >= LAB_PROM_DESDE)).length};
 }
 const labPromTxt = (m, que) => m.p == null ? '' : `${msN(m.p, 0)} d`;
-const labPromT = (m, que) => m.p == null ? `Sin suertes ${que} para promediar` : `Promedio de días de lucro ${que}: ${msN(m.p, 1)} días (${m.n} suertes)${m.fuera ? ` · no cuenta ${m.fuera} con corte de 2025 en el maestro` : ''}`;
+const labPromT = (m, que) => m.p == null ? `Sin suertes ${que} para promediar` : `Promedio de días de lucro ${que}: ${msN(m.p, 1)} días (${m.n} suertes)${m.fuera ? ` · no cuenta ${m.fuera} con corte de 2025 (en el control o en el maestro)` : ''}`;
 const labUrgente = e => e === 'pendiente' || e === 'vencida' || e === 'atrasada';
 // Por hacer: todo lo que no está hecho ni «no aplica» (incluye próximas y programadas); así cuadra con el reporte
 // «Sin dato» (el Excel no dice s ni n) va aparte: no se cuenta como pendiente hasta que se confirme en la ficha
@@ -212,7 +219,7 @@ function renderLabores(){
     const n0 = cuenta('noaplica').length, hech = cuenta('hecha').length, sin = cuenta('sindato').length, tot = (T.length - n0) || 1, pct = n => (n / tot * 100).toFixed(1);
     const haR = sum(cuenta('hecha'), o => labHaReal(o, o.reg[Lb.k]));   // hectáreas realizadas (total o parcial anotada)
     // Promedio de días de lucro: pendientes (a hoy) y realizadas (al ejecutar), sin las de corte 2025
-    const mP = labProm(urg.map(o => ({d:o.dd, c:o.x.ultCorte}))), mR = labProm(cuenta('hecha').map(o => { const op = labOport(o, Lb); return {d:op ? op.d : null, c:o.x.ultCorte}; }));
+    const mP = labProm(urg.map(o => ({d:o.dd, c:labCorteRef(o)}))), mR = labProm(cuenta('hecha').map(o => { const op = labOport(o, Lb); return {d:op ? op.d : null, c:labCorteRef(o)}; }));
     return `<button type="button" class="lab-mini ${labE.labor === Lb.k ? 'on' : ''}" style="--c:${Lb.col}" data-lab-labor="${Lb.k}" data-lab-ir
       title="${esc(`${Lb.n} (${P[Lb.k][0]}–${P[Lb.k][1]} días después del corte): ${urg.length} pendientes (${ven.length} vencidas) · ${cuenta('programada').length} programadas · ${hech} realizadas · ${sin} sin dato en el Excel${n0 ? ` · ${n0} no aplica (${Lb.k === 'rotur' ? 'plantillas que no se roturan' : 'plantillas o roturación única'})` : ''}. Toca para ver todas las suertes.`)}">
       <span class="lab-mini-t">${Lb.ico} <span class="lab-lg">${Lb.n}</span><span class="lab-ct">${Lb.c}</span></span>
@@ -250,7 +257,7 @@ function renderLabores(){
   const datos = o => `<td class="b lab-cod"><a href="#" data-lab-ficha="${esc(o.key)}" title="Abrir la ficha de labores">${esc(o.x.s)}</a>${o.fuente === 'maestro' ? ' <small class="lab-fu" title="Cosechada según el maestro; aún no está en el Excel de labores pendientes">maestro</small>' : o.fuente === 'manual' ? ' <small class="lab-fu lab-fu-man" title="Agregada a mano o desde otro Excel; aún no está en el Excel de labores pendientes">agregada</small>' : ''}${o.cierre ? ` <small class="lab-fu lab-fu-cer" title="${esc(o.cierre.t)} · no suma en el área en proceso">🔒 cerrada</small>` : ''}</td>
     <td>${esc(msHacN(o.x.hac)) || '<span class="meta">—</span>'}</td><td>${esc(o.x.zona ?? '')}</td><td>${esc(o.x.zonaAgro || '')}</td><td class="n">${msN(o.x.area, 2)}${o.x.par ? `<small class="lab-t" title="Parcial (ha) según el Excel">parcial ${msN(o.x.par, 2)}</small>` : ''}</td>
     <td>${esc(o.x.variedad || '—')}</td><td class="n">${o.x.nCorte != null ? msN(o.x.nCorte) : esc(o.x.tipo || '')}</td><td>${labF(o.x.ultCorte)}${o.x.desdeSiembra ? '<small class="lab-t">siembra</small>' : ''}</td><td class="n">${o.dd}</td>`;
-  const mL = labProm(ord.map(o => ({d:o.dd, c:o.x.ultCorte})));
+  const mL = labProm(ord.map(o => ({d:o.dd, c:labCorteRef(o)})));
   const cabDatos = `<th>Suerte</th><th>Hacienda</th><th title="Zona">Z</th><th title="Zona agroecológica">Z. agro</th><th class="n">Área</th><th>Variedad</th><th class="n">Corte</th><th>Cosechada</th><th class="n lab-th2" title="${esc('Días de lucro: desde el corte (o la siembra) hasta hoy. ' + labPromT(mL, 'de la lista'))}">Días de<br>lucro${mL.p != null ? `<small class="lab-th-prom">prom. ${msN(mL.p, 0)}</small>` : ''}</th>`;
   // Una labor elegida: una fila por suerte con su estado y, en modo editor, las fechas para programar o marcar hecha
   const filaLabor = (o, Lb) => { const s = labEstado(o, Lb), r = o.reg[Lb.k] || {}, k = esc(o.key), cerrada = s.e === 'noaplica' || (s.e === 'hecha' && !r.r);
@@ -1203,7 +1210,7 @@ function labRealizado(){
   const s = a => sum(a, x => x.ha);
   const tiles = LAB_LABORES.map(L => { const R = base.filter(x => x.L === L), H = R.filter(x => x.est === 'hecha'), Pn = R.filter(x => x.est === 'pend');
     const b = (est, op, txt, arr, cls) => `<button type="button" class="rp-b rp-${cls}${f.lab === L.k && f.est === est && f.op === op ? ' on' : ''}" data-rp-set="${L.k}|${est}|${op}" title="Ver en la tabla"><b>${arr.length}</b> ${txt}<small>${msN(s(arr), 1)} ha</small></button>`;
-    const mR = labProm(H.map(x => ({d:x.d, c:x.o.x.ultCorte}))), mP = labProm(Pn.map(x => ({d:x.d, c:x.o.x.ultCorte})));
+    const mR = labProm(H.map(x => ({d:x.d, c:labCorteRef(x.o)}))), mP = labProm(Pn.map(x => ({d:x.d, c:labCorteRef(x.o)})));
     return `<div class="rp-tile" style="--c:${L.col}"><div class="rp-tt">${L.ico} ${L.n}</div>
       <div class="rp-prom" title="${esc(labPromT(mR, 'al ejecutar (realizadas)') + '\n' + labPromT(mP, 'de las pendientes (a hoy)'))}">⏱ Prom. días de lucro: <b>${labPromTxt(mR) || '—'}</b> al ejecutar · <b>${labPromTxt(mP) || '—'}</b> pendientes</div>
       <div class="rp-g"><span class="rp-gl">Realizadas</span>${b('hecha', 'ok', 'oportunas', H.filter(x => x.op === 'ok'), 'ok')}${b('hecha', 'tarde', 'tardías', H.filter(x => x.op === 'tarde'), 'ta')}</div>
