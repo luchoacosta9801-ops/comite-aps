@@ -40,7 +40,7 @@ let MODO_EDICION = EDITOR_TOTAL;
 const API_BASE = ES_LOCAL && location.protocol.startsWith('http') ? '' : 'http://localhost:8080/';
 // Publicador en línea (publicador/worker.js en Cloudflare): deja publicar desde CUALQUIER equipo a los usuarios con perfil
 // editor / editor por panel (verifica su contraseña y sube solo los módulos de sus paneles). Vacío = solo publica este PC.
-const PUBLICADOR_URL = '';
+const PUBLICADOR_URL = 'https://comite-aps-publicador.luchoacosta9801.workers.dev';
 let DB;
 
 // ?editor=<clave> activa el editor en este navegador; ?editor=salir lo desactiva
