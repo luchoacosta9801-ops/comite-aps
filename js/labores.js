@@ -911,7 +911,18 @@ function labEnviar(key, labK){
 }
 const LAB_PG_SEC = [{k:'rot', n:'Roturación', ico:'🚜', labs:['rotur', 'rotur2'], col:'#2a78d6'}, {k:'fert', n:'Fertilización', ico:'🌱', labs:['fert'], col:'#1baf7a'}];
 const labPgOrdenContr = c => c === 'Sin asignar' ? 99 : LAB_CONTR.includes(c) ? LAB_CONTR.indexOf(c) : 50;
-const labPgFiltrar = F => F.filter(r => (!labE.pgSec || LAB_PG_SEC.find(S => S.k === labE.pgSec).labs.includes(r.lab)) && (!labE.pgContr || (r.contr || 'Sin asignar') === labE.pgContr));
+// Filtros de la lista (también para Excel e impresión): sección, contratista, hacienda, zona, día, estado y texto
+// (suerte, hacienda, contratista, implemento, producto u observación). sinSec = sin el de sección (para contar las pestañas)
+const labPgHacZona = r => { const o = labPgPorKey().get(r.key); return {hac:(o ? o.x.hac : r.hac) || '', z:o ? o.x.zona : r.z}; };
+let labPgMapa = null;
+const labPgPorKey = () => labPgMapa || (labPgMapa = new Map(labSuertes().map(o => [o.key, o])));   // se rehace en cada dibujo (labPgMapa = null)
+const labPgFiltrar = (F, sinSec) => { const t = norm(labE.pgTxt || '');
+  return F.filter(r => { const hz = labPgHacZona(r);
+    return (sinSec || !labE.pgSec || LAB_PG_SEC.find(S => S.k === labE.pgSec).labs.includes(r.lab)) && (!labE.pgContr || (r.contr || 'Sin asignar') === labE.pgContr)
+      && (!labE.pgHac || hz.hac === labE.pgHac) && (!labE.pgZona || String(hz.z) === labE.pgZona)
+      && (!labE.pgDia || (labE.pgDia === 'sin' ? !r.dia : r.dia === labE.pgDia)) && (!labE.pgOk || (labE.pgOk === 'ok' ? !!r.ok : !r.ok))
+      && (!t || norm(`${r.s} ${hz.hac} ${r.contr || ''} ${r.impl || ''} ${r.prod || ''} ${r.obs || ''}`).includes(t)); }); };
+const labPgHayFiltro = () => !!(labE.pgContr || labE.pgHac || labE.pgZona || labE.pgDia || labE.pgOk || labE.pgTxt);
 // Grupos: sección (roturación / fertilización) → contratista (lista fija primero, otros, «Sin asignar» al final) → filas por día
 function labPgGrupos(F){
   return LAB_PG_SEC.map(S => { const R = F.filter(r => S.labs.includes(r.lab)), m = {};
@@ -921,6 +932,7 @@ function labPgGrupos(F){
 }
 function labProgramacion(){
   const el = (() => { let e = document.getElementById('lab-pg'); if (!e) { e = document.createElement('div'); e.id = 'lab-pg'; document.body.appendChild(e); labPgEventos(e); } return e; })();
+  labPgMapa = null;
   const ed = MODO_EDICION, dis = ed ? '' : 'disabled', w = labPgSemana(), dom = labMas(w, 6), F = labProg()[w] || [];
   const T = labSuertes(), porKey = new Map(T.map(o => [o.key, o]));
   // Filas enviadas antes: si les falta contratista, implemento o producto y la ficha ya los tiene (tentativos), se traen
@@ -957,9 +969,18 @@ function labProgramacion(){
   const filas = G.map(g => `<tr class="pg-g1" style="--c:${g.S.col}"><td colspan="9">${g.S.ico} <b>${g.S.n}</b> <span>${resumen(g.R)}</span></td></tr>`
     + g.contrs.map(c => `<tr class="pg-g2" style="--c:${g.S.col}"><td colspan="9">👷 <b>${esc(c.c)}</b> <span>${resumen(c.filas)}</span></td></tr>${c.filas.map(r => fila(r, n++)).join('')}`).join('')).join('');
   const contrsSemana = [...new Set(F.map(r => r.contr || 'Sin asignar'))].sort((a, b) => labPgOrdenContr(a) - labPgOrdenContr(b) || a.localeCompare(b));
-  const cuentaSec = k => F.filter(r => !k || LAB_PG_SEC.find(S => S.k === k).labs.includes(r.lab)).length;
+  const Fs = labPgFiltrar(F, true), cuentaSec = k => Fs.filter(r => !k || LAB_PG_SEC.find(S => S.k === k).labs.includes(r.lab)).length;
+  const hacsSemana = [...new Set(F.map(r => labPgHacZona(r).hac).filter(Boolean))].sort();
+  const zonasSemana = [...new Set(F.map(r => labPgHacZona(r).z).filter(z => z != null).map(String))].sort();
   const filtros = F.length ? `<div class="pg-filtros"><span class="lab-pills">${[['', 'Todo'], ...LAB_PG_SEC.map(S => [S.k, `${S.ico} ${S.n}`])].map(([v, t]) => `<button type="button" class="${(labE.pgSec || '') === v ? 'on' : ''}" data-pg-sec="${v}">${t} <b>${cuentaSec(v)}</b></button>`).join('')}</span>
-      <select data-pg-fc title="Ver un contratista">${opt('', 'Todos los contratistas', labE.pgContr || '')}${contrsSemana.map(c => opt(c, c, labE.pgContr || '')).join('')}</select></div>` : '';
+      <select data-pg-f="pgContr" title="Contratista">${opt('', 'Todos los contratistas', labE.pgContr || '')}${contrsSemana.map(c => opt(c, c, labE.pgContr || '')).join('')}</select>
+      <select data-pg-f="pgHac" title="Hacienda">${opt('', 'Todas las haciendas', labE.pgHac || '')}${hacsSemana.map(h => opt(h, msHacN(h), labE.pgHac || '')).join('')}</select>
+      <select data-pg-f="pgZona" title="Zona">${opt('', 'Todas las zonas', labE.pgZona || '')}${zonasSemana.map(z => opt(z, 'Zona ' + z, labE.pgZona || '')).join('')}</select>
+      <select data-pg-f="pgDia" title="Día">${opt('', 'Todos los días', labE.pgDia || '')}${DIAS.map((d, j) => { const f = labMas(w, j); return opt(f, `${d} ${+f.slice(8)}`, labE.pgDia || ''); }).join('')}${opt('sin', 'Sin día', labE.pgDia || '')}</select>
+      <select data-pg-f="pgOk" title="Estado">${opt('', 'Pendientes y realizadas', labE.pgOk || '')}${opt('pend', 'Solo pendientes', labE.pgOk || '')}${opt('ok', 'Solo realizadas', labE.pgOk || '')}</select>
+      <input type="search" id="pg-txt" class="pg-buscar" placeholder="Buscar suerte, hacienda, contratista…" value="${esc(labE.pgTxt || '')}">
+      ${labPgHayFiltro() ? '<button type="button" class="plegar-todo" data-pg-limpiar>✕ Quitar filtros</button>' : ''}
+      ${Fv.length !== F.length ? `<span class="meta">Mostrando ${Fv.length} de ${F.length} · ${msN(suma(Fv), 1)} ha</span>` : ''}</div>` : '';
   const haTot = sum(F, r => +r.ha || 0), haOk = sum(F.filter(r => r.ok), r => +r.ha || 0);
   el.innerHTML = `<div class="ms-fondo" data-pg-cerrar><div class="ms-ficha pg-modal" role="dialog" aria-label="Programación semanal">
     <div class="ms-fh"><div><b>📅 Programación semanal</b><small>Semana del ${labF(w)} al ${labF(dom)} · ${F.length} suertes · ${msN(haTot, 1)} ha${haOk ? ` · ${msN(haOk, 1)} ha realizadas (${msN(haOk / (haTot || 1) * 100, 0)}%)` : ''}</small></div><button type="button" class="ms-x" data-pg-cerrar title="Cerrar (Esc)">✕</button></div>
@@ -1006,8 +1027,9 @@ function labPgEjecutar(r, si){
 function labPgEventos(e){
   e.addEventListener('click', ev => { const t = ev.target;
     if (t.matches('[data-pg-cerrar]') || t.closest('.ms-x')) { labPgCerrar(); return; }
-    const s = t.closest('[data-pg-sem]'); if (s) { const v = s.dataset.pgSem; labE.sem = v === 'hoy' ? labLunes(labHoy()) : labMas(labPgSemana(), +v); labE.pgOtro = {}; labE.sucio = true; labProgramacion(); return; }
+    const s = t.closest('[data-pg-sem]'); if (s) { const v = s.dataset.pgSem; labE.sem = v === 'hoy' ? labLunes(labHoy()) : labMas(labPgSemana(), +v); labE.pgOtro = {}; labE.pgDia = ''; labE.sucio = true; labProgramacion(); return; }
     const sc = t.closest('[data-pg-sec]'); if (sc) { labE.pgSec = sc.dataset.pgSec; labProgramacion(); return; }
+    if (t.closest('[data-pg-limpiar]')) { ['pgContr', 'pgHac', 'pgZona', 'pgDia', 'pgOk', 'pgTxt'].forEach(k => { labE[k] = ''; }); labProgramacion(); return; }
     if (t.closest('[data-pg-xl]')) { labPgExcel(); return; }
     if (t.closest('[data-pg-imp]')) { labPgImprimir(); return; }
     if (!MODO_EDICION) return;
@@ -1030,21 +1052,27 @@ function labPgEventos(e){
       const v = ((DB.labores.reg || {})[r.key] || {})[r.lab] || {}; if (r.dia && v.p === r.dia) labSet(r.key, r.lab, 'p', '');
       DB.labores.prog[w] = L.filter(y => y !== r); if (!DB.labores.prog[w].length) delete DB.labores.prog[w]; if (!Object.keys(DB.labores.prog).length) delete DB.labores.prog;
       save(); renderEstadoEdicion(); labE.sucio = true; labProgramacion(); } });
-  e.addEventListener('change', ev => { if (ev.target.matches('[data-pg-fc]')) { labE.pgContr = ev.target.value; labProgramacion(); return; }
+  e.addEventListener('change', ev => { const pf = ev.target.dataset.pgF; if (pf) { labE[pf] = ev.target.value; labProgramacion(); return; }
     const d = ev.target.dataset.pg; if (!d) return; const [id, campo] = d.split('|'), v = ev.target.value.trim();
     if (campo === 'contr' && v === '__otro') { labE.pgOtro = labE.pgOtro || {}; labE.pgOtro[id] = true; labPgPoner(id, 'contr', '', true); return; }
     if (campo === 'contr') { (labE.pgOtro || {})[id] = false; }
     labPgPoner(id, campo, v, campo === 'contr' || campo === 'dia'); });
+  // Buscador: se redibuja al dejar de escribir y se devuelve el cursor al campo
+  let espera = 0;
+  e.addEventListener('input', ev => { if (ev.target.id !== 'pg-txt') return; labE.pgTxt = ev.target.value; clearTimeout(espera);
+    espera = setTimeout(() => { const pos = ev.target.selectionStart; labProgramacion(); const i = document.getElementById('pg-txt'); if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch (x) {} } }, 300); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && e.innerHTML) labPgCerrar(); });
 }
 // Filas de la semana con lo que muestra la lista (mismos filtros), agrupadas como en pantalla: sección → contratista → día
 function labPgFilas(){
+  labPgMapa = null;
   const w = labPgSemana(), porKey = new Map(labSuertes().map(o => [o.key, o]));
   const info = r => { const o = porKey.get(r.key), Lb = LAB_LABORES.find(L => L.k === r.lab) || {};
     return {r, o, Lb, hac:msHacN(o ? o.x.hac : r.hac) || '', zona:o ? o.x.zona : r.z, dia:r.dia ? `${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][new Date(r.dia + 'T00:00:00').getDay()]} ${labF(r.dia)}` : ''}; };
   return labPgGrupos(labPgFiltrar(labProg()[w] || [])).map(g => ({S:g.S, R:g.R, contrs:g.contrs.map(c => ({c:c.c, filas:c.filas.map(info)}))}));
 }
-const labPgFiltroTxt = () => [labE.pgSec ? LAB_PG_SEC.find(S => S.k === labE.pgSec).n : '', labE.pgContr || ''].filter(Boolean).join(' · ');
+const labPgFiltroTxt = () => [labE.pgSec ? LAB_PG_SEC.find(S => S.k === labE.pgSec).n : '', labE.pgContr || '', labE.pgHac ? msHacN(labE.pgHac) : '', labE.pgZona ? 'Zona ' + labE.pgZona : '',
+  labE.pgDia ? (labE.pgDia === 'sin' ? 'Sin día' : labF(labE.pgDia)) : '', labE.pgOk ? (labE.pgOk === 'ok' ? 'Realizadas' : 'Pendientes') : '', labE.pgTxt ? `«${labE.pgTxt}»` : ''].filter(Boolean).join(' · ');
 function labPgExcel(){
   cargarXLSX().then(XLSX => { const w = labPgSemana(), G = labPgFilas(), ha = R => +sum(R, x => +(x.r || x).ha || 0).toFixed(2);
     const filas = [['Programación semanal · Control labores campo'], [`Semana del ${labF(w)} al ${labF(labMas(w, 6))}${labPgFiltroTxt() ? ' · ' + labPgFiltroTxt() : ''}`], []];

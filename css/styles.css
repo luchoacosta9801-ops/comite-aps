@@ -1678,3 +1678,5 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 /* Suertes con corte 2025 (días de lucro inflados): azul pastel y al final de la lista (24 nov 2026) */
 .lab-tab tbody tr.lab-vieja td,.rp-t tbody tr.lab-vieja td{background:#dbeafe}
 .lab-tab tbody tr.lab-vieja:hover td,.rp-t tbody tr.lab-vieja:hover td{background:#bfdbfe}
+.pg-filtros .pg-buscar{font:inherit;font-size:12px;padding:4px 10px;border:1px solid var(--bdr);border-radius:8px;min-width:200px;flex:1}
+@media (max-width:760px){.pg-filtros .pg-buscar{width:100%;min-width:0}}
