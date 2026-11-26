@@ -133,7 +133,10 @@ const labComo = r => [r.impl, r.contr || labRep(r).length ? `con ${labContrTxt(r
 // Tipo de roturación: 'si' = única (subesca o triple), 'no' = 1ra y 2da, 'nr' = no se rotura (plantilla).
 // Lo escrito en la ficha manda; si no hay nada y la suerte va en el corte 1 (plantilla), por defecto no se rotura.
 const labPlantilla = o => +o.x.nCorte === 1;
-const labUnica = o => (o.reg.rotur || {}).unica || (labPlantilla(o) ? 'nr' : '');
+// Plantilla (corte 1): por defecto «no se rotura», salvo que la 1ra ya esté realizada (en la ficha o según el Excel):
+// entonces sí se rotura y la 2da queda pendiente
+const labUnica = o => { const r1 = o.reg.rotur || {}; if (r1.unica) return r1.unica;
+  return labPlantilla(o) && !(r1.r || r1.tiene === 'si' || (r1.tiene !== 'no' && labBD(o, LAB_LABORES.find(x => x.k === 'rotur')) === 'hecha')) ? 'nr' : ''; };
 function labEstado(o, L){
   const P = labPar(), [d0, d1] = P[L.k], r = o.reg[L.k] || {}, hoy = labHoy(), b = labBD(o, L);
   const v = o.bd && L.bd && !o.bd.sn ? o.bd[L.bd] : undefined, como = labComo(r), un = labUnica(o);
@@ -503,6 +506,9 @@ function labSet(key, k, campo, valor){
   if (valor) x[campo] = valor; else delete x[campo];
   if (campo === 'tiene' && valor === 'no') delete x.r;            // si no la tiene, no puede estar hecha
   if (campo === 'tiene' && valor === 'si' && x.p && !x.r) { x.r = x.p; delete x.p; }   // la programada pasa a hecha
+  // 1ra roturación realizada con Convencional (o sin implemento): la 2da queda pendiente con Triple si no tiene implemento
+  if (k === 'rotur' && (campo === 'r' || campo === 'tiene' || campo === 'impl') && (x.r || x.tiene === 'si') && x.unica !== 'si' && (!x.impl || x.impl === 'Convencional')) {
+    const x2 = r.rotur2 = r.rotur2 || {}; if (!x2.impl && !x2.r) x2.impl = 'Triple'; }
   if (!Object.keys(x).length) delete r[k]; if (!Object.keys(r).length) delete D.reg[key];
   labLimpiar(D);
 }
