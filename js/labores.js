@@ -70,7 +70,8 @@ const labMenos = (iso, n) => { const d = new Date(iso + 'T00:00:00'); d.setDate(
 const labLunes = iso => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return labISO(d); };
 
 // Suertes del control: las del reporte (cada corte) + las cosechadas según el maestro que el reporte no trae
-function labSuertes(){
+// conQuitadas: también las «quitadas del control» (reg[key].quitar.f): no se les van a hacer labores y no cuentan en nada
+function labSuertes(conQuitadas){
   if (typeof msFilas !== 'function') return [];
   const P = labPar(), hoy = labHoy(), R = labDatos().reg || {}, B = labReporte();
   const ms = msFilas().filter(x => x.emp === 'RIOP'), porCod = {};
@@ -94,7 +95,8 @@ function labSuertes(){
       out.push({x:{s:x.s, hac:x.hac, zona:x.zona, area:x.area, variedad:x.variedad, nCorte:x.nCorte, ultCorte:x.ultCorte, zonaAgro:x.zonaAgro}, bd:null, fuente:'maestro', i:1e6}); });
   return out.map(o => Object.assign(o, {dd:labDias(o.x.ultCorte, hoy), key:`${o.x.s}|${o.x.ultCorte}`}))
     .map(o => Object.assign(o, {reg:R[o.key] || {}}))
-    .map(o => Object.assign(o, {cierre:labCierre(o)}));
+    .map(o => Object.assign(o, {cierre:labCierre(o), quitada:(o.reg.quitar && o.reg.quitar.f) ? o.reg.quitar : null}))
+    .filter(o => conQuitadas || !o.quitada);
 }
 // ── Cierre de la suerte: ya no suma en el área «en proceso» ──
 // Se cierra sola cuando todas las labores están realizadas (o no aplican) en el 100 % del área, con la fertilización
@@ -203,6 +205,7 @@ const labImplsEf = (o, L) => { const I = labImpls(o, L); return I.length ? I : [
 const labImplCumple = (o, L, im) => im === '__sin' ? !labImpls(o, L).length : labImplsEf(o, L).includes(im);
 function labFiltradas(T){
   const t = norm(labE.txt), Lb = LAB_LABORES.find(L => L.k === labE.labor), est = labE.estado, cer = est === 'cerrada';
+  if (est === 'quitada') return T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!t || norm(`${o.x.s} ${o.x.hac}`).includes(t)));
   // Filtro de implemento (labE.impl): solo cuenta en roturación; con una labor elegida mira esa, con todas basta una
   // roturación que cumpla a la vez el estado y el implemento (ej. «Pendientes» + «Subesca» = lo que falta por subesca)
   const im = labE.impl && (!Lb || LAB_ROT.includes(Lb.k)) ? labE.impl : '';
@@ -220,7 +223,9 @@ function renderLabores(){
   const cont = q('labores'); if (!cont) return;
   const B = labReporte(), ed = MODO_EDICION;
   if (typeof maestroSuertes !== 'function' || (!maestroSuertes() && !B)) { cont.innerHTML = `<div class="nores">Carga el reporte de labores pendientes de levante o el 📚 Maestro de suertes.${ed ? labCargaHTML() : ''}</div>`; return; }
-  const P = labPar(), T = labSuertes(), L = labFiltradas(T), hoy = labHoy(), M = maestroSuertes();
+  // «🚫 Quitadas»: la tabla muestra las quitadas del control (no entran en T: ni conteos ni indicadores)
+  const TQ = labSuertes(true).filter(o => o.quitada), verQ = labE.estado === 'quitada';
+  const P = labPar(), T = labSuertes(), L = labFiltradas(verQ ? TQ : T), hoy = labHoy(), M = maestroSuertes();
   const ha = A => sum(A, o => o.x.area || 0), haL = (A, Lb) => sum(A, o => labHa(o, Lb));
   const hacs = [...new Set(T.map(o => o.x.hac).filter(Boolean))].sort();
   const opt = (v, t, s) => `<option value="${esc(v)}" ${s === v ? 'selected' : ''}>${esc(t)}</option>`;
@@ -270,7 +275,9 @@ function renderLabores(){
     const cz = !ed ? '' : o.cierre ? `<button type="button" class="lab-cz" data-lab-cierre="${esc(o.key)}|abrir" title="${esc(o.cierre.t)} · tocar para reabrir (vuelve a sumar en proceso)">🔓 Reabrir</button>`
       : labTodoHecho(o) ? `<button type="button" class="lab-cz" data-lab-cierre="${esc(o.key)}|cerrar" title="${o.x.par ? `Las labores están realizadas, pero el Excel marca esta suerte como parcial (${msN(o.x.par, 2)} ha): revisa que esté toda el área y ciérrala` : 'Las labores están realizadas pero alguna es parcial: ciérrala si ya no se va a completar'} (deja de sumar en el área en proceso)">🔒 Cerrar</button>`
       : `<button type="button" class="lab-cz lab-cz-pe" data-lab-cierre="${esc(o.key)}|cerrar" title="Cerrar aunque tenga labores pendientes (por ejemplo, si ya no se van a hacer): deja de sumar en el área en proceso">🔒 Cerrar</button>`;
-    return `<td class="lab-acc-fila">${cz}<button type="button" class="plegar-todo lab-fbtn" data-lab-ficha="${esc(o.key)}" title="Ficha de labores: roturación y fertilización (con quién, implemento, producto)">📝</button>${ed ? `<button type="button" class="lab-env${yaEn ? ' ya' : ''}" data-lab-env="${esc(o.key)}" title="${yaEn ? `Ya está en la programación de la semana del ${labF(semPg)} (tócalo para enviar otra labor)` : `Enviar a la programación de la semana del ${labF(semPg)}`}">${yaEn ? '✓ Enviada' : '📤 Enviar'}</button>` : ''}</td>`; };
+    if (o.quitada) return `<td class="lab-acc-fila"><small class="lab-t" title="Quitada del control el ${labF(o.quitada.f)}">🚫 ${esc(o.quitada.m || 'Quitada')} · ${labF(o.quitada.f)}</small>${ed ? `<button type="button" class="lab-cz" data-lab-devolver="${esc(o.key)}" title="Vuelve al control de labores (con lo que tenía anotado)">↩ Devolver</button>` : ''}</td>`;
+    const qt = ed ? `<button type="button" class="lab-qt" data-lab-quitar="${esc(o.key)}" title="Quitar del control: no se le van a hacer labores (no cuenta en pendientes, cerradas ni indicadores; se puede devolver)">🚫</button>` : '';
+    return `<td class="lab-acc-fila">${cz}${qt}<button type="button" class="plegar-todo lab-fbtn" data-lab-ficha="${esc(o.key)}" title="Ficha de labores: roturación y fertilización (con quién, implemento, producto)">📝</button>${ed ? `<button type="button" class="lab-env${yaEn ? ' ya' : ''}" data-lab-env="${esc(o.key)}" title="${yaEn ? `Ya está en la programación de la semana del ${labF(semPg)} (tócalo para enviar otra labor)` : `Enviar a la programación de la semana del ${labF(semPg)}`}">${yaEn ? '✓ Enviada' : '📤 Enviar'}</button>` : ''}</td>`; };
   const datos = o => `<td class="b lab-cod"><a href="#" data-lab-ficha="${esc(o.key)}" title="Abrir la ficha de labores">${esc(o.x.s)}</a>${o.fuente === 'maestro' ? ' <small class="lab-fu" title="Cosechada según el maestro; aún no está en el Excel de labores pendientes">maestro</small>' : o.fuente === 'manual' ? ' <small class="lab-fu lab-fu-man" title="Agregada a mano o desde otro Excel; aún no está en el Excel de labores pendientes">agregada</small>' : ''}${o.cierre ? ` <small class="lab-fu lab-fu-cer" title="${esc(o.cierre.t)} · no suma en el área en proceso">🔒 cerrada</small>` : ''}</td>
     <td>${esc(msHacN(o.x.hac)) || '<span class="meta">—</span>'}</td><td>${esc(o.x.zona ?? '')}</td><td>${esc(o.x.zonaAgro || '')}</td><td class="n">${msN(o.x.area, 2)}${o.x.par ? `<small class="lab-t" title="Parcial (ha) según el Excel">parcial ${msN(o.x.par, 2)}</small>` : ''}</td>
     <td>${esc(o.x.variedad || '—')}</td><td class="n">${o.x.nCorte != null ? msN(o.x.nCorte) : esc(o.x.tipo || '')}</td><td>${labF(o.x.ultCorte)}${o.x.desdeSiembra ? '<small class="lab-t">siembra</small>' : ''}</td><td class="n">${o.dd}</td>`;
@@ -292,8 +299,8 @@ function renderLabores(){
   const selector = `<div class="lab-seg"><button type="button" class="${!LbSel ? 'on' : ''}" data-lab-labor="">Todas</button>${LAB_LABORES.map(Lb => `<button type="button" class="${LbSel === Lb ? 'on' : ''}" style="--c:${Lb.col}" data-lab-labor="${Lb.k}" title="${pendDe(Lb)} pendientes">${Lb.ico} ${Lb.n}</button>`).join('')}</div>`;
   // Botones de estado con su cuenta (con los demás filtros): todas / realizadas / pendientes / vencidas / sin dato
   const baseT = T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!labE.fuente || o.fuente === labE.fuente)), base = baseT.filter(o => !o.cierre);
-  const nEst = v => v === 'cerrada' ? baseT.length - base.length : !v ? base.length : base.filter(o => LbSel ? labCumple(labEstado(o, LbSel).e, v, o) : (() => { const E = LAB_LABORES.map(Lb => labEstado(o, Lb).e); return v === 'hecha' ? E.every(e => labCumple(e, v, o)) : E.some(e => labCumple(e, v, o)); })()).length;
-  const estBtns = `<div class="lab-pills">${[['', 'Todas'], ['hecha', 'Realizadas'], ['pend', 'Pendientes'], ['tarde', `Tardías +${LAB_TARDE} d`], ['sindato', 'Sin dato'], ['cerrada', '🔒 Cerradas']].filter(([v]) => (v !== 'sindato' && v !== 'cerrada') || nEst(v) || labE.estado === v).map(([v, t]) =>
+  const nEst = v => v === 'quitada' ? TQ.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac)).length : v === 'cerrada' ? baseT.length - base.length : !v ? base.length : base.filter(o => LbSel ? labCumple(labEstado(o, LbSel).e, v, o) : (() => { const E = LAB_LABORES.map(Lb => labEstado(o, Lb).e); return v === 'hecha' ? E.every(e => labCumple(e, v, o)) : E.some(e => labCumple(e, v, o)); })()).length;
+  const estBtns = `<div class="lab-pills">${[['', 'Todas'], ['hecha', 'Realizadas'], ['pend', 'Pendientes'], ['tarde', `Tardías +${LAB_TARDE} d`], ['sindato', 'Sin dato'], ['cerrada', '🔒 Cerradas'], ['quitada', '🚫 Quitadas']].filter(([v]) => (v !== 'sindato' && v !== 'cerrada' && v !== 'quitada') || nEst(v) || labE.estado === v).map(([v, t]) =>
     `<button type="button" class="${labE.estado === v ? 'on' : ''} est-${v || 'todas'}" data-lab-est="${v}">${t} <b>${nEst(v)}</b></button>`).join('')}</div>`;
   // Indicador rápido (a la derecha de los filtros): con una labor elegida, dona de avance + hectáreas pendientes y
   // realizadas; con «Todas» queda el espacio en blanco (mismo tamaño, para que nada se mueva al cambiar de labor). Usa zona, hacienda y origen (incluye las cerradas en lo realizado)
@@ -480,6 +487,16 @@ function labDesdeServidor(auto){
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && vistaActual === 'lab' && MODO_EDICION) labDesdeServidor(true); });
 
 // Cambios (solo en modo editor): fechas por suerte y labor, programación en bloque y parámetros
+// 🚫 Quitar una suerte del control (desde la tabla o la ficha)
+function labQuitarCtrl(key){
+  if (!MODO_EDICION) return; const s = key.split('|')[0];
+  const m = prompt(`¿Quitar la suerte ${s} del control de labores?\n\nNo cuenta en pendientes, cerradas ni indicadores, y sale de la programación pendiente. Se puede devolver desde «🚫 Quitadas».\n\nMotivo (opcional):`, 'No se le van a hacer labores');
+  if (m === null) return;
+  if (labE.ficha === key) { labFichaEl().innerHTML = ''; labE.ficha = null; labE.sucio = false; }
+  modCambio(() => { labSet(key, 'quitar', 'f', labHoy()); labSet(key, 'quitar', 'm', m.trim() || 'No se le van a hacer labores');
+    const P = (DB.labores || {}).prog || {}; Object.keys(P).forEach(w => { P[w] = P[w].filter(r => r.key !== key || r.ok); if (!P[w].length) delete P[w]; }); });
+  toast(`🚫 ${s} quitada del control · recuerda 🚀 Publicar`);
+}
 function labSet(key, k, campo, valor){
   const D = DB.labores = DB.labores || {params:{}, reg:{}}; D.reg = D.reg || {};
   const r = D.reg[key] = D.reg[key] || {}, x = r[k] = r[k] || {};
@@ -598,7 +615,7 @@ function labFicha(key){
       ${(() => { const ci = o.cierre, comp = labTodoHecho(o);
         return `<div class="lf-sec" style="--c:#475569"><div class="lf-h">🔒 Cierre de la suerte <span class="lab-chip" style="${ci ? 'color:#334155;background:#e2e8f0' : 'color:#b45309;background:#fef3c7'}">${ci ? 'Cerrada' : 'En proceso'}</span></div>
           <div class="meta lf-ayuda">${ci ? `${esc(ci.t)}. Ya no suma en el área en proceso.` : comp ? (o.x.par && LAB_LABORES.every(Lb => (o.reg[Lb.k] || {}).at !== 'parcial') ? `Las labores están realizadas, pero el Excel marca esta suerte como <b>parcial (${msN(o.x.par, 2)} ha)</b>. Revisa que la fertilización cubra toda el área y ciérrala.` : 'Las labores están realizadas, pero alguna es parcial. Si ya no se va a completar, ciérrala.') : 'Se cierra sola cuando la 1ra y 2da roturación y la fertilización estén realizadas en el 100 % del área.'}</div>
-          ${ed ? `<button type="button" class="plegar-todo" data-lf-cierre="${ci ? 'abrir' : 'cerrar'}">${ci ? '🔓 Reabrir (vuelve a sumar en proceso)' : '🔒 Cerrar suerte ya'}</button>` : ''}</div>`; })()}
+          ${ed ? `<button type="button" class="plegar-todo" data-lf-cierre="${ci ? 'abrir' : 'cerrar'}">${ci ? '🔓 Reabrir (vuelve a sumar en proceso)' : '🔒 Cerrar suerte ya'}</button> <button type="button" class="plegar-todo" data-lf-quitarctrl title="No se le van a hacer labores: sale del control sin contarla como cerrada">🚫 Quitar del control</button>` : ''}</div>`; })()}
       <div class="meta lf-ayuda">Lo que respondas aquí manda sobre el Excel. ${ed ? 'Se guarda solo; recuerda 🚀 Publicar.' : ''}</div>
       ${ed && o.fuente === 'manual' ? `<div class="lf-quitar"><button type="button" class="plegar-todo" data-lf-quitar="${esc(o.x.s)}|${esc(o.x.ultCorte)}">🗑 Quitar esta suerte agregada</button></div>` : ''}
     </div></div>${dl('contr')}${dl('impl')}${dl('prod')}</div>`;
@@ -628,6 +645,7 @@ function labRepGuardar(k, R){
 labFichaEl().addEventListener('click', e => {
   const t = e.target;
   if (t.matches('[data-lf-cerrar]') || t.closest('.ms-x')) { labFichaCerrar(); return; }
+  if (t.closest('[data-lf-quitarctrl]') && labE.ficha) { labQuitarCtrl(labE.ficha); return; }
   const qx = t.closest('[data-lf-quitar]');
   if (qx) { const [s, f] = qx.dataset.lfQuitar.split('|'); if (!confirm(`¿Quitar la suerte ${s} (corte ${labF(f)}) que se agregó? Lo anotado en su ficha también se borra.`)) return;
     labFichaEl().innerHTML = ''; labE.ficha = null; labE.sucio = false;
@@ -682,6 +700,13 @@ q('labores').addEventListener('click', e => {
   if (t.closest('[data-lab-rp]')) { labRealizado(); return; }
   if (t.closest('[data-lab-pg]')) { labProgramacion(); return; }
   const env = t.closest('[data-lab-env]'); if (env) { labEnviar(env.dataset.labEnv, labE.labor || null); return; }
+  // 🚫 Quitar del control (no se le van a hacer labores): sale de la tabla, conteos, indicadores y de la programación
+  // pendiente; queda en «🚫 Quitadas» con fecha y motivo, y ↩ Devolver la regresa con todo lo que tenía anotado
+  const qt = t.closest('[data-lab-quitar]');
+  if (qt) { labQuitarCtrl(qt.dataset.labQuitar); return; }
+  const dv = t.closest('[data-lab-devolver]');
+  if (dv && MODO_EDICION) { const key = dv.dataset.labDevolver; modCambio(() => { labSet(key, 'quitar', 'f', ''); labSet(key, 'quitar', 'm', ''); });
+    toast(`↩ ${key.split('|')[0]} volvió al control · recuerda 🚀 Publicar`); return; }
   const cz = t.closest('[data-lab-cierre]');
   if (cz) { const [s, f, que] = cz.dataset.labCierre.split('|'), o = que === 'cerrar' && labSuertes().find(y => y.key === `${s}|${f}`);
     const faltan = o ? LAB_LABORES.filter(L => labPorHacer(labEstado(o, L).e) || labEstado(o, L).e === 'sindato').map(L => L.n) : [];
