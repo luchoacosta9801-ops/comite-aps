@@ -193,11 +193,21 @@ const LAB_TARDE = 60;
 const LAB_ESTADOS = [['pend', 'Pendientes'], ['tarde', `Tardías (pendientes con más de ${LAB_TARDE} días)`], ['venc', 'Vencidas o atrasadas'], ['prog', 'Programadas'], ['sindato', 'Sin dato en el Excel'], ['hecha', 'Realizadas'], ['', 'Todas']];
 const labCumple = (e, est, o) => est === 'tarde' ? labPorHacer(e) && !!o && o.dd > LAB_TARDE : est === 'pend' ? labPorHacer(e) : est === 'sindato' ? e === 'sindato' : est === 'venc' ? (e === 'vencida' || e === 'atrasada')
   : est === 'prog' ? (e === 'programada' || e === 'atrasada') : est === 'hecha' ? (e === 'hecha' || e === 'noaplica') : true;
+// Implementos anotados en una labor de roturación: el de la ficha (tentativo o el que se usó) y los de cada parte del reparto
+const LAB_ROT = ['rotur', 'rotur2'];
+const labImpls = (o, L) => { const x = o.reg[L.k] || {}; return [...new Set([x.impl, ...labRep(x).map(p => p.i)].filter(Boolean))]; };
+const labImplCumple = (o, L, im) => { const I = labImpls(o, L); return im === '__sin' ? !I.length : I.includes(im); };
 function labFiltradas(T){
   const t = norm(labE.txt), Lb = LAB_LABORES.find(L => L.k === labE.labor), est = labE.estado, cer = est === 'cerrada';
+  // Filtro de implemento (labE.impl): solo cuenta en roturación; con una labor elegida mira esa, con todas basta una
+  // roturación que cumpla a la vez el estado y el implemento (ej. «Pendientes» + «Subesca» = lo que falta por subesca)
+  const im = labE.impl && (!Lb || LAB_ROT.includes(Lb.k)) ? labE.impl : '';
   return T.filter(o => (cer ? !!o.cierre : !o.cierre) && (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!labE.fuente || o.fuente === labE.fuente)
     && (!t || norm(`${o.x.s} ${o.x.hac} ${o.x.variedad || ''} ${o.x.zonaAgro || ''}`).includes(t))
-    && (() => { if (!est || cer) return true;
+    && (() => {
+      if (im) { const ok = L => labImplCumple(o, L, im) && (!est || cer || labCumple(labEstado(o, L).e, est, o));
+        return Lb ? ok(Lb) : LAB_LABORES.filter(L => LAB_ROT.includes(L.k)).some(ok); }
+      if (!est || cer) return true;
       if (Lb) return labCumple(labEstado(o, Lb).e, est, o);
       const E = LAB_LABORES.map(L => labEstado(o, L).e); return est === 'hecha' ? E.every(e => labCumple(e, est, o)) : E.some(e => labCumple(e, est, o)); })());
 }
@@ -321,6 +331,8 @@ Cerradas (no suman en proceso): ${T.filter(o => o.cierre).length} suertes · ${m
         <input id="lab-txt" class="pr-buscar" placeholder="🔎 Buscar suerte, hacienda o variedad…" value="${esc(labE.txt)}">
         <select id="lab-zona">${opt('', 'Zona', labE.zona)}${opt('1', 'Zona 1', labE.zona)}${opt('2', 'Zona 2', labE.zona)}</select>
         <select id="lab-hac">${opt('', 'Hacienda', labE.hac)}${hacs.map(h => opt(h, msHacN(h), labE.hac)).join('')}</select>
+        ${!LbSel || LAB_ROT.includes(LbSel.k) ? (() => { const otros = [...new Set(T.flatMap(o => LAB_LABORES.filter(L => LAB_ROT.includes(L.k)).flatMap(L => labImpls(o, L))))].filter(v => !LAB_IMPL.includes(v)).sort();
+          return `<select id="lab-impl" title="Implemento de roturación anotado en la ficha (el programado o el que se usó)" class="${labE.impl ? 'on' : ''}">${opt('', 'Implemento', labE.impl || '')}${[...LAB_IMPL, ...otros].map(v => opt(v, v, labE.impl || '')).join('')}${opt('__sin', 'Sin implemento anotado', labE.impl || '')}</select>`; })() : ''}
         <select id="lab-orden" title="Orden">${opt('corte', 'Días de lucro: mayor a menor', labE.orden)}${opt('nuevas', 'Días de lucro: menor a mayor', labE.orden)}${opt('excel', 'Orden del Excel', labE.orden)}${opt('hac', 'Por hacienda', labE.orden)}${opt('area', 'Por área', labE.orden)}</select>
         <button type="button" class="lab-ind-btn" data-lab-ind title="Gráficos de lo que muestra la tabla (con estos filtros)">📊 Indicadores</button>
         <button type="button" class="lab-ind-btn lab-rp-btn" data-lab-rp title="Todo lo realizado y lo pendiente por labor, con fechas y si fue oportuna o tardía (con Excel)">📋 Realizado y pendiente</button>
@@ -700,7 +712,7 @@ q('labores').addEventListener('change', e => {
   if (pa) { const v = Math.max(0, Math.round(+t.value || 0)); modCambio(() => { const D = DB.labores = DB.labores || {params:{}, reg:{}}; const P = D.params = Object.assign({}, labPar(), D.params || {});
     if (pa === 'dias') P.dias = Math.max(15, v); else { const [k, i] = pa.split('|'); P[k] = [...P[k]]; P[k][+i] = v; if (P[k][0] > P[k][1]) P[k] = [P[k][1], P[k][0]]; } }); return; }
   if (t.id === 'lab-pf') { labE.progFecha = t.value; return; }
-  const k = {'lab-zona':'zona', 'lab-hac':'hac', 'lab-estado':'estado', 'lab-orden':'orden', 'lab-fuente':'fuente'}[t.id]; if (k) { labE[k] = t.value; renderLabores(); }
+  const k = {'lab-zona':'zona', 'lab-hac':'hac', 'lab-impl':'impl', 'lab-estado':'estado', 'lab-orden':'orden', 'lab-fuente':'fuente'}[t.id]; if (k) { labE[k] = t.value; renderLabores(); }
 });
 let labEspera = 0;
 q('labores').addEventListener('input', e => { if (e.target.id === 'lab-txt') { labE.txt = e.target.value; clearTimeout(labEspera); labEspera = setTimeout(() => redibujarConservando('lab-txt', renderLabores), 250); } });
