@@ -196,7 +196,11 @@ const labCumple = (e, est, o) => est === 'tarde' ? labPorHacer(e) && !!o && o.dd
 // Implementos anotados en una labor de roturación: el de la ficha (tentativo o el que se usó) y los de cada parte del reparto
 const LAB_ROT = ['rotur', 'rotur2'];
 const labImpls = (o, L) => { const x = o.reg[L.k] || {}; return [...new Set([x.impl, ...labRep(x).map(p => p.i)].filter(Boolean))]; };
-const labImplCumple = (o, L, im) => { const I = labImpls(o, L); return im === '__sin' ? !I.length : I.includes(im); };
+// Sin implemento anotado, se toma el que corresponde por labor: 1ra roturación = Convencional (Subesca si es roturación
+// única), 2da roturación = Triple. Así el filtro sirve aunque la suerte no esté en la programación
+const labImplDef = (o, L) => L.k === 'rotur2' ? 'Triple' : L.k === 'rotur' ? ((o.reg.rotur || {}).unica === 'si' ? 'Subesca' : 'Convencional') : '';
+const labImplsEf = (o, L) => { const I = labImpls(o, L); return I.length ? I : [labImplDef(o, L)].filter(Boolean); };
+const labImplCumple = (o, L, im) => im === '__sin' ? !labImpls(o, L).length : labImplsEf(o, L).includes(im);
 function labFiltradas(T){
   const t = norm(labE.txt), Lb = LAB_LABORES.find(L => L.k === labE.labor), est = labE.estado, cer = est === 'cerrada';
   // Filtro de implemento (labE.impl): solo cuenta en roturación; con una labor elegida mira esa, con todas basta una
@@ -332,7 +336,7 @@ Cerradas (no suman en proceso): ${T.filter(o => o.cierre).length} suertes · ${m
         <select id="lab-zona">${opt('', 'Zona', labE.zona)}${opt('1', 'Zona 1', labE.zona)}${opt('2', 'Zona 2', labE.zona)}</select>
         <select id="lab-hac">${opt('', 'Hacienda', labE.hac)}${hacs.map(h => opt(h, msHacN(h), labE.hac)).join('')}</select>
         ${!LbSel || LAB_ROT.includes(LbSel.k) ? (() => { const otros = [...new Set(T.flatMap(o => LAB_LABORES.filter(L => LAB_ROT.includes(L.k)).flatMap(L => labImpls(o, L))))].filter(v => !LAB_IMPL.includes(v)).sort();
-          return `<select id="lab-impl" title="Implemento de roturación anotado en la ficha (el programado o el que se usó)" class="${labE.impl ? 'on' : ''}">${opt('', 'Implemento', labE.impl || '')}${[...LAB_IMPL, ...otros].map(v => opt(v, v, labE.impl || '')).join('')}${opt('__sin', 'Sin implemento anotado', labE.impl || '')}</select>`; })() : ''}
+          return `<select id="lab-impl" title="Implemento de roturación: el anotado en la ficha o, si no hay, el de la labor (1ra = Convencional, 2da = Triple, única = Subesca)" class="${labE.impl ? 'on' : ''}">${opt('', 'Implemento', labE.impl || '')}${[...LAB_IMPL, ...otros].map(v => opt(v, v, labE.impl || '')).join('')}${opt('__sin', 'Sin implemento anotado', labE.impl || '')}</select>`; })() : ''}
         <select id="lab-orden" title="Orden">${opt('corte', 'Días de lucro: mayor a menor', labE.orden)}${opt('nuevas', 'Días de lucro: menor a mayor', labE.orden)}${opt('excel', 'Orden del Excel', labE.orden)}${opt('hac', 'Por hacienda', labE.orden)}${opt('area', 'Por área', labE.orden)}</select>
         <button type="button" class="lab-ind-btn" data-lab-ind title="Gráficos de lo que muestra la tabla (con estos filtros)">📊 Indicadores</button>
         <button type="button" class="lab-ind-btn lab-rp-btn" data-lab-rp title="Todo lo realizado y lo pendiente por labor, con fechas y si fue oportuna o tardía (con Excel)">📋 Realizado y pendiente</button>
