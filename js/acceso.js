@@ -45,11 +45,12 @@ function accPantalla(){
     if (!x || await accHash(x.sal, u, c) !== x.h) { err.textContent = 'Usuario o contraseña incorrectos'; err.hidden = false; q('acc-c').select(); return; }
     if (!accVigente(x)) { err.textContent = 'Este usuario ya no está habilitado'; err.hidden = false; return; }
     try { localStorage.setItem(SESION_KEY, JSON.stringify({u, h:x.h, exp:Date.now() + SESION_DIAS * 864e5})); if (x.rol === 'editor') localStorage.setItem(EDITOR_KEY, EDITOR_HASH); } catch (e2) {}
+    if (x.rol === 'editor' || x.rol === 'panel') accClaveRecordar(u, c);
     location.reload();
   };
   setTimeout(() => q('acc-u').focus(), 50);
 }
-function accSalir(){ try { localStorage.removeItem(SESION_KEY); localStorage.removeItem(EDITOR_KEY); } catch (e) {} location.reload(); }
+function accSalir(){ try { localStorage.removeItem(SESION_KEY); localStorage.removeItem(EDITOR_KEY); localStorage.removeItem(PUB_KEY); } catch (e) {} location.reload(); }
 
 
 // Paneles que se pueden dar a un "editor por panel" y los datos (módulos de DB) que toca cada uno
@@ -99,7 +100,13 @@ function accAvisoEnvio(html, malo){
 // ── Publicar en línea (PUBLICADOR_URL, publicador/worker.js): el usuario publica él mismo desde cualquier equipo ──
 // Sesión que publica en línea: link público, publicador configurado y perfil editor / editor por panel
 function accLinea(){ if (ES_LOCAL || !PUBLICADOR_URL) return null; const s = accSesion(); return s && (s.rol === 'editor' || s.rol === 'panel') ? s : null; }
-let accClaveMem = '';   // la contraseña solo vive en esta pestaña (nunca se guarda)
+// Contraseña para publicar en línea: el publicador (Cloudflare) la exige para saber quién publica. Se recuerda en este
+// navegador (al entrar o al publicar la primera vez) para no pedirla cada vez; se borra al cerrar sesión o si falla.
+const PUB_KEY = 'comite-aps:pub';
+const accClaveGuardada = () => { try { const g = JSON.parse(localStorage.getItem(PUB_KEY) || 'null'), s = JSON.parse(localStorage.getItem(SESION_KEY) || 'null'); return g && s && g.u === s.u ? g.c : ''; } catch (e) { return ''; } };
+const accClaveRecordar = (u, c) => { try { if (c) localStorage.setItem(PUB_KEY, JSON.stringify({u, c})); else localStorage.removeItem(PUB_KEY); } catch (e) {} };
+let accClaveMem = accClaveGuardada();
+function accClaveCambiar(){ const f = q('pub-clave-fila'), c = q('pub-clave'); if (f) f.hidden = false; if (c) { c.value = ''; c.focus(); } }
 // Mezcla de 3 vías: base = como estaba al cargar la página, mio = como lo dejó este usuario, srv = lo publicado ahora
 // (puede traer cambios de otro usuario). En objetos se mezcla clave por clave: gana lo que cambió este usuario y se
 // conserva lo que cambiaron otros (p. ej. labores de suertes distintas). En listas, si las cambió este usuario, gana la suya.
@@ -138,10 +145,10 @@ function renderPublicarLinea(s){
       <br><small>Si otra persona publicó entretanto, sus cambios se conservan: solo se reemplaza lo que tú editaste.</small></div>
     <div class="mrow" style="margin-top:12px"><div><label class="mlabel">Descripción del cambio</label>
       <input class="minput" id="pub-msg" value="Cambios de ${esc((s.nombre || s.u).split(' ')[0])}"></div></div>
-    <div class="mrow"><div><label class="mlabel">Tu contraseña (para confirmar que eres tú)</label>
+    <div class="mrow" id="pub-clave-fila" ${accClaveMem ? "hidden" : ""}><div><label class="mlabel">Tu contraseña (solo esta vez: queda guardada en este navegador)</label>
       <input class="minput" id="pub-clave" type="password" autocomplete="current-password"></div></div>
     <div id="pub-res"></div>
-    <div style="margin-top:10px"><small>¿Sin internet o no funciona? <a href="#" onclick="accEnviar(accSesion());return false">📤 Enviar el archivo al administrador</a></small></div>`;
+    <div style="margin-top:10px"><small>¿Sin internet o no funciona? <a href="#" onclick="accEnviar(accSesion());return false">📤 Enviar el archivo al administrador</a>${accClaveMem ? ' · <a href="#" onclick="accClaveCambiar();return false">Cambiar la contraseña guardada</a>' : ''}</small></div>`;
   modalFooter.innerHTML = `${volver}<button class="mbtn mbtn-primary" id="pub-btn" onclick="confirmarPublicarLinea()">🚀 Publicar ahora</button>`;
   const c = q('pub-clave'); c.value = accClaveMem;
   c.addEventListener('keydown', e => { if (e.key === 'Enter') confirmarPublicarLinea(); });
@@ -154,12 +161,12 @@ function confirmarPublicarLinea(){
   btn.disabled = true; btn.textContent = 'Publicando…';
   res.innerHTML = '<div class="note">Subiendo tus cambios… (unos segundos)</div>';
   accPublicarLinea(s, clave, q('pub-msg').value.trim() || 'Actualizar datos').then(j => {
-    accClaveMem = clave;
+    accClaveMem = clave; accClaveRecordar(s.u, clave);
     res.innerHTML = `<div class="note" style="border-color:rgba(0,135,90,.3);background:rgba(0,135,90,.06)">✓ Publicado (versión ${esc(String(j.version))}). En 1–2 minutos todos lo ven; las pestañas abiertas se actualizan solas.</div>`;
     btn.textContent = '✓ Publicado'; toast('✓ Publicado para todos');
     if (typeof renderEstadoEdicion === 'function') renderEstadoEdicion();
   }).catch(e => {
-    if (e.codigo === 401) accClaveMem = '';
+    if (e.codigo === 401) { accClaveMem = ''; accClaveRecordar(s.u, ''); const fila = q('pub-clave-fila'); if (fila) fila.hidden = false; }
     res.innerHTML = e instanceof TypeError
       ? '<div class="err">No pude conectarme al publicador (¿sin internet?). Tus cambios siguen guardados en este navegador; vuelve a intentar, o usa 📤 Enviar el archivo al administrador.</div>'
       : `<div class="err" style="white-space:pre-wrap">No se pudo publicar: ${esc(e.message)}</div>`;
