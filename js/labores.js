@@ -151,7 +151,7 @@ function labEstado(o, L){
   if (o.dd <= d1) return {e:'pendiente', t:`Quedan ${d1 - o.dd} d${pend}`};
   return {e:'vencida', t:`Vencida hace ${o.dd - d1} d${pend}`};
 }
-// Oportunidad de una labor realizada: días de lucro al ejecutarla (fecha realizada − fecha de corte) contra el fin de
+// Oportunidad de una labor realizada: días después de cosecha al ejecutarla (fecha realizada − fecha de corte) contra el fin de
 // su ventana (Parámetros). Oportuna si se hizo dentro de la ventana (o antes); tardía si después. null si no tiene fecha.
 function labOport(o, L){
   const r = o.reg[L.k] || {}; if (!r.r || !o.x.ultCorte) return null;
@@ -161,7 +161,7 @@ function labOport(o, L){
 // Condición del suelo al hacer la labor (evaluación): x.suelo = 'friable' | 'humedo'
 const LAB_SUELO = [['friable', 'Friable'], ['humedo', 'Húmedo']];
 const labSueloN = v => (LAB_SUELO.find(([k]) => k === v) || [, ''])[1];
-// Promedio de días de lucro sin las suertes con fecha de corte anterior a LAB_PROM_DESDE (en el maestro quedaron con
+// Promedio de días después de cosecha sin las suertes con fecha de corte anterior a LAB_PROM_DESDE (en el maestro quedaron con
 // corte de 2025 y sus días salen muy altos: dañarían el promedio). items: [{d, c}] (días y fecha de corte)
 const LAB_PROM_DESDE = '2026-01-01';
 // Fecha de corte de referencia para el promedio: la más antigua entre la del control y la del maestro (si el maestro
@@ -176,7 +176,7 @@ function labProm(items){
   return {p:ok.length ? sum(ok, i => i.d) / ok.length : null, n:ok.length, fuera:items.filter(i => i.d != null && !(i.c && i.c >= LAB_PROM_DESDE)).length};
 }
 const labPromTxt = (m, que) => m.p == null ? '' : `${msN(m.p, 0)} d`;
-const labPromT = (m, que) => m.p == null ? `Sin suertes ${que} para promediar` : `Promedio de días de lucro ${que}: ${msN(m.p, 1)} días (${m.n} suertes)${m.fuera ? ` · no cuenta ${m.fuera} con corte de 2025 (en el control o en el maestro)` : ''}`;
+const labPromT = (m, que) => m.p == null ? `Sin suertes ${que} para promediar` : `Promedio de días después de cosecha ${que}: ${msN(m.p, 1)} días (${m.n} suertes)${m.fuera ? ` · no cuenta ${m.fuera} con corte de 2025 (en el control o en el maestro)` : ''}`;
 const labUrgente = e => e === 'pendiente' || e === 'vencida' || e === 'atrasada';
 // Por hacer: todo lo que no está hecho ni «no aplica» (incluye próximas y programadas); así cuadra con el reporte
 // «Sin dato» (el Excel no dice s ni n) va aparte: no se cuenta como pendiente hasta que se confirme en la ficha
@@ -190,7 +190,7 @@ const labBloque = (A, Lb, campo) => A.filter(o => { const r = o.reg[Lb.k] || {},
 // Filtros de la tabla: labE.labor (una labor o todas) y labE.estado: pend (pendientes) / venc (vencidas o atrasadas) /
 // prog (programadas) / hecha / '' (todas). Con una labor elegida se mira solo esa; con todas, basta que alguna cumpla
 // (y para «hecha», que todas lo estén)
-// «Tardías»: pendientes con más de LAB_TARDE días de lucro (el dato llega tarde para roturar o fertilizar)
+// «Tardías»: pendientes con más de LAB_TARDE días después de cosecha (el dato llega tarde para roturar o fertilizar)
 const LAB_TARDE = 60;
 const LAB_ESTADOS = [['pend', 'Pendientes'], ['tarde', `Tardías (pendientes con más de ${LAB_TARDE} días)`], ['venc', 'Vencidas o atrasadas'], ['prog', 'Programadas'], ['sindato', 'Sin dato en el Excel'], ['hecha', 'Realizadas'], ['', 'Todas']];
 const labCumple = (e, est, o) => est === 'tarde' ? labPorHacer(e) && !!o && o.dd > LAB_TARDE : est === 'pend' ? labPorHacer(e) : est === 'sindato' ? e === 'sindato' : est === 'venc' ? (e === 'vencida' || e === 'atrasada')
@@ -237,13 +237,13 @@ function renderLabores(){
     // Las que no aplican (plantillas que no se roturan, 2da de una roturación única) no cuentan en la barra
     const n0 = cuenta('noaplica').length, hech = cuenta('hecha').length, sin = cuenta('sindato').length, tot = (T.length - n0) || 1, pct = n => (n / tot * 100).toFixed(1);
     const haR = sum(cuenta('hecha'), o => labHaReal(o, o.reg[Lb.k]));   // hectáreas realizadas (total o parcial anotada)
-    // Promedio de días de lucro: pendientes (a hoy) y realizadas (al ejecutar), sin las de corte 2025
+    // Promedio de días después de cosecha: pendientes (a hoy) y realizadas (al ejecutar), sin las de corte 2025
     const mP = labProm(urg.map(o => ({d:o.dd, c:labCorteRef(o)}))), mR = labProm(cuenta('hecha').map(o => { const op = labOport(o, Lb); return {d:op ? op.d : null, c:labCorteRef(o)}; }));
     return `<button type="button" class="lab-mini ${labE.labor === Lb.k ? 'on' : ''}" style="--c:${Lb.col}" data-lab-labor="${Lb.k}" data-lab-ir
       title="${esc(`${Lb.n} (${P[Lb.k][0]}–${P[Lb.k][1]} días después del corte): ${urg.length} pendientes (${ven.length} vencidas) · ${cuenta('programada').length} programadas · ${hech} realizadas · ${sin} sin dato en el Excel${n0 ? ` · ${n0} no aplica (${Lb.k === 'rotur' ? 'plantillas que no se roturan' : 'plantillas o roturación única'})` : ''}. Toca para ver todas las suertes.`)}">
       <span class="lab-mini-t">${Lb.ico} <span class="lab-lg">${Lb.n}</span><span class="lab-ct">${Lb.c}</span></span>
       <span class="lab-mini-v"><b>${msN(haL(urg, Lb), 0)} ha</b> pendientes</span>
-      <span class="lab-mini-prom" title="${esc(labPromT(mP, 'de las pendientes (a hoy)') + '\n' + labPromT(mR, 'al ejecutar (realizadas)'))}">⏱ Prom. lucro: <b>${labPromTxt(mP) || '—'}</b> pend. · <b>${labPromTxt(mR) || '—'}</b> al ejecutar</span>
+      <span class="lab-mini-prom" title="${esc(labPromT(mP, 'de las pendientes (a hoy)') + '\n' + labPromT(mR, 'al ejecutar (realizadas)'))}">⏱ Prom. días: <b>${labPromTxt(mP) || '—'}</b> pend. · <b>${labPromTxt(mR) || '—'}</b> al ejecutar</span>
       <span class="lab-mini-bar"><i style="width:${pct(hech)}%;background:#16a34a"></i><i style="width:${pct(urg.length)}%;background:#dc2626"></i><i style="width:${pct(sin)}%;background:#cbd5e1"></i></span>
       <span class="lab-mini-s"><span class="ok">${msN(haR, 0)} ha realizadas</span> <span class="lab-st">(${hech} suertes)</span> · <span class="pe">${urg.length} suertes pendientes</span>${sin ? ` · ${sin} sin dato` : ''}${n0 ? ` · <span class="lab-st">${n0} no ${Lb.k === 'rotur' ? 'se roturan' : 'aplica'}</span>` : ''}</span></button>`; }).join('');
   // Programa semanal de roturación y fertilización (fechas programadas, de esta semana en adelante)
@@ -252,10 +252,10 @@ function renderLabores(){
     const w = r.p < hoy ? 'atrasadas' : labLunes(r.p); const s = sem[w] = sem[w] || {}; const z = s[Lb.k] = s[Lb.k] || {n:0, a:0}; z.n++; z.a += labHa(o, Lb); }));
   const semanas = Object.keys(sem).sort((a, b) => a === 'atrasadas' ? -1 : b === 'atrasadas' ? 1 : a < b ? -1 : 1);
   // Tabla
-  // Las de corte 2025 (en el control o, si son agregadas, en el maestro) inflan los días de lucro: van de últimas y en azul
+  // Las de corte 2025 (en el control o, si son agregadas, en el maestro) inflan los días después de cosecha: van de últimas y en azul
   const viejaC = o => labCorteRef(o) < LAB_PROM_DESDE;
   const ord = [...L].sort((a, b) => (labE.orden === 'corte' || labE.orden === 'nuevas' ? viejaC(a) - viejaC(b) : 0) || (labE.orden === 'excel' ? (a.i ?? 1e6) - (b.i ?? 1e6) || b.dd - a.dd : labE.orden === 'hac' ? (a.x.hac + a.x.s).localeCompare(b.x.hac + b.x.s) : labE.orden === 'area' ? (b.x.area || 0) - (a.x.area || 0) : labE.orden === 'nuevas' ? a.dd - b.dd : b.dd - a.dd));
-  const trA = o => viejaC(o) ? '<tr class="lab-vieja" title="Fecha de corte de 2025 (en el maestro): sus días de lucro salen muy altos, no cuentan en el promedio y van al final de la lista">' : '<tr>';
+  const trA = o => viejaC(o) ? '<tr class="lab-vieja" title="Fecha de corte de 2025 (en el maestro): sus días después de cosecha salen muy altos, no cuentan en el promedio y van al final de la lista">' : '<tr>';
   const chip = s => { const E = LAB_EST[s.e]; return `<span class="lab-chip" style="color:${E.col};background:${E.bg}" title="${esc(s.t)}">${s.n || E.n}</span>`; };
   // Realizada parcial: debajo del estado van las hectáreas hechas (la columna Área sigue con el área de la suerte)
   const chipHa = (o, Lb) => { const s = labEstado(o, Lb), x = o.reg[Lb.k] || {};
@@ -282,7 +282,7 @@ function renderLabores(){
     <td>${esc(msHacN(o.x.hac)) || '<span class="meta">—</span>'}</td><td>${esc(o.x.zona ?? '')}</td><td>${esc(o.x.zonaAgro || '')}</td><td class="n">${msN(o.x.area, 2)}${o.x.par ? `<small class="lab-t" title="Parcial (ha) según el Excel">parcial ${msN(o.x.par, 2)}</small>` : ''}</td>
     <td>${esc(o.x.variedad || '—')}</td><td class="n">${o.x.nCorte != null ? msN(o.x.nCorte) : esc(o.x.tipo || '')}</td><td>${labF(o.x.ultCorte)}${o.x.desdeSiembra ? '<small class="lab-t">siembra</small>' : ''}</td><td class="n">${o.dd}</td>`;
   const mL = labProm(ord.map(o => ({d:o.dd, c:labCorteRef(o)})));
-  const cabDatos = `<th>Suerte</th><th>Hacienda</th><th title="Zona">Z</th><th title="Zona agroecológica">Z. agro</th><th class="n">Área</th><th>Variedad</th><th class="n">Corte</th><th>Cosechada</th><th class="n lab-th2" title="${esc('Días de lucro: desde el corte (o la siembra) hasta hoy. ' + labPromT(mL, 'de la lista'))}">Días de<br>lucro${mL.p != null ? `<small class="lab-th-prom">prom. ${msN(mL.p, 0)}</small>` : ''}</th>`;
+  const cabDatos = `<th>Suerte</th><th>Hacienda</th><th title="Zona">Z</th><th title="Zona agroecológica">Z. agro</th><th class="n">Área</th><th>Variedad</th><th class="n">Corte</th><th>Cosechada</th><th class="n lab-th2" title="${esc('Días después de cosecha: desde el corte (o la siembra) hasta hoy. ' + labPromT(mL, 'de la lista'))}">Días después<br>de cosecha${mL.p != null ? `<small class="lab-th-prom">prom. ${msN(mL.p, 0)}</small>` : ''}</th>`;
   // Una labor elegida: una fila por suerte con su estado y, en modo editor, las fechas para programar o marcar hecha
   const filaLabor = (o, Lb) => { const s = labEstado(o, Lb), r = o.reg[Lb.k] || {}, k = esc(o.key), cerrada = s.e === 'noaplica' || (s.e === 'hecha' && !r.r);
     return `${trA(o)}${datos(o)}${Lb.bd ? `<td class="n b">${labPorHacer(s.e) ? msN(labHa(o, Lb), 2) : '<span class="meta">—</span>'}</td>` : ''}<td>${chipHa(o, Lb)}</td>
@@ -344,7 +344,7 @@ Cerradas (no suman en proceso): ${T.filter(o => o.cierre).length} suertes · ${m
         <select id="lab-hac">${opt('', 'Hacienda', labE.hac)}${hacs.map(h => opt(h, msHacN(h), labE.hac)).join('')}</select>
         ${!LbSel || LAB_ROT.includes(LbSel.k) ? (() => { const otros = [...new Set(T.flatMap(o => LAB_LABORES.filter(L => LAB_ROT.includes(L.k)).flatMap(L => labImpls(o, L))))].filter(v => !LAB_IMPL.includes(v)).sort();
           return `<select id="lab-impl" title="Implemento de roturación: el anotado en la ficha o, si no hay, el de la labor (1ra = Convencional, 2da = Triple, única = Subesca)" class="${labE.impl ? 'on' : ''}">${opt('', 'Implemento', labE.impl || '')}${[...LAB_IMPL, ...otros].map(v => opt(v, v, labE.impl || '')).join('')}${opt('__sin', 'Sin implemento anotado', labE.impl || '')}</select>`; })() : ''}
-        <select id="lab-orden" title="Orden">${opt('corte', 'Días de lucro: mayor a menor', labE.orden)}${opt('nuevas', 'Días de lucro: menor a mayor', labE.orden)}${opt('excel', 'Orden del Excel', labE.orden)}${opt('hac', 'Por hacienda', labE.orden)}${opt('area', 'Por área', labE.orden)}</select>
+        <select id="lab-orden" title="Orden">${opt('corte', 'Días después de cosecha: mayor a menor', labE.orden)}${opt('nuevas', 'Días después de cosecha: menor a mayor', labE.orden)}${opt('excel', 'Orden del Excel', labE.orden)}${opt('hac', 'Por hacienda', labE.orden)}${opt('area', 'Por área', labE.orden)}</select>
         <button type="button" class="lab-ind-btn" data-lab-ind title="Gráficos de lo que muestra la tabla (con estos filtros)">📊 Indicadores</button>
         <button type="button" class="lab-ind-btn lab-rp-btn" data-lab-rp title="Todo lo realizado y lo pendiente por labor, con fechas y si fue oportuna o tardía (con Excel)">📋 Realizado y pendiente</button>
         <button type="button" class="lab-pg-btn" data-lab-pg title="Suertes enviadas a la programación de la semana: labor, contratista, área y día">📅 Programación semanal <b>${(labProg()[semPg] || []).length}</b></button></div>
@@ -763,7 +763,7 @@ function labExcel(){
     // ── Labores: una fila por suerte ──
     const cab = ['Suerte', 'Hacienda', 'Zona', 'Zona agroecológica', 'Área (ha)', 'Parcial según Excel (ha)', 'Variedad', 'Corte', 'Fecha de corte (o siembra)', '¿Desde siembra?', 'Días desde el corte', 'Origen', 'Cierre'];
     LAB_LABORES.forEach(Lb => cab.push(`${Lb.n} · estado (${P[Lb.k][0]}–${P[Lb.k][1]} d)`, `${Lb.n} · ¿tiene?`, ...(Lb.bd ? [sn ? `${Lb.n} · Excel (S/N)` : `${Lb.n} · ha pendientes (reporte)`] : []),
-      `${Lb.n} · ha pendientes`, `${Lb.n} · programada (fecha)`, `${Lb.n} · área a programar`, `${Lb.n} · ha a programar`, `${Lb.n} · realizada (fecha)`, `${Lb.n} · días de lucro al ejecutar`, `${Lb.n} · oportunidad (ventana ${P[Lb.k][0]}–${P[Lb.k][1]} d)`, `${Lb.n} · condición del suelo`, `${Lb.n} · total / parcial`, `${Lb.n} · ha realizadas`,
+      `${Lb.n} · ha pendientes`, `${Lb.n} · programada (fecha)`, `${Lb.n} · área a programar`, `${Lb.n} · ha a programar`, `${Lb.n} · realizada (fecha)`, `${Lb.n} · días después de cosecha al ejecutar`, `${Lb.n} · oportunidad (ventana ${P[Lb.k][0]}–${P[Lb.k][1]} d)`, `${Lb.n} · condición del suelo`, `${Lb.n} · total / parcial`, `${Lb.n} · ha realizadas`,
       `${Lb.n} · contratista(s)`, ...(Lb.k === 'fert' ? [`${Lb.n} · producto o mezcla`, `${Lb.n} · dosis`] : [`${Lb.n} · implemento`]), `${Lb.n} · observación`));
     cab.push('¿Única roturación?', 'Observaciones de la suerte');
     const filaSuerte = o => {
@@ -1173,8 +1173,8 @@ function labIndDatos(){
       else if (e === 'sindato') { d.sin += o.x.area || 0; d.nS++; }
       else if (labPorHacer(e)) { const h = labHa(o, Lb); d.pend += h; d.nP++; const z = hac[o.x.hac || '—'] = hac[o.x.hac || '—'] || {}; suma(z, Lb.k, h); } });
     return d; });
-  // Pendientes tardías (más de LAB_TARDE días de lucro) vs a tiempo, por labor (1ra, 2da roturación y fertilización);
-  // por hacienda (ha tardías de cada labor) y suertes más críticas (más días de lucro, con lo que les falta)
+  // Pendientes tardías (más de LAB_TARDE días después de cosecha) vs a tiempo, por labor (1ra, 2da roturación y fertilización);
+  // por hacienda (ha tardías de cada labor) y suertes más críticas (más días después de cosecha, con lo que les falta)
   const hacT = {}, crit = [];
   const tarde = LAB_LABORES.map(Lb => { const d = {G:{n:Lb.n, ico:Lb.ico}, Lb, t:0, nt:0, a:0, na:0};
     A.forEach(o => { if (!labPorHacer(labEstado(o, Lb).e)) return; const h = +labHa(o, Lb) || 0;
@@ -1221,14 +1221,14 @@ function labIndicadores(){
   // 5. Pendiente por hacienda (apilado por labor)
   const H = Object.entries(D.hac).map(([h, z]) => ({h, z, t:sum(Object.values(z), v => v)})).sort((a, b) => b.t - a.t), maxH = H.length ? H[0].t : 0;
   const g5 = H.slice(0, 14).map(r => labBarra(LAB_LABORES.map(Lb => ({n:Lb.n, v:r.z[Lb.k] || 0, c:Lb.col})), maxH, msHacN(r.h) || r.h)).join('');
-  // 6. Tortas de pendientes tardías (+60 días de lucro) vs a tiempo, por roturación y fertilización
+  // 6. Tortas de pendientes tardías (+60 días después de cosecha) vs a tiempo, por roturación y fertilización
   const LAB_TD = [['t', `Tardías +${LAB_TARDE} d`, '#d03b3b'], ['a', `A tiempo (≤ ${LAB_TARDE} d)`, '#eda100']];
   const g6 = D.tarde.map(d => { const tot = d.t + d.a, I = LAB_TD.map(([k, n, c]) => ({n, v:d[k], c}));
     return `<div class="li-dona-c"><div class="li-sub">${d.G.ico} ${d.G.n}</div>${tot ? labDona(I, `${msN(d.t / tot * 100, 0)}%`, 'tardías') + `<div class="li-td"><b>${d.nt} suertes · ${msN(d.t, 1)} ha</b> tardías<br><span>${d.na} suertes · ${msN(d.a, 1)} ha a tiempo</span></div>` : '<div class="li-vacio">Nada pendiente ✓</div>'}</div>`; }).join('');
   // 7. Tardías por hacienda (barras apiladas por labor) y 8. suertes más críticas
   const HT = Object.entries(D.hacT).map(([h, z]) => ({h, z, t:sum(Object.values(z), v => v)})).sort((a, b) => b.t - a.t), maxHT = HT.length ? HT[0].t : 0;
   const g7 = HT.map(r => labBarra(LAB_LABORES.map(Lb => ({n:Lb.n, v:r.z[Lb.k] || 0, c:Lb.col})), maxHT, msHacN(r.h) || r.h)).join('');
-  const g8 = D.crit.length ? `<div class="li-crit-w"><table class="li-crit"><thead><tr><th>#</th><th>Suerte</th><th>Hacienda</th><th class="n">Área (ha)</th><th class="n">Días de lucro</th><th>Le falta</th></tr></thead><tbody>${D.crit.slice(0, 15).map(({o, P}, i) => `<tr><td class="li-n">${i + 1}</td><td><b>${esc(o.x.s)}</b></td><td>${esc(msHacN(o.x.hac) || '')}</td><td class="n">${msN(o.x.area, 2)}</td><td class="n li-dias">${o.dd}</td><td>${LAB_LABORES.map(Lb => `<span class="li-tag${P.includes(Lb) ? '' : ' li-tag-no'}" style="--c:${Lb.col}">${Lb.ico} ${esc(Lb.c || Lb.n)}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>${D.crit.length > 15 ? `<div class="li-nota">… y ${D.crit.length - 15} suertes tardías más: en la tabla usa el botón «Tardías +${LAB_TARDE} d»</div>` : ''}` : '<div class="li-vacio">Ninguna suerte tardía ✓</div>';
+  const g8 = D.crit.length ? `<div class="li-crit-w"><table class="li-crit"><thead><tr><th>#</th><th>Suerte</th><th>Hacienda</th><th class="n">Área (ha)</th><th class="n">Días después de cosecha</th><th>Le falta</th></tr></thead><tbody>${D.crit.slice(0, 15).map(({o, P}, i) => `<tr><td class="li-n">${i + 1}</td><td><b>${esc(o.x.s)}</b></td><td>${esc(msHacN(o.x.hac) || '')}</td><td class="n">${msN(o.x.area, 2)}</td><td class="n li-dias">${o.dd}</td><td>${LAB_LABORES.map(Lb => `<span class="li-tag${P.includes(Lb) ? '' : ' li-tag-no'}" style="--c:${Lb.col}">${Lb.ico} ${esc(Lb.c || Lb.n)}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>${D.crit.length > 15 ? `<div class="li-nota">… y ${D.crit.length - 15} suertes tardías más: en la tabla usa el botón «Tardías +${LAB_TARDE} d»</div>` : ''}` : '<div class="li-vacio">Ninguna suerte tardía ✓</div>';
   const tarjeta = (tit, sub, cuerpo, ancho) => `<section class="li-card${ancho ? ' li-ancha' : ''}"><h3>${tit}</h3>${sub ? `<p class="li-p">${sub}</p>` : ''}${cuerpo}</section>`;
   el.innerHTML = `<div class="ms-fondo li-fondo" data-li-cerrar><div class="ms-ficha li-modal" role="dialog" aria-label="Indicadores del control de labores">
     <div class="ms-fh"><div><b>📊 Indicadores · Control labores campo</b><small>${esc(filtros)} · ${Ab.length} suertes en proceso · ${msN(haT, 1)} ha${Cz.length ? ` · ${Cz.length} cerradas (${msN(sum(Cz, o => o.x.area || 0), 1)} ha)` : ''}</small></div><button type="button" class="ms-x" data-li-cerrar title="Cerrar (Esc)">✕</button></div>
@@ -1236,9 +1236,9 @@ function labIndicadores(){
       <div class="li-tiles">${tiles}</div>
       <div class="li-grid">
         ${tarjeta('Área realizada vs pendiente por labor', 'Hectáreas · pasa el mouse (o toca) cada color para ver el detalle', `${labLeyenda(LAB_IND_EST.map(([, n, c]) => ({n, c})))}${g1}`, true)}
-        ${tarjeta(`Pendientes tardías (más de ${LAB_TARDE} días de lucro)`, `Del área pendiente de cada labor, cuánta ya pasó de ${LAB_TARDE} días desde el corte: el dato llega tarde para roturar o fertilizar`, `${labLeyenda(LAB_TD.map(([, n, c]) => ({n, c})))}<div class="li-donas">${g6}</div>`, true)}
-        ${tarjeta('Tardías por hacienda', `Hectáreas pendientes con más de ${LAB_TARDE} días de lucro, por labor · pasa el mouse por cada color`, HT.length ? `${labLeyenda(LAB_LABORES.map(Lb => ({n:Lb.n, c:Lb.col})))}${g7}` : '<div class="li-vacio">Ninguna hacienda con labores tardías ✓</div>', true)}
-        ${tarjeta('Suertes más críticas', `Las suertes tardías con más días de lucro y lo que les falta (1ra, 2da roturación o fertilización)${D.crit.length ? ` · ${D.crit.length} en total` : ''}`, g8, true)}
+        ${tarjeta(`Pendientes tardías (más de ${LAB_TARDE} días después de cosecha)`, `Del área pendiente de cada labor, cuánta ya pasó de ${LAB_TARDE} días desde el corte: el dato llega tarde para roturar o fertilizar`, `${labLeyenda(LAB_TD.map(([, n, c]) => ({n, c})))}<div class="li-donas">${g6}</div>`, true)}
+        ${tarjeta('Tardías por hacienda', `Hectáreas pendientes con más de ${LAB_TARDE} días después de cosecha, por labor · pasa el mouse por cada color`, HT.length ? `${labLeyenda(LAB_LABORES.map(Lb => ({n:Lb.n, c:Lb.col})))}${g7}` : '<div class="li-vacio">Ninguna hacienda con labores tardías ✓</div>', true)}
+        ${tarjeta('Suertes más críticas', `Las suertes tardías con más días después de cosecha y lo que les falta (1ra, 2da roturación o fertilización)${D.crit.length ? ` · ${D.crit.length} en total` : ''}`, g8, true)}
         ${tarjeta('Participación por contratista', 'Hectáreas realizadas por contratista en cada labor (lo anotado en la ficha 📝)', `${usadosC.length ? labLeyenda(usadosC.map(n => ({n, c:labColorContr(n)}))) : ''}<div class="li-donas">${g2}</div>`, true)}
         ${tarjeta('Implemento en roturación', 'Hectáreas de roturación realizadas (1ra y 2da) por implemento', donaL(Im, D.impl, 'Aún no hay implementos anotados'))}
         ${tarjeta('Productos de fertilización', 'Hectáreas fertilizadas por producto o mezcla', donaL(Pr, D.prod, 'Aún no hay productos anotados'))}
@@ -1262,9 +1262,9 @@ function labIndEventos(e){
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && e.innerHTML) labIndCerrar(); });
 }
 
-// ── 📋 Realizado y pendiente: cada labor de cada suerte (también las cerradas) con su fecha, los días de lucro al
+// ── 📋 Realizado y pendiente: cada labor de cada suerte (también las cerradas) con su fecha, los días después de cosecha al
 // ejecutarla y si fue oportuna o tardía (fin de la ventana de ⚙️ Parámetros). Pendientes: a tiempo o vencidas según los
-// días de lucro de hoy. Filtros propios (labE.rp) y descarga a Excel de lo filtrado.
+// días después de cosecha de hoy. Filtros propios (labE.rp) y descarga a Excel de lo filtrado.
 const LAB_RP_OP = {ok:{hecha:'Oportuna', pend:'A tiempo'}, tarde:{hecha:'Tardía', pend:'Vencida'}, sf:{hecha:'Sin fecha', pend:'—'}};
 const labRpDef = () => ({lab:'', est:'', op:'', hac:'', z:'', desde:'', hasta:''});
 function labRpFilas(){
@@ -1279,7 +1279,7 @@ function labRpFiltradas(F){
   const f = labE.rp;
   return F.filter(x => (!f.lab || x.L.k === f.lab) && (!f.est || x.est === f.est) && (!f.op || x.op === f.op) && (!f.hac || x.o.x.hac === f.hac) && (!f.z || String(x.o.x.zona) === f.z)
     && (!f.desde || (x.est === 'hecha' && x.f >= f.desde)) && (!f.hasta || (x.est === 'hecha' && x.f && x.f <= f.hasta)))
-    .sort((a, b) => (labCorteRef(a.o) < LAB_PROM_DESDE) - (labCorteRef(b.o) < LAB_PROM_DESDE) || (b.d ?? -1e9) - (a.d ?? -1e9) || a.o.x.s.localeCompare(b.o.x.s));   // días de lucro de mayor a menor; las de corte 2025 al final   // días de lucro de mayor a menor
+    .sort((a, b) => (labCorteRef(a.o) < LAB_PROM_DESDE) - (labCorteRef(b.o) < LAB_PROM_DESDE) || (b.d ?? -1e9) - (a.d ?? -1e9) || a.o.x.s.localeCompare(b.o.x.s));   // días después de cosecha de mayor a menor; las de corte 2025 al final   // días después de cosecha de mayor a menor
 }
 const labRpEl = () => { let e = document.getElementById('lab-rp'); if (!e) { e = document.createElement('div'); e.id = 'lab-rp'; document.body.appendChild(e); labRpEventos(e); } return e; };
 function labRealizado(){
@@ -1291,7 +1291,7 @@ function labRealizado(){
     const b = (est, op, txt, arr, cls) => `<button type="button" class="rp-b rp-${cls}${f.lab === L.k && f.est === est && f.op === op ? ' on' : ''}" data-rp-set="${L.k}|${est}|${op}" title="Ver en la tabla"><b>${arr.length}</b> ${txt}<small>${msN(s(arr), 1)} ha</small></button>`;
     const mR = labProm(H.map(x => ({d:x.d, c:labCorteRef(x.o)}))), mP = labProm(Pn.map(x => ({d:x.d, c:labCorteRef(x.o)})));
     return `<div class="rp-tile" style="--c:${L.col}"><div class="rp-tt">${L.ico} ${L.n}</div>
-      <div class="rp-prom" title="${esc(labPromT(mR, 'al ejecutar (realizadas)') + '\n' + labPromT(mP, 'de las pendientes (a hoy)'))}">⏱ Prom. días de lucro: <b>${labPromTxt(mR) || '—'}</b> al ejecutar · <b>${labPromTxt(mP) || '—'}</b> pendientes</div>
+      <div class="rp-prom" title="${esc(labPromT(mR, 'al ejecutar (realizadas)') + '\n' + labPromT(mP, 'de las pendientes (a hoy)'))}">⏱ Prom. días después de cosecha: <b>${labPromTxt(mR) || '—'}</b> al ejecutar · <b>${labPromTxt(mP) || '—'}</b> pendientes</div>
       <div class="rp-g"><span class="rp-gl">Realizadas</span>${b('hecha', 'ok', 'oportunas', H.filter(x => x.op === 'ok'), 'ok')}${b('hecha', 'tarde', 'tardías', H.filter(x => x.op === 'tarde'), 'ta')}</div>
       <div class="rp-g"><span class="rp-gl">Pendientes</span>${b('pend', 'ok', 'a tiempo', Pn.filter(x => x.op === 'ok'), 'at')}${b('pend', 'tarde', 'vencidas', Pn.filter(x => x.op === 'tarde'), 've')}</div></div>`; }).join('');
   const opt = (v, t, sel) => `<option value="${esc(v)}" ${sel === v ? 'selected' : ''}>${esc(t)}</option>`;
@@ -1302,7 +1302,7 @@ function labRealizado(){
     <td><span class="rp-op ${x.op}" title="Ventana hasta el día ${x.fin}">${LAB_RP_OP[x.op][x.est]}</span></td><td>${esc(x.suelo)}</td><td>${esc(x.contr)}</td><td>${esc(x.como)}</td><td class="n">${msN(x.ha, 2)}${x.parcial ? ' <small class="meta">parcial</small>' : ''}</td></tr>`;
   const hayF = Object.keys(f).some(k => f[k]);
   el.innerHTML = `<div class="ms-fondo li-fondo" data-rp-cerrar><div class="ms-ficha li-modal rp-modal" role="dialog" aria-label="Realizado y pendiente">
-    <div class="ms-fh"><div><b>📋 Realizado y pendiente · Control labores campo</b><small>Cada labor de cada suerte (también las cerradas): fecha, días de lucro al ejecutarla y si fue oportuna o tardía según la ventana de ⚙️ Parámetros</small></div><button type="button" class="ms-x" data-rp-cerrar title="Cerrar (Esc)">✕</button></div>
+    <div class="ms-fh"><div><b>📋 Realizado y pendiente · Control labores campo</b><small>Cada labor de cada suerte (también las cerradas): fecha, días después de cosecha al ejecutarla y si fue oportuna o tardía según la ventana de ⚙️ Parámetros</small></div><button type="button" class="ms-x" data-rp-cerrar title="Cerrar (Esc)">✕</button></div>
     <div class="ms-cuerpo">
       <div class="rp-tiles">${tiles}</div>
       <div class="rp-fil">
@@ -1315,7 +1315,7 @@ function labRealizado(){
         ${hayF ? '<button type="button" class="plegar-todo" data-rp-limpiar>✕ Limpiar</button>' : ''}
         <button type="button" class="lab-ind-btn" data-rp-excel title="Descargar en Excel lo que muestra la tabla">⬇️ Excel</button></div>
       <div class="rp-res"><b>${A.length}</b> labores · <b>${msN(s(A), 1)} ha</b>${A.length ? ` · ${A.filter(x => x.est === 'hecha').length} realizadas, ${A.filter(x => x.est === 'pend').length} pendientes` : ''}</div>
-      <div class="rp-tw"><table class="sim-t rp-t"><thead><tr><th>Suerte</th><th>Hacienda</th><th>Z</th><th>Labor</th><th>Estado</th><th>Corte</th><th title="Fecha en que se hizo (o la programada si está pendiente)">Fecha</th><th class="n" title="Días de lucro al ejecutarla (realizadas) o a hoy (pendientes)">Días</th><th>Oportunidad</th><th>Suelo</th><th>Contratista</th><th>Implemento / producto</th><th class="n">Ha</th></tr></thead>
+      <div class="rp-tw"><table class="sim-t rp-t"><thead><tr><th>Suerte</th><th>Hacienda</th><th>Z</th><th>Labor</th><th>Estado</th><th>Corte</th><th title="Fecha en que se hizo (o la programada si está pendiente)">Fecha</th><th class="n" title="Días después de cosecha al ejecutarla (realizadas) o a hoy (pendientes)">Días</th><th>Oportunidad</th><th>Suelo</th><th>Contratista</th><th>Implemento / producto</th><th class="n">Ha</th></tr></thead>
         <tbody>${A.map(fila).join('') || '<tr><td colspan="13" class="nores">Nada con esos filtros.</td></tr>'}</tbody></table></div>
     </div></div></div>`;
 }
@@ -1323,7 +1323,7 @@ function labRpCerrar(){ const e = document.getElementById('lab-rp'); if (e) e.in
 function labRpExcel(){
   cargarXLSX().then(X => {
     const A = labRpFiltradas(labRpFilas()), f = labE.rp || labRpDef();
-    const filas = [['Suerte', 'Hacienda', 'Zona', 'Labor', 'Estado', 'Fecha de corte', 'Fecha realizada', 'Fecha programada', 'Días de lucro (al ejecutar o a hoy)', 'Ventana hasta (días)', 'Oportunidad', 'Condición del suelo', 'Contratista(s)', 'Implemento / producto', 'Hectáreas', 'Total / parcial', 'Suerte cerrada'],
+    const filas = [['Suerte', 'Hacienda', 'Zona', 'Labor', 'Estado', 'Fecha de corte', 'Fecha realizada', 'Fecha programada', 'Días después de cosecha (al ejecutar o a hoy)', 'Ventana hasta (días)', 'Oportunidad', 'Condición del suelo', 'Contratista(s)', 'Implemento / producto', 'Hectáreas', 'Total / parcial', 'Suerte cerrada'],
       ...A.map(x => [x.o.x.s, msHacN(x.o.x.hac), x.o.x.zona ?? '', x.L.n, x.est === 'hecha' ? 'Realizada' : 'Pendiente', x.o.x.ultCorte || '', x.est === 'hecha' ? x.f : '', x.est === 'pend' ? x.f : '',
         x.d ?? '', x.fin, LAB_RP_OP[x.op][x.est], x.suelo, x.contr, x.como, +(+x.ha).toFixed(2), x.est === 'hecha' ? (x.parcial ? 'Parcial' : 'Total') : '', x.o.cierre ? 'Sí' : ''])];
     const ws = X.utils.aoa_to_sheet(filas); ws['!cols'] = [10, 14, 6, 16, 11, 12, 12, 12, 12, 10, 11, 12, 26, 20, 10, 10, 9].map(w => ({wch:w}));
