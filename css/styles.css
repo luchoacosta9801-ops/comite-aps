@@ -1686,3 +1686,8 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .lab-qt{font:inherit;font-size:12px;padding:3px 7px;border:1px solid var(--bdr);border-radius:999px;background:#fff;cursor:pointer;opacity:.75}
 .lab-qt:hover{opacity:1;border-color:#b91c1c;background:#fef2f2}
 .lab-pills .est-quitada.on{background:#7f1d1d;border-color:#7f1d1d;color:#fff}
+/* Selector de labor con Roturación (toda) y Única: puede pasar a dos líneas; Roturación separada del resto */
+#lab-tabla .lab-seg{flex-wrap:wrap;justify-content:center;max-width:100%}
+#lab-tabla .lab-seg button{padding:10px 16px}
+#lab-tabla .lab-seg button.lab-seg-rot{border-right:2px solid #cbd5e1;border-radius:10px 0 0 10px;margin-right:4px}
+@media (max-width:760px){#lab-tabla .lab-seg button{font-size:13px;padding:8px 10px}}

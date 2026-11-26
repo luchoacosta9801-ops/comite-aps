@@ -206,20 +206,26 @@ const labImpls = (o, L) => { const x = o.reg[L.k] || {}; return [...new Set([x.i
 const labImplDef = (o, L) => L.k === 'rotur2' ? 'Triple' : L.k === 'rotur' ? ((o.reg.rotur || {}).unica === 'si' ? 'Subesca' : 'Convencional') : '';
 const labImplsEf = (o, L) => { const I = labImpls(o, L); return I.length ? I : [labImplDef(o, L)].filter(Boolean); };
 const labImplCumple = (o, L, im) => im === '__sin' ? !labImpls(o, L).length : labImplsEf(o, L).includes(im);
+// Botones de labor: cada labor y además «rot» (toda la roturación junta: 1ra, 2da y única) y «unica» (la roturación de
+// las suertes con roturación única). «rotur» (1ra roturación) deja por fuera las de roturación única.
+const LAB_SEL_EXTRA = {rot:{n:'Roturación', ico:'🚜', col:'#1e40af'}, unica:{n:'Única roturación', ico:'🚜', col:'#7c3aed'}};
+const labSelLb = (v = labE.labor) => LAB_LABORES.find(L => L.k === (v === 'unica' ? 'rotur' : v)) || null;   // labor concreta (null en «Todas» y «Roturación»)
+const labSelPasa = (o, v = labE.labor) => v === 'unica' ? labUnica(o) === 'si' : v === 'rotur' ? labUnica(o) !== 'si' : true;
+const labSelLabs = (v = labE.labor) => v === 'rot' ? LAB_LABORES.filter(L => LAB_ROT.includes(L.k)) : LAB_LABORES;
 function labFiltradas(T){
-  const t = norm(labE.txt), Lb = LAB_LABORES.find(L => L.k === labE.labor), est = labE.estado, cer = est === 'cerrada';
+  const t = norm(labE.txt), Lb = labSelLb(), est = labE.estado, cer = est === 'cerrada';
   if (est === 'quitada') return T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!t || norm(`${o.x.s} ${o.x.hac}`).includes(t)));
   // Filtro de implemento (labE.impl): solo cuenta en roturación; con una labor elegida mira esa, con todas basta una
   // roturación que cumpla a la vez el estado y el implemento (ej. «Pendientes» + «Subesca» = lo que falta por subesca)
   const im = labE.impl && (!Lb || LAB_ROT.includes(Lb.k)) ? labE.impl : '';
-  return T.filter(o => (cer ? !!o.cierre : !o.cierre) && (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!labE.fuente || o.fuente === labE.fuente)
+  return T.filter(o => (cer ? !!o.cierre : !o.cierre) && labSelPasa(o) && (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!labE.fuente || o.fuente === labE.fuente)
     && (!t || norm(`${o.x.s} ${o.x.hac} ${o.x.variedad || ''} ${o.x.zonaAgro || ''}`).includes(t))
     && (() => {
       if (im) { const ok = L => labImplCumple(o, L, im) && (!est || cer || labCumple(labEstado(o, L).e, est, o));
         return Lb ? ok(Lb) : LAB_LABORES.filter(L => LAB_ROT.includes(L.k)).some(ok); }
       if (!est || cer) return true;
       if (Lb) return labCumple(labEstado(o, Lb).e, est, o);
-      const E = LAB_LABORES.map(L => labEstado(o, L).e); return est === 'hecha' ? E.every(e => labCumple(e, est, o)) : E.some(e => labCumple(e, est, o)); })());
+      const E = labSelLabs().map(L => labEstado(o, L).e); return est === 'hecha' ? E.every(e => labCumple(e, est, o)) : E.some(e => labCumple(e, est, o)); })());
 }
 
 function renderLabores(){
@@ -271,7 +277,7 @@ function renderLabores(){
     return `<span class="lab-2b lab-2b-${tono}" title="${esc(s.t)}"><button type="button" class="${prog ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|p">Programada</button><button type="button" class="${hecha ? 'on' : ''}" data-lab-m="${k}|${Lb.k}|r">Ejecutada</button></span>${conFechas && (r.p || r.r) ? `<small class="lab-t">${r.r ? `Hecha ${labF(r.r)}` : `Prog. ${labF(r.p)}`}</small>` : ''}`; };
   // Columnas: lo que trae el Excel (1ra, 2da roturación y fertilización)
   const LAB_COLS = LAB_LABORES;
-  const LbSel = LAB_LABORES.find(x => x.k === labE.labor);
+  const LbSel = labSelLb();   // en «Única» es la roturación (rotur) de esas suertes; en «Todas» y «Roturación», null
   // Última columna: ficha 📝 y, en modo editor, «Enviar» a la programación semanal (✓ si ya está en la semana elegida)
   const semPg = labPgSemana(), enSem = new Set((labProg()[semPg] || []).map(r => r.key + '|' + r.lab));
   const fichaBtn = o => { const yaEn = LAB_LABORES.some(Lb => enSem.has(o.key + '|' + Lb.k) && (!LbSel || Lb === LbSel));
@@ -298,11 +304,14 @@ function renderLabores(){
       <tbody>${ord.map(o => `${trA(o)}${datos(o)}${LAB_COLS.map(Lb => `<td>${chipHa(o, Lb)}</td>`).join('')}${fichaBtn(o)}</tr>`).join('') || `<tr><td colspan="${10 + LAB_LABORES.length}" class="nores">Ninguna suerte con esos filtros.</td></tr>`}</tbody>
       ${ord.length ? `<tfoot><tr><td colspan="4">Total · ${ord.length} suertes</td><td class="n b">${msN(ha(ord), 2)}</td><td colspan="${5 + LAB_LABORES.length}"></td></tr></tfoot>` : ''}</table>`;
   // Selector de labor (cuántas suertes pendientes tiene cada una con los demás filtros)
-  const pendDe = Lb => T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && labPorHacer(labEstado(o, Lb).e)).length;
-  const selector = `<div class="lab-seg"><button type="button" class="${!LbSel ? 'on' : ''}" data-lab-labor="">Todas</button>${LAB_LABORES.map(Lb => `<button type="button" class="${LbSel === Lb ? 'on' : ''}" style="--c:${Lb.col}" data-lab-labor="${Lb.k}" title="${pendDe(Lb)} pendientes">${Lb.ico} ${Lb.n}</button>`).join('')}</div>`;
+  // Botones: Todas · Roturación (toda junta) · 1ra · 2da · Única · Fertilización
+  const pendDe = v => T.filter(o => !o.cierre && (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && labSelPasa(o, v)
+    && (labSelLb(v) ? labPorHacer(labEstado(o, labSelLb(v)).e) : labSelLabs(v).some(L => labPorHacer(labEstado(o, L).e)))).length;
+  const BOT = [['rot', LAB_SEL_EXTRA.rot], ['rotur', null], ['rotur2', null], ['unica', LAB_SEL_EXTRA.unica], ['fert', null]].map(([v, x]) => { const L = x || LAB_LABORES.find(y => y.k === v); return {v, n:L.n, ico:L.ico, col:L.col}; });
+  const selector = `<div class="lab-seg"><button type="button" class="${!labE.labor ? 'on' : ''}" data-lab-labor="">Todas</button>${BOT.map(b => `<button type="button" class="${labE.labor === b.v ? 'on' : ''}${b.v === 'rot' ? ' lab-seg-rot' : ''}" style="--c:${b.col}" data-lab-labor="${b.v}" title="${pendDe(b.v)} suertes pendientes${b.v === 'rot' ? ' de alguna roturación (1ra, 2da o única)' : b.v === 'rotur' ? ' (sin las de roturación única)' : ''}">${b.ico} ${b.n}</button>`).join('')}</div>`;
   // Botones de estado con su cuenta (con los demás filtros): todas / realizadas / pendientes / vencidas / sin dato
-  const baseT = T.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!labE.fuente || o.fuente === labE.fuente)), base = baseT.filter(o => !o.cierre);
-  const nEst = v => v === 'quitada' ? TQ.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac)).length : v === 'cerrada' ? baseT.length - base.length : !v ? base.length : base.filter(o => LbSel ? labCumple(labEstado(o, LbSel).e, v, o) : (() => { const E = LAB_LABORES.map(Lb => labEstado(o, Lb).e); return v === 'hecha' ? E.every(e => labCumple(e, v, o)) : E.some(e => labCumple(e, v, o)); })()).length;
+  const baseT = T.filter(o => labSelPasa(o) && (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac) && (!labE.fuente || o.fuente === labE.fuente)), base = baseT.filter(o => !o.cierre);
+  const nEst = v => v === 'quitada' ? TQ.filter(o => (!labE.zona || String(o.x.zona) === labE.zona) && (!labE.hac || o.x.hac === labE.hac)).length : v === 'cerrada' ? baseT.length - base.length : !v ? base.length : base.filter(o => LbSel ? labCumple(labEstado(o, LbSel).e, v, o) : (() => { const E = labSelLabs().map(Lb => labEstado(o, Lb).e); return v === 'hecha' ? E.every(e => labCumple(e, v, o)) : E.some(e => labCumple(e, v, o)); })()).length;
   const estBtns = `<div class="lab-pills">${[['', 'Todas'], ['hecha', 'Realizadas'], ['pend', 'Pendientes'], ['tarde', `Tardías +${LAB_TARDE} d`], ['sindato', 'Sin dato'], ['cerrada', '🔒 Cerradas'], ['quitada', '🚫 Quitadas']].filter(([v]) => (v !== 'sindato' && v !== 'cerrada' && v !== 'quitada') || nEst(v) || labE.estado === v).map(([v, t]) =>
     `<button type="button" class="${labE.estado === v ? 'on' : ''} est-${v || 'todas'}" data-lab-est="${v}">${t} <b>${nEst(v)}</b></button>`).join('')}</div>`;
   // Indicador rápido (a la derecha de los filtros): con una labor elegida, dona de avance + hectáreas pendientes y
@@ -705,7 +714,7 @@ q('labores').addEventListener('click', e => {
   if (t.closest('[data-lab-ind]')) { labIndicadores(); return; }
   if (t.closest('[data-lab-rp]')) { labRealizado(); return; }
   if (t.closest('[data-lab-pg]')) { labProgramacion(); return; }
-  const env = t.closest('[data-lab-env]'); if (env) { labEnviar(env.dataset.labEnv, labE.labor || null); return; }
+  const env = t.closest('[data-lab-env]'); if (env) { const Ls = labSelLb(); labEnviar(env.dataset.labEnv, Ls ? Ls.k : null); return; }
   // 🚫 Quitar del control (no se le van a hacer labores): sale de la tabla, conteos, indicadores y de la programación
   // pendiente; queda en «🚫 Quitadas» con fecha y motivo, y ↩ Devolver la regresa con todo lo que tenía anotado
   const qt = t.closest('[data-lab-quitar]');
