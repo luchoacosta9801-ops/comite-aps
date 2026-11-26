@@ -1680,3 +1680,4 @@ details.lab-prog{border-top:1px solid var(--bdr);padding:8px 12px}
 .lab-tab tbody tr.lab-vieja:hover td,.rp-t tbody tr.lab-vieja:hover td{background:#bfdbfe}
 .pg-filtros .pg-buscar{font:inherit;font-size:12px;padding:4px 10px;border:1px solid var(--bdr);border-radius:8px;min-width:200px;flex:1}
 @media (max-width:760px){.pg-filtros .pg-buscar{width:100%;min-width:0}}
+.lf-rep-f .lf-rep-im{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--bdr);border-radius:8px;background:#fff;min-width:150px;max-width:190px}

@@ -50,7 +50,7 @@ const labHaReal = (o, x) => x && x.at === 'parcial' ? (+x.ha || +o.x.par || +o.x
 // Reparto del área realizada entre contratistas: x.rep = [{c, ha}] (varios contratistas en la misma suerte y labor).
 // x.contr queda con el primero y at/ha con la suma, para que el resto del panel siga funcionando igual
 const labRep = x => (x && Array.isArray(x.rep) ? x.rep : []).filter(p => p && (p.c || +p.ha));
-const labContrTxt = x => { const R = labRep(x); return R.length ? R.map(p => `${p.c || 'Sin contratista'}${+p.ha ? ' ' + msN(+p.ha, 2) + ' ha' : ''}${p.f ? ` (${labF(p.f)})` : ''}`).join(' + ') : (x && x.contr) || ''; };
+const labContrTxt = x => { const R = labRep(x); return R.length ? R.map(p => `${p.c || 'Sin contratista'}${+p.ha ? ' ' + msN(+p.ha, 2) + ' ha' : ''}${p.i || p.pr ? ' con ' + (p.i || p.pr) : ''}${p.f ? ` (${labF(p.f)})` : ''}`).join(' + ') : (x && x.contr) || ''; };
 
 function labDatos(){
   if (DB.labores === undefined && typeof SEED !== 'undefined' && SEED.labores) DB.labores = clone(SEED.labores);
@@ -528,9 +528,12 @@ function labFicha(key){
   const rep = (k, x) => { if (!(x.tiene === 'si' || x.r)) return '';
     if (!Array.isArray(x.rep)) return ed ? `<div class="lf-rep-add"><button type="button" class="plegar-todo" data-lfr-ini="${k}">👥 La hicieron varios contratistas: repartir el área</button></div>` : '';
     const R = x.rep, tot = sum(R, p => +p.ha || 0), ar = +o.x.area || 0;
+    // Implemento (roturación) o producto (fertilización) de cada parte: los parciales suelen hacerse con implementos distintos
+    const impRep = (i, p) => k === 'fert' ? `<input type="text" class="lf-rep-im" ${dis} data-lfr="${k}|${i}|pr" value="${esc(p.pr || '')}" placeholder="Producto o mezcla" list="lf-dl-prod" title="Producto o mezcla que se aplicó en esta parte">`
+      : `<select class="lf-rep-im" ${dis} data-lfr="${k}|${i}|i" title="Implemento con que se hizo esta parte"><option value="">— Implemento —</option>${[...LAB_IMPL, ...(p.i && !LAB_IMPL.includes(p.i) ? [p.i] : [])].map(n => `<option ${p.i === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}<option value="__otro">Otro…</option></select>`;
     const sel = (i, c) => `<select ${dis} data-lfr="${k}|${i}|c"><option value="">— Contratista —</option>${[...LAB_CONTR, ...(c && !LAB_CONTR.includes(c) ? [c] : [])].map(n => `<option ${c === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}<option value="__otro">Otro…</option></select>`;
     return `<div class="lf-rep"><div class="lf-rep-t">👥 Reparto por contratista <small>${msN(tot, 2)} de ${msN(ar, 2)} ha${tot > 0 && tot < ar - 0.005 ? ' · parcial' : tot > ar + 0.005 ? ' · ⚠ pasa el área de la suerte' : ''}</small></div>
-      ${R.map((p, i) => `<div class="lf-rep-f">${sel(i, p.c)}<span class="lf-ha"><input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-lfr="${k}|${i}|ha" value="${esc(p.ha ?? '')}" placeholder="0,00"> ha</span><input type="date" class="lf-rep-fe" ${dis} data-lfr="${k}|${i}|f" value="${esc(p.f || '')}" title="Fecha en que este contratista hizo su parte">${ed ? `<button type="button" class="lf-rep-x" data-lfr-x="${k}|${i}" title="Quitar este contratista">🗑</button>` : ''}</div>`).join('')}
+      ${R.map((p, i) => `<div class="lf-rep-f">${sel(i, p.c)}<span class="lf-ha"><input type="number" inputmode="decimal" step="0.01" min="0" ${dis} data-lfr="${k}|${i}|ha" value="${esc(p.ha ?? '')}" placeholder="0,00"> ha</span><input type="date" class="lf-rep-fe" ${dis} data-lfr="${k}|${i}|f" value="${esc(p.f || '')}" title="Fecha en que este contratista hizo su parte">${impRep(i, p)}${ed ? `<button type="button" class="lf-rep-x" data-lfr-x="${k}|${i}" title="Quitar este contratista">🗑</button>` : ''}</div>`).join('')}
       ${ed ? `<button type="button" class="plegar-todo" data-lfr-add="${k}">➕ Otro contratista</button>` : ''}</div>`; };
   const contr = (k, x, etiqueta) => { if (conRep(x)) return ''; const otro = (labE.otro || {})[k] || !!(x.contr && !LAB_CONTR.includes(x.contr));
     return `<label>${etiqueta || 'Contratista'}<select ${dis} data-lfc="${k}"><option value="">— Elegir —</option>${LAB_CONTR.map(c => `<option ${x.contr === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}<option value="__otro" ${otro ? 'selected' : ''}>Otro…</option></select>
@@ -598,7 +601,7 @@ function labRepGuardar(k, R){
   const key = labE.ficha, o = labSuertes().find(y => y.key === key); if (!o) return;
   const ar = +o.x.area || 0, ponerArea = h => { if (h > 0 && h < ar - 0.005) { labSet(key, k, 'at', 'parcial'); labSet(key, k, 'ha', String(+h.toFixed(2))); } else { labSet(key, k, 'at', ''); labSet(key, k, 'ha', ''); } };
   if (R.length <= 1) { const p = R[0] || {}; labSet(key, k, 'rep', ''); labSet(key, k, 'contr', p.c || ''); ponerArea(+p.ha || 0); if (p.f) labSet(key, k, 'r', p.f); }
-  else { labSet(key, k, 'rep', R.map(p => Object.assign({c:p.c || '', ha:p.ha ?? ''}, p.f ? {f:p.f} : {}))); labSet(key, k, 'contr', (R.find(p => p.c) || {}).c || ''); ponerArea(sum(R, p => +p.ha || 0));
+  else { labSet(key, k, 'rep', R.map(p => Object.assign({c:p.c || '', ha:p.ha ?? ''}, p.f ? {f:p.f} : {}, p.i ? {i:p.i} : {}, p.pr ? {pr:p.pr} : {}))); labSet(key, k, 'contr', (R.find(p => p.c) || {}).c || ''); ponerArea(sum(R, p => +p.ha || 0));
     // Con fechas por contratista, la labor queda realizada en la última (la que la completa): con esa se mide si fue oportuna
     const ult = R.map(p => p.f).filter(Boolean).sort().pop(); if (ult) labSet(key, k, 'r', ult); }
   save(); renderEstadoEdicion(); labE.sucio = true; labFicha(key);
@@ -642,6 +645,7 @@ labFichaEl().addEventListener('change', e => {
   const rf = e.target.dataset.lfr;
   if (rf) { const [k, i, campo] = rf.split('|'), R = labRepDe(k).map(p => Object.assign({}, p)); let v = e.target.value.trim();
     if (campo === 'c' && v === '__otro') v = (prompt('Nombre del contratista') || '').trim();
+    if (campo === 'i' && v === '__otro') v = (prompt('Nombre del implemento') || '').trim();
     if (campo === 'ha') v = v.replace(',', '.');
     R[+i] = Object.assign(R[+i] || {}, {[campo]:v}); labRepGuardar(k, R); return; }
   const d = e.target.dataset.lft; if (!d) return; const [k, campo] = d.split('|'); labFichaGuardar(k, campo, e.target.value.trim(), e.target.type === 'date'); });
