@@ -359,6 +359,7 @@ Cerradas (no suman en proceso): ${T.filter(o => o.cierre).length} suertes · ${m
         <select id="lab-orden" title="Orden">${opt('corte', 'Días después de cosecha: mayor a menor', labE.orden)}${opt('nuevas', 'Días después de cosecha: menor a mayor', labE.orden)}${opt('excel', 'Orden del Excel', labE.orden)}${opt('hac', 'Por hacienda', labE.orden)}${opt('area', 'Por área', labE.orden)}</select>
         <button type="button" class="lab-ind-btn" data-lab-ind title="Gráficos de lo que muestra la tabla (con estos filtros)">📊 Indicadores</button>
         <button type="button" class="lab-ind-btn lab-rp-btn" data-lab-rp title="Todo lo realizado y lo pendiente por labor, con fechas y si fue oportuna o tardía (con Excel)">📋 Realizado y pendiente</button>
+        <button type="button" class="lab-ind-btn lab-ab-btn" data-lab-ab title="Para cuántas hectáreas y días alcanzan los bultos de abono disponibles, repartidos por zona según el área pendiente de fertilizar">🌱 Abono</button>
         <button type="button" class="lab-pg-btn" data-lab-pg title="Suertes enviadas a la programación de la semana: labor, contratista, área y día">📅 Programación semanal <b>${(labProg()[semPg] || []).length}</b></button></div>
       ${ed ? `<details class="lab-prog"><summary>⚡ En bloque <span class="meta">· programar o marcar las suertes de la tabla</span></summary>
         <div>Fecha <input type="date" id="lab-pf" value="${esc(labE.progFecha || hoy)}"> <span class="meta">Programar:</span>
@@ -713,6 +714,7 @@ q('labores').addEventListener('click', e => {
   const fi = t.closest('[data-lab-ficha]'); if (fi) { e.preventDefault(); labFicha(fi.dataset.labFicha); return; }
   if (t.closest('[data-lab-ind]')) { labIndicadores(); return; }
   if (t.closest('[data-lab-rp]')) { labRealizado(); return; }
+  if (t.closest('[data-lab-ab]')) { labAbono(); return; }
   if (t.closest('[data-lab-pg]')) { labProgramacion(); return; }
   const env = t.closest('[data-lab-env]'); if (env) { const Ls = labSelLb(); labEnviar(env.dataset.labEnv, Ls ? Ls.k : null); return; }
   // 🚫 Quitar del control (no se le van a hacer labores): sale de la tabla, conteos, indicadores y de la programación
@@ -1371,6 +1373,63 @@ function labResumen(){
     const de = f => T.filter((o, i) => f(E[i]));
     const urg = de(labPorHacer);
     return {Lb, urg, haUrg:sum(urg, o => labHa(o, Lb)), ven:de(e => e === 'vencida' || e === 'atrasada'), prog:de(e => e === 'programada'), hecha:de(e => e === 'hecha'), sin:de(e => e === 'sindato')}; })};
+}
+
+// ── 🌱 Abono: cuánto alcanza el stock de bultos para la fertilización pendiente ──
+// Área pendiente de fertilización (suertes abiertas) por zona; los bultos disponibles se reparten en proporción al área
+// pendiente de cada zona; a «dosis» bultos/ha dan las hectáreas que se cubren, y a «rend» ha/día (de domingo a domingo,
+// todos los días) los días de trabajo y la fecha en que se acaba el abono. Datos: DB.labores.abono {b, dosis, rend, ini}
+// (lo guarda el editor y se publica; sin modo editor se calcula solo en pantalla)
+const LAB_ABONO_DEF = {b:0, dosis:8, rend:16};
+const labAbonoPar = () => Object.assign({}, LAB_ABONO_DEF, (DB.labores || {}).abono || {}, labE.abono || {});
+const labAbonoEl = () => { let e = document.getElementById('lab-ab'); if (!e) { e = document.createElement('div'); e.id = 'lab-ab'; document.body.appendChild(e); labAbonoEventos(e); } return e; };
+function labAbonoCalc(){
+  const P = labAbonoPar(), F = LAB_LABORES.find(L => L.k === 'fert'), ini = P.ini || labHoy();
+  const pend = labSuertes().filter(o => !o.cierre && labPorHacer(labEstado(o, F).e));
+  const Z = {}; pend.forEach(o => { const z = o.x.zona != null && o.x.zona !== '' ? String(o.x.zona) : '—'; const g = Z[z] = Z[z] || {z, n:0, ha:0}; g.n++; g.ha += +labHa(o, F) || 0; });
+  const zonas = Object.values(Z).sort((a, b) => a.z.localeCompare(b.z)), haT = sum(zonas, g => g.ha), b = Math.max(0, +P.b || 0), dosis = +P.dosis || 8, rend = +P.rend || 16;
+  zonas.forEach(g => { g.pct = haT ? g.ha / haT : 0; g.bultos = b * g.pct; g.nec = g.ha * dosis; g.haCub = Math.min(g.ha, g.bultos / dosis); g.falta = Math.max(0, g.nec - g.bultos); g.dias = g.haCub / rend; });
+  const haCub = Math.min(haT, b / dosis), nec = haT * dosis, dias = Math.ceil(haCub / rend - 1e-9), fin = dias ? labMas(ini, dias - 1) : null;
+  const diasTodo = Math.ceil(haT / rend - 1e-9);
+  return {P, ini, dosis, rend, b, zonas, haT, n:pend.length, haCub, nec, falta:Math.max(0, nec - b), sobra:Math.max(0, b - nec), dias, fin, diasTodo, finTodo:diasTodo ? labMas(ini, diasTodo - 1) : null};
+}
+function labAbono(){
+  const el = labAbonoEl(), C = labAbonoCalc(), ed = MODO_EDICION;
+  const n0 = v => msN(v, 0), n1 = v => msN(v, 1), pct = v => msN(v * 100, 1) + ' %';
+  const filas = C.zonas.map(g => `<tr><td class="b">${g.z === '—' ? 'Sin zona' : 'Zona ' + esc(g.z)}</td><td class="n">${g.n}</td><td class="n">${n1(g.ha)}</td><td class="n">${pct(g.pct)}</td>
+    <td class="n b">${n0(g.bultos)}</td><td class="n">${n1(g.haCub)}</td><td class="n">${n0(g.nec)}</td><td class="n">${g.falta > 0.5 ? `<b style="color:#b91c1c">${n0(g.falta)}</b>` : '<span style="color:#15803d">—</span>'}</td><td class="n">${msN(g.dias, 1)}</td></tr>`).join('');
+  el.innerHTML = `<div class="ms-fondo" data-ab-cerrar><div class="ms-ficha ab-modal" role="dialog" aria-label="Abono para la fertilización pendiente">
+    <div class="ms-fh"><div><b>🌱 Abono para la fertilización pendiente</b><small>${C.n} suertes pendientes de fertilizar · ${n1(C.haT)} ha · los bultos se reparten en proporción al área pendiente de cada zona</small></div><button type="button" class="ms-x" data-ab-cerrar title="Cerrar (Esc)">✕</button></div>
+    <div class="ms-cuerpo">
+      <div class="ab-in">
+        <label class="ab-grande">Bultos disponibles<input type="number" inputmode="numeric" min="0" step="1" data-ab="b" value="${C.b || ''}" placeholder="Ej. 1000"></label>
+        <label>Dosis<span><input type="number" inputmode="decimal" min="0.5" step="0.5" data-ab="dosis" value="${C.dosis}"> bultos/ha</span></label>
+        <label>Rendimiento<span><input type="number" inputmode="decimal" min="1" step="1" data-ab="rend" value="${C.rend}"> ha/día</span></label>
+        <label>Desde<input type="date" data-ab="ini" value="${esc(C.ini)}"></label>
+      </div>
+      ${C.b ? `<div class="ab-res">
+        <div class="ab-k"><small>El abono alcanza para</small><b>${n1(C.haCub)} ha</b><span>${C.haT ? pct(C.haCub / C.haT) : '—'} del área pendiente</span></div>
+        <div class="ab-k"><small>Días de trabajo (domingo a domingo)</small><b>${C.dias} día${C.dias === 1 ? '' : 's'}</b><span>a ${n0(C.rend)} ha/día</span></div>
+        <div class="ab-k"><small>Se termina el abono el</small><b>${C.fin ? labF(C.fin) : '—'}</b><span>empezando el ${labF(C.ini)}</span></div>
+        <div class="ab-k ${C.falta > 0.5 ? 'ab-falta' : 'ab-ok'}"><small>${C.falta > 0.5 ? 'Faltan para toda el área' : 'Alcanza para toda el área'}</small><b>${C.falta > 0.5 ? n0(C.falta) + ' bultos' : (C.sobra > 0.5 ? 'Sobran ' + n0(C.sobra) : '✓')}</b><span>se necesitan ${n0(C.nec)} bultos</span></div>
+      </div>` : `<div class="li-vacio">Escribe cuántos <b>bultos</b> hay disponibles: se reparten por zona según el área pendiente, y te digo para cuántas hectáreas y cuántos días alcanzan.</div>`}
+      <div class="sim-tw"><table class="sim-t ab-t"><thead><tr><th>Zona</th><th class="n">Suertes</th><th class="n">Área pendiente (ha)</th><th class="n">% del área</th><th class="n">Bultos asignados</th><th class="n">Ha que cubre</th><th class="n">Bultos necesarios</th><th class="n">Faltan</th><th class="n">Días</th></tr></thead>
+        <tbody>${filas || '<tr><td colspan="9" class="nores">No hay fertilización pendiente.</td></tr>'}</tbody>
+        ${C.zonas.length ? `<tfoot><tr><td>Total</td><td class="n">${C.n}</td><td class="n">${n1(C.haT)}</td><td class="n">100 %</td><td class="n">${n0(C.b)}</td><td class="n">${n1(C.haCub)}</td><td class="n">${n0(C.nec)}</td><td class="n">${C.falta > 0.5 ? n0(C.falta) : '—'}</td><td class="n">${msN(C.haCub / C.rend, 1)}</td></tr></tfoot>` : ''}</table></div>
+      <p class="meta lf-ayuda">Toda el área pendiente (${n1(C.haT)} ha) a ${n0(C.rend)} ha/día son <b>${C.diasTodo} días</b>${C.finTodo ? ` (terminaría el ${labF(C.finTodo)})` : ''}. Los días por zona suman el total si se trabaja con el mismo equipo una zona tras otra.
+        ${ed ? 'Los bultos, la dosis y el rendimiento quedan guardados en la página (recuerda 🚀 Publicar).' : 'Puedes probar otros valores: solo se calculan en tu pantalla.'}</p>
+    </div></div></div>`;
+}
+function labAbonoCerrar(){ const e = document.getElementById('lab-ab'); if (e) e.innerHTML = ''; }
+function labAbonoEventos(e){
+  e.addEventListener('click', ev => { if (ev.target.matches('[data-ab-cerrar]') || ev.target.closest('.ms-x')) labAbonoCerrar(); });
+  e.addEventListener('change', ev => { const k = ev.target.dataset.ab; if (!k) return; let v = ev.target.value.trim();
+    if (k !== 'ini') v = v === '' ? '' : +v.replace(',', '.');
+    if (MODO_EDICION) { const D = DB.labores = DB.labores || {params:{}, reg:{}}; const A = D.abono = D.abono || {};
+      if (v === '' || (k === 'ini' && v === labHoy())) delete A[k]; else A[k] = v; if (!Object.keys(A).length) delete D.abono; save(); renderEstadoEdicion(); }
+    else { labE.abono = labE.abono || {}; labE.abono[k] = v; }
+    labAbono(); const i = e.querySelector(`[data-ab="${k}"]`); if (i && k === 'b') { i.focus(); try { i.select(); } catch (x) {} } });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && e.innerHTML) labAbonoCerrar(); });
 }
 
 // El portal se dibujó antes de cargar este archivo: se redibuja para mostrar la tarjeta y la vista de labores
