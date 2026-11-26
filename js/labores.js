@@ -506,6 +506,7 @@ function labSugerencias(campo){
 function labFicha(key){
   const el = labFichaEl(), o = labSuertes().find(y => y.key === key);
   if (!o) { el.innerHTML = ''; labE.ficha = null; return; }
+  const cuerpo0 = el.querySelector('.ms-cuerpo'), sc = labE.ficha === key && cuerpo0 ? cuerpo0.scrollTop : 0;   // altura donde se estaba editando
   if (labE.ficha !== key) labE.otro = {};   // «Otro contratista» abierto, por labor, solo mientras se edita esta ficha
   labE.ficha = key;
   const ed = MODO_EDICION, dis = ed ? '' : 'disabled', R = o.reg, rot = R.rotur || {}, rot2 = R.rotur2 || {}, fer = R.fert || {}, nota = R.nota || {};
@@ -585,6 +586,8 @@ function labFicha(key){
       <div class="meta lf-ayuda">Lo que respondas aquí manda sobre el Excel. ${ed ? 'Se guarda solo; recuerda 🚀 Publicar.' : ''}</div>
       ${ed && o.fuente === 'manual' ? `<div class="lf-quitar"><button type="button" class="plegar-todo" data-lf-quitar="${esc(o.x.s)}|${esc(o.x.ultCorte)}">🗑 Quitar esta suerte agregada</button></div>` : ''}
     </div></div>${dl('contr')}${dl('impl')}${dl('prod')}</div>`;
+  // Al redibujar por un cambio, se vuelve a la misma altura de la ficha (antes saltaba al comienzo)
+  if (sc) { const c = el.querySelector('.ms-cuerpo'); if (c) c.scrollTop = sc; }
 }
 function labFichaCerrar(){ labFichaEl().innerHTML = ''; labE.ficha = null; if (labE.sucio) { labE.sucio = false; renderVista(); } }
 // Guarda un dato de la ficha sin redibujar la página (se redibuja al cerrar)
